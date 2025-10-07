@@ -8,6 +8,120 @@ This repository contains the comprehensive research, design, and implementation 
 
 ---
 
+## 🚀 Quick Start
+
+### Prerequisites
+- Python 3.10 or higher
+- OpenRouter API key ([Get one here](https://openrouter.ai/keys))
+
+### Setup Instructions
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd innovation-intelligence-system
+   ```
+
+2. **Create and activate virtual environment**
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Configure environment variables**
+   ```bash
+   cp .env.template .env
+   # Edit .env and add your OPENROUTER_API_KEY
+   ```
+
+5. **Verify installation**
+   ```bash
+   python -c "import langchain; from langchain_openai import ChatOpenAI; print('Environment ready')"
+   ```
+
+### Directory Structure
+```
+innovation-intelligence-system/
+├── pipeline/          # Pipeline implementation
+│   ├── stages/        # Pipeline stage modules
+│   └── prompts/       # Prompt templates
+├── data/              # Data files (not committed)
+│   ├── brand-profiles/    # Brand YAML files
+│   ├── test-outputs/      # Test execution results
+│   └── input-manifest.yaml # Input document metadata
+├── documentation/
+│   └── document/      # Test input PDFs
+├── templates/         # Jinja2 templates
+├── run_pipeline.py    # Main execution script
+├── test_input_loading.py # Test script for validating inputs
+└── requirements.txt   # Python dependencies
+```
+
+### Test Input Documents
+
+The system uses standardized test input documents for pipeline testing and validation. All input documents are organized in `documentation/document/` with a manifest file tracking metadata.
+
+**Available Test Inputs:**
+- `savannah-bananas.pdf` - Case study (The Savannah Bananas business model)
+- `premium-fast-food-trend.pdf` - Trend report (Mintel: Premium fast food)
+- `nonalcoholic-beverage-trend.pdf` - Trend report (Mintel: Non-alcoholic beverages)
+- `sacred-sync-trend.pdf` - Trend report (Trendwatching: Sacred Sync)
+- `cat-dad-campaign.pdf` - Spotted innovation (Mars Petcare campaign)
+- `qr-garment-resale.pdf` - Spotted innovation (QR code garment resale)
+
+**Testing Input Loading:**
+```bash
+# Activate virtual environment
+source venv/bin/activate
+
+# Run input loading validation test
+python test_input_loading.py
+```
+
+The test script validates that:
+- All documents in the manifest exist and are readable
+- Each document contains minimum 100 characters of content
+- PyPDFLoader successfully extracts text from each PDF
+
+**Adding New Test Inputs:**
+
+1. **Add the PDF file** to `documentation/document/` with a standardized name:
+   ```bash
+   # Use lowercase with hyphens, descriptive name
+   cp /path/to/document.pdf documentation/document/my-new-input.pdf
+   ```
+
+2. **Update the manifest** (`data/input-manifest.yaml`):
+   ```yaml
+   - id: my-new-input
+     filename: my-new-input.pdf
+     type: case_study|trend_report|spotted_innovation
+     description: "Brief description of the document content"
+   ```
+
+3. **Validate the new input**:
+   ```bash
+   python test_input_loading.py
+   ```
+
+4. **Commit both files** to the repository:
+   ```bash
+   git add documentation/document/my-new-input.pdf data/input-manifest.yaml
+   git commit -m "Add new test input: my-new-input"
+   ```
+
+**Document Type Guidelines:**
+- `case_study`: Detailed analysis of a specific company or innovation
+- `trend_report`: Market research or trend analysis from industry sources
+- `spotted_innovation`: Short-form examples of innovative campaigns or products
+
+---
+
 ## 📁 Repository Structure
 
 ### 🔬 Research Foundation (9 documents)

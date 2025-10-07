@@ -1,0 +1,33 @@
+# Input Manifest for Innovation Intelligence System
+# Defines all test input documents for pipeline processing
+
+inputs:
+  - id: savannah-bananas
+    filename: savannah-bananas.pdf
+    type: case_study
+    description: "Case study of The Savannah Bananas - innovative sports entertainment business model"
+
+  - id: premium-fast-food
+    filename: premium-fast-food-trend.pdf
+    type: trend_report
+    description: "Mintel Snoop trend report on the rise of premium fast food offerings"
+
+  - id: nonalcoholic-beverage
+    filename: nonalcoholic-beverage-trend.pdf
+    type: trend_report
+    description: "Mintel 2025 trend report on non-alcoholic beverage trends in Thailand"
+
+  - id: sacred-sync
+    filename: sacred-sync-trend.pdf
+    type: trend_report
+    description: "Trendwatching FastForward report on Sacred Sync trend"
+
+  - id: cat-dad-campaign
+    filename: cat-dad-campaign.pdf
+    type: spotted_innovation
+    description: "Mars Petcare and People magazine redefine masculinity with Sexiest Cat Dad category"
+
+  - id: qr-garment-resale
+    filename: qr-garment-resale.pdf
+    type: spotted_innovation
+    description: "Ad-generating QR codes incorporated into garments to facilitate easy resale"

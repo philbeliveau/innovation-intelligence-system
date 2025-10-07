@@ -105,6 +105,7 @@ checkpoints/
 # Data files
 data/raw/
 data/processed/
+data/test-outputs/
 *.csv
 *.json
 *.parquet
@@ -130,3 +131,10 @@ coverage.xml
 conversations/
 chat_logs/
 agent_logs/
+
+.bmad-core
+.bridge-innovation
+.bridge-venture
+.claude
+
+docs/architecture-full-web-app
