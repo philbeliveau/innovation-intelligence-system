@@ -10,8 +10,12 @@ Tests:
 2. Required field presence (all 9 required fields present)
 3. Field type validation (strings vs. lists)
 4. List field minimum length validation
+5. Edge case validation (empty values, malformed data)
 
 Usage:
+    pytest test_brand_profiles.py -v
+
+    Or for legacy standalone mode:
     python test_brand_profiles.py
 
 Exit codes:
@@ -19,10 +23,17 @@ Exit codes:
     1 - One or more tests failed
 """
 
+import logging
 import sys
 import yaml
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 # Define schema requirements
 REQUIRED_FIELDS = {
@@ -45,7 +56,9 @@ MINIMUM_LIST_LENGTHS = {
     'brand_values': 3
 }
 
-BRAND_PROFILES_DIR = Path('data/brand-profiles')
+# Configuration - can be overridden by environment or config file
+PROJECT_ROOT = Path(__file__).parent
+BRAND_PROFILES_DIR = PROJECT_ROOT / 'data' / 'brand-profiles'
 EXPECTED_PROFILES = [
     'lactalis-canada.yaml',
     'mccormick-usa.yaml',
@@ -71,7 +84,15 @@ def validate_yaml_syntax(file_path: Path) -> Dict[str, Any]:
 
     Raises:
         ValidationError: If YAML syntax is invalid
+
+    Example:
+        >>> data = validate_yaml_syntax(Path("data/brand-profiles/test.yaml"))
+        >>> assert isinstance(data, dict)
     """
+    if not file_path.exists():
+        logging.error(f"Brand profile file not found: {file_path}")
+        raise ValidationError(f"File not found: {file_path}")
+
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             data = yaml.safe_load(f)
@@ -82,11 +103,14 @@ def validate_yaml_syntax(file_path: Path) -> Dict[str, Any]:
         if not isinstance(data, dict):
             raise ValidationError("YAML root element must be a dictionary")
 
+        logging.debug(f"Successfully parsed YAML: {file_path.name}")
         return data
 
     except yaml.YAMLError as e:
+        logging.error(f"YAML syntax error in {file_path}: {e}")
         raise ValidationError(f"YAML syntax error: {e}")
     except Exception as e:
+        logging.error(f"Error reading file {file_path}: {e}")
         raise ValidationError(f"Error reading file: {e}")
 
 
@@ -279,6 +303,193 @@ def main():
     else:
         print("\n✅ ALL VALIDATIONS PASSED")
         sys.exit(0)
+
+
+# ============ Pytest-compatible test functions ============
+
+def test_brand_profiles_directory_exists():
+    """Test that brand profiles directory exists."""
+    assert BRAND_PROFILES_DIR.exists(), \
+        f"Brand profiles directory not found: {BRAND_PROFILES_DIR}"
+    logging.info(f"✓ Brand profiles directory exists: {BRAND_PROFILES_DIR}")
+
+
+def test_all_expected_profiles_exist():
+    """Test that all expected brand profile files exist."""
+    missing_profiles = []
+    for profile_name in EXPECTED_PROFILES:
+        profile_path = BRAND_PROFILES_DIR / profile_name
+        if not profile_path.exists():
+            missing_profiles.append(profile_name)
+
+    assert len(missing_profiles) == 0, \
+        f"Missing expected profiles: {', '.join(missing_profiles)}"
+    logging.info(f"✓ All {len(EXPECTED_PROFILES)} expected profiles exist")
+
+
+def test_lactalis_canada_yaml_syntax():
+    """Test Lactalis Canada profile YAML syntax."""
+    profile_path = BRAND_PROFILES_DIR / 'lactalis-canada.yaml'
+    data = validate_yaml_syntax(profile_path)
+    assert isinstance(data, dict)
+    logging.info("✓ Lactalis Canada: YAML syntax valid")
+
+
+def test_lactalis_canada_required_fields():
+    """Test Lactalis Canada profile has all required fields."""
+    profile_path = BRAND_PROFILES_DIR / 'lactalis-canada.yaml'
+    data = validate_yaml_syntax(profile_path)
+    validate_required_fields(data, profile_path.name)
+    logging.info("✓ Lactalis Canada: All required fields present")
+
+
+def test_lactalis_canada_field_types():
+    """Test Lactalis Canada profile has correct field types."""
+    profile_path = BRAND_PROFILES_DIR / 'lactalis-canada.yaml'
+    data = validate_yaml_syntax(profile_path)
+    validate_field_types(data, profile_path.name)
+    logging.info("✓ Lactalis Canada: Field types correct")
+
+
+def test_lactalis_canada_list_lengths():
+    """Test Lactalis Canada profile lists meet minimum lengths."""
+    profile_path = BRAND_PROFILES_DIR / 'lactalis-canada.yaml'
+    data = validate_yaml_syntax(profile_path)
+    validate_list_lengths(data, profile_path.name)
+    logging.info("✓ Lactalis Canada: List lengths adequate")
+
+
+def test_mccormick_usa_yaml_syntax():
+    """Test McCormick USA profile YAML syntax."""
+    profile_path = BRAND_PROFILES_DIR / 'mccormick-usa.yaml'
+    data = validate_yaml_syntax(profile_path)
+    assert isinstance(data, dict)
+    logging.info("✓ McCormick USA: YAML syntax valid")
+
+
+def test_mccormick_usa_required_fields():
+    """Test McCormick USA profile has all required fields."""
+    profile_path = BRAND_PROFILES_DIR / 'mccormick-usa.yaml'
+    data = validate_yaml_syntax(profile_path)
+    validate_required_fields(data, profile_path.name)
+    logging.info("✓ McCormick USA: All required fields present")
+
+
+def test_mccormick_usa_field_types():
+    """Test McCormick USA profile has correct field types."""
+    profile_path = BRAND_PROFILES_DIR / 'mccormick-usa.yaml'
+    data = validate_yaml_syntax(profile_path)
+    validate_field_types(data, profile_path.name)
+    logging.info("✓ McCormick USA: Field types correct")
+
+
+def test_mccormick_usa_list_lengths():
+    """Test McCormick USA profile lists meet minimum lengths."""
+    profile_path = BRAND_PROFILES_DIR / 'mccormick-usa.yaml'
+    data = validate_yaml_syntax(profile_path)
+    validate_list_lengths(data, profile_path.name)
+    logging.info("✓ McCormick USA: List lengths adequate")
+
+
+def test_columbia_sportswear_yaml_syntax():
+    """Test Columbia Sportswear profile YAML syntax."""
+    profile_path = BRAND_PROFILES_DIR / 'columbia-sportswear.yaml'
+    data = validate_yaml_syntax(profile_path)
+    assert isinstance(data, dict)
+    logging.info("✓ Columbia Sportswear: YAML syntax valid")
+
+
+def test_columbia_sportswear_required_fields():
+    """Test Columbia Sportswear profile has all required fields."""
+    profile_path = BRAND_PROFILES_DIR / 'columbia-sportswear.yaml'
+    data = validate_yaml_syntax(profile_path)
+    validate_required_fields(data, profile_path.name)
+    logging.info("✓ Columbia Sportswear: All required fields present")
+
+
+def test_columbia_sportswear_field_types():
+    """Test Columbia Sportswear profile has correct field types."""
+    profile_path = BRAND_PROFILES_DIR / 'columbia-sportswear.yaml'
+    data = validate_yaml_syntax(profile_path)
+    validate_field_types(data, profile_path.name)
+    logging.info("✓ Columbia Sportswear: Field types correct")
+
+
+def test_columbia_sportswear_list_lengths():
+    """Test Columbia Sportswear profile lists meet minimum lengths."""
+    profile_path = BRAND_PROFILES_DIR / 'columbia-sportswear.yaml'
+    data = validate_yaml_syntax(profile_path)
+    validate_list_lengths(data, profile_path.name)
+    logging.info("✓ Columbia Sportswear: List lengths adequate")
+
+
+def test_decathlon_yaml_syntax():
+    """Test Decathlon profile YAML syntax."""
+    profile_path = BRAND_PROFILES_DIR / 'decathlon.yaml'
+    data = validate_yaml_syntax(profile_path)
+    assert isinstance(data, dict)
+    logging.info("✓ Decathlon: YAML syntax valid")
+
+
+def test_decathlon_required_fields():
+    """Test Decathlon profile has all required fields."""
+    profile_path = BRAND_PROFILES_DIR / 'decathlon.yaml'
+    data = validate_yaml_syntax(profile_path)
+    validate_required_fields(data, profile_path.name)
+    logging.info("✓ Decathlon: All required fields present")
+
+
+def test_decathlon_field_types():
+    """Test Decathlon profile has correct field types."""
+    profile_path = BRAND_PROFILES_DIR / 'decathlon.yaml'
+    data = validate_yaml_syntax(profile_path)
+    validate_field_types(data, profile_path.name)
+    logging.info("✓ Decathlon: Field types correct")
+
+
+def test_decathlon_list_lengths():
+    """Test Decathlon profile lists meet minimum lengths."""
+    profile_path = BRAND_PROFILES_DIR / 'decathlon.yaml'
+    data = validate_yaml_syntax(profile_path)
+    validate_list_lengths(data, profile_path.name)
+    logging.info("✓ Decathlon: List lengths adequate")
+
+
+def test_no_empty_string_values():
+    """Test that no profile contains empty string values in required fields."""
+    for profile_name in EXPECTED_PROFILES:
+        profile_path = BRAND_PROFILES_DIR / profile_name
+        data = validate_yaml_syntax(profile_path)
+
+        # Check string fields
+        for field in ['brand_name', 'country', 'industry', 'positioning']:
+            value = data.get(field, '')
+            assert value and value.strip(), \
+                f"{profile_name}: {field} is empty or whitespace"
+
+        # Check list fields have non-empty items
+        for field in ['product_portfolio', 'target_customers', 'recent_innovations',
+                      'strategic_priorities', 'brand_values']:
+            items = data.get(field, [])
+            for item in items:
+                assert item and item.strip(), \
+                    f"{profile_name}: {field} contains empty item"
+
+    logging.info("✓ All profiles: No empty values detected")
+
+
+def test_positioning_length_reasonable():
+    """Test that positioning statements are reasonable length (not too short or long)."""
+    for profile_name in EXPECTED_PROFILES:
+        profile_path = BRAND_PROFILES_DIR / profile_name
+        data = validate_yaml_syntax(profile_path)
+        positioning = data.get('positioning', '')
+
+        # Should be at least 50 characters and no more than 500
+        assert 50 <= len(positioning) <= 500, \
+            f"{profile_name}: positioning length {len(positioning)} not in range 50-500"
+
+    logging.info("✓ All profiles: Positioning statements have reasonable length")
 
 
 if __name__ == '__main__':
