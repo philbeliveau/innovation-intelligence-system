@@ -11,9 +11,9 @@ from pathlib import Path
 from typing import Dict, Any
 
 from langchain.chains import LLMChain
-from langchain_openai import ChatOpenAI
 
 from ..prompts.stage1_prompt import get_prompt_template
+from ..utils import create_llm
 
 
 class Stage1Chain:
@@ -41,37 +41,8 @@ class Stage1Chain:
         Raises:
             ValueError: If OpenRouter API key or base URL not configured
         """
-        # Validate environment variables
-        api_key = os.getenv("OPENROUTER_API_KEY")
-        base_url = os.getenv("OPENROUTER_BASE_URL")
-
-        if not api_key:
-            raise ValueError(
-                "OPENROUTER_API_KEY not set. "
-                "Please configure in .env file (see .env.template)"
-            )
-
-        if not base_url:
-            raise ValueError(
-                "OPENROUTER_BASE_URL not set. "
-                "Please configure in .env file (see .env.template)"
-            )
-
-        # Configure ChatOpenAI for OpenRouter with Claude 3.5 Sonnet
-        # NOTE: Story specified Claude Sonnet 4.5 (anthropic/claude-sonnet-4.5-20250514)
-        # but using Claude 3.5 Sonnet as it's the currently available model
-        llm = ChatOpenAI(
-            model="anthropic/claude-3.5-sonnet",
-            temperature=0.3,  # Consistent analysis
-            max_tokens=2500,
-            openai_api_key=api_key,
-            base_url=base_url  # Updated from deprecated openai_api_base
-        )
-
-        logging.debug(
-            f"Stage 1 LLM configured: model=anthropic/claude-3.5-sonnet, "
-            f"temperature=0.3, max_tokens=2500"
-        )
+        # Create LLM using centralized configuration (model from .env)
+        llm = create_llm(temperature=0.3, max_tokens=2500)
 
         # Get prompt template
         prompt = get_prompt_template()

@@ -6,9 +6,62 @@ logging configuration, and common utilities used across pipeline stages.
 """
 
 import logging
+import os
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
+from langchain_openai import ChatOpenAI
+
+
+def create_llm(temperature: float = 0.5, max_tokens: int = 4000) -> ChatOpenAI:
+    """Create configured LLM instance with centralized model settings.
+
+    ⚡ SINGLE SOURCE OF TRUTH FOR MODEL CONFIGURATION ⚡
+    Change LLM_MODEL in .env to switch models across entire pipeline.
+
+    Args:
+        temperature: LLM temperature (0.0-1.0, default: 0.5)
+        max_tokens: Maximum tokens in response (default: 4000)
+
+    Returns:
+        Configured ChatOpenAI instance
+
+    Raises:
+        ValueError: If required environment variables not set
+
+    Example:
+        >>> llm = create_llm(temperature=0.7, max_tokens=3000)
+        >>> # Uses model from LLM_MODEL env variable
+    """
+    # Validate environment variables
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    base_url = os.getenv("OPENROUTER_BASE_URL")
+    model = os.getenv("LLM_MODEL", "deepseek/deepseek-chat")  # Default to DeepSeek
+
+    if not api_key:
+        raise ValueError(
+            "OPENROUTER_API_KEY not set. "
+            "Please configure in .env file (see .env.template)"
+        )
+
+    if not base_url:
+        raise ValueError(
+            "OPENROUTER_BASE_URL not set. "
+            "Please configure in .env file (see .env.template)"
+        )
+
+    logging.debug(
+        f"Creating LLM: model={model}, temperature={temperature}, "
+        f"max_tokens={max_tokens}"
+    )
+
+    return ChatOpenAI(
+        model=model,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        openai_api_key=api_key,
+        base_url=base_url
+    )
 
 
 def create_test_output_dir(
@@ -226,3 +279,69 @@ def load_input_document(input_id: str, input_manifest_path: Path = Path("data/in
 
     logging.debug(f"Loaded input document: {pdf_path} ({len(text_content)} characters)")
     return text_content
+
+
+def load_research_data(
+    brand_id: str,
+    research_directory: Path = Path("docs/web-search-setup")
+) -> str:
+    """Load pre-generated brand research from markdown file.
+
+    Each brand has comprehensive research (~550-720 lines, 35-48KB) with 8 sections:
+    1. Brand Overview & Positioning
+    2. Product Portfolio & Innovation
+    3. Recent Innovations (Last 18 Months)
+    4. Strategic Priorities & Business Strategy
+    5. Target Customers & Market Positioning
+    6. Sustainability & Social Responsibility
+    7. Competitive Context & Market Trends
+    8. Recent News & Market Signals (Last 6 Months)
+
+    File naming convention: {brand-id}-research.md
+    Example: lactalis-canada-research.md
+
+    Args:
+        brand_id: Brand identifier (e.g., 'lactalis-canada', 'mccormick-usa')
+        research_directory: Directory containing research markdown files
+                           (default: docs/web-search-setup)
+
+    Returns:
+        Complete research content as string for Stage 4 prompt injection.
+        Returns empty string if file missing or unreadable (non-fatal error).
+
+    Example:
+        >>> research = load_research_data("lactalis-canada")
+        >>> print(f"Loaded {len(research)} characters of research")
+    """
+    research_file = research_directory / f"{brand_id}-research.md"
+
+    # Handle missing file gracefully (non-fatal)
+    if not research_file.exists():
+        logging.warning(
+            f"Research file not found: {research_file}. "
+            f"Proceeding without research data."
+        )
+        return ""
+
+    try:
+        # Read research content with UTF-8 encoding
+        research_content = research_file.read_text(encoding='utf-8')
+
+        # Calculate file statistics for logging
+        line_count = research_content.count('\n') + 1
+        file_size_kb = research_file.stat().st_size / 1024
+
+        logging.info(
+            f"Loaded research data: {research_file} "
+            f"({line_count} lines, {file_size_kb:.1f} KB)"
+        )
+
+        return research_content
+
+    except Exception as e:
+        # Log warning but return empty string (non-fatal error)
+        logging.warning(
+            f"Failed to read research file {research_file}: {e}. "
+            f"Proceeding without research data."
+        )
+        return ""
