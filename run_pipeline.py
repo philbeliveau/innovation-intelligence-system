@@ -25,9 +25,22 @@ from datetime import datetime
 
 try:
     import yaml
+    from dotenv import load_dotenv
 except ImportError:
-    print("Error: PyYAML not installed. Run: pip install -r requirements.txt")
+    print("Error: Required packages not installed. Run: pip install -r requirements.txt")
     sys.exit(1)
+
+# Import pipeline components
+from pipeline.utils import (
+    load_input_document,
+    setup_pipeline_logging,
+    create_test_output_dir as utils_create_output_dir
+)
+from pipeline.stages.stage1_input_processing import create_stage1_chain
+from pipeline.stages.stage2_signal_amplification import create_stage2_chain
+
+# Load environment variables
+load_dotenv()
 
 
 def setup_logging(verbose: bool = False) -> None:
@@ -143,61 +156,6 @@ def validate_brand_id(brand_id: str, brand_profiles_dir: Path = Path("data/brand
     return True
 
 
-def create_test_output_dir(input_id: str, brand_id: str, base_dir: Path = Path("data/test-outputs")) -> Path:
-    """Create test output directory with timestamp.
-
-    Directory naming convention: {input-id}-{brand-id}-{timestamp}
-    Example: savannah-bananas-lactalis-canada-20251007-142345
-
-    Args:
-        input_id: Input document ID
-        brand_id: Brand profile ID
-        base_dir: Base directory for test outputs
-
-    Returns:
-        Path to created output directory
-    """
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    output_dir_name = f"{input_id}-{brand_id}-{timestamp}"
-    output_dir = base_dir / output_dir_name
-
-    # Create output directory and stage subdirectories
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Create stage output directories
-    for stage_num in range(1, 6):
-        stage_dir = output_dir / f"stage{stage_num}"
-        stage_dir.mkdir(exist_ok=True)
-
-    # Create logs directory
-    logs_dir = output_dir / "logs"
-    logs_dir.mkdir(exist_ok=True)
-
-    logging.debug(f"Created output directory: {output_dir}")
-    return output_dir
-
-
-def create_placeholder_stage_files(output_dir: Path) -> None:
-    """Create placeholder output files for each stage.
-
-    Args:
-        output_dir: Output directory path
-    """
-    stage_files = {
-        "stage1": "inspiration-analysis.md",
-        "stage2": "trend-analysis.md",
-        "stage3": "universal-lessons.md",
-        "stage4": "brand-contextualization.md",
-        "stage5": "opportunities-summary.md"
-    }
-
-    for stage, filename in stage_files.items():
-        stage_file = output_dir / stage / filename
-        placeholder_content = f"# {stage.capitalize()} Output\n\n(Placeholder - pipeline implementation pending)\n"
-        stage_file.write_text(placeholder_content, encoding='utf-8')
-        logging.debug(f"Created placeholder: {stage_file}")
-
-
 def execute_pipeline(input_id: str, brand_id: str) -> bool:
     """Execute pipeline for given input and brand combination.
 
@@ -211,14 +169,51 @@ def execute_pipeline(input_id: str, brand_id: str) -> bool:
     logging.info(f"Executing pipeline for {input_id} + {brand_id}")
 
     try:
-        # Create output directory
-        output_dir = create_test_output_dir(input_id, brand_id)
+        # Create output directory using utils function
+        output_dir = utils_create_output_dir(input_id, brand_id)
         logging.info(f"Output directory: {output_dir}")
 
-        # Create placeholder stage output files
-        create_placeholder_stage_files(output_dir)
+        # Setup pipeline logging to file
+        setup_pipeline_logging(output_dir)
 
+        # Load input document
+        logging.info(f"Loading input document: {input_id}")
+        input_text = load_input_document(input_id)
+        logging.info(f"Input document loaded: {len(input_text)} characters")
+
+        # Stage 1: Input Processing and Inspiration Identification
+        logging.info("=" * 60)
+        logging.info("STAGE 1: Input Processing and Inspiration Identification")
+        logging.info("=" * 60)
+
+        stage1_chain = create_stage1_chain()
+        stage1_result = stage1_chain.run(input_text)
+        stage1_output = stage1_result[stage1_chain.output_key]
+
+        # Save Stage 1 output
+        stage1_file = stage1_chain.save_output(stage1_output, output_dir)
+        logging.info(f"Stage 1 complete. Output: {stage1_file}")
+
+        # Stage 2: Signal Amplification and Trend Extraction
+        logging.info("=" * 60)
+        logging.info("STAGE 2: Signal Amplification and Trend Extraction")
+        logging.info("=" * 60)
+
+        stage2_chain = create_stage2_chain()
+        stage2_result = stage2_chain.run(stage1_output)
+        stage2_output = stage2_result[stage2_chain.output_key]
+
+        # Save Stage 2 output
+        stage2_file = stage2_chain.save_output(stage2_output, output_dir)
+        logging.info(f"Stage 2 complete. Output: {stage2_file}")
+
+        # TODO: Stages 3-5 implementation pending
+        logging.info("Stages 3-5 not yet implemented")
+
+        logging.info("=" * 60)
         logging.info(f"Pipeline execution completed successfully")
+        logging.info(f"Output directory: {output_dir}")
+        logging.info("=" * 60)
         return True
 
     except Exception as e:
