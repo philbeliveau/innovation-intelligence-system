@@ -218,8 +218,8 @@ export default function AnalyzePage() {
     <main className="min-h-screen bg-gray-50 p-6">
       <div className="mx-auto max-w-6xl">
         {/* Header: My Board of Ideators */}
-        <h1 className="mb-8 text-center text-4xl font-bold text-gray-900">
-          <span className="text-teal-600">My</span> Board of Ideators
+        <h1 className="mb-8 mt-12 text-center text-5xl font-bold text-gray-900">
+          <span className="italic text-[#4A9B8E]">My</span> Board of Ideators
         </h1>
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[280px_1fr]">
