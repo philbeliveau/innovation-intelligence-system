@@ -215,15 +215,16 @@ export default function AnalyzePage() {
 
   // Success state
   return (
-    <main className="min-h-screen bg-gray-50 p-8">
+    <main className="min-h-screen bg-gray-50 p-6">
       <div className="mx-auto max-w-6xl">
-        <h1 className="mb-8 text-center text-3xl font-bold text-gray-900">
-          Document Analysis
+        {/* Header: My Board of Ideators */}
+        <h1 className="mb-8 text-center text-4xl font-bold text-gray-900">
+          <span className="text-teal-600">My</span> Board of Ideators
         </h1>
 
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[280px_1fr]">
           {/* Left: Document Summary Card */}
-          <div>
+          <div className="flex justify-center lg:justify-start">
             {analysis && blobUrl && (
               <DocumentCard
                 title={analysis.analysis.title}
@@ -240,10 +241,10 @@ export default function AnalyzePage() {
 
           {/* Right: Ideation Tracks */}
           <div>
-            <h2 className="mb-4 text-xl font-semibold text-gray-900">
-              Select Ideation Track
+            <h2 className="mb-4 text-xl font-semibold text-gray-500">
+              Ideation Tracks
             </h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-3">
               {analysis?.analysis.tracks.map((track, index) => (
                 <TrackCard
                   key={index}

@@ -1,7 +1,5 @@
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Download } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface DocumentCardProps {
   title: string
@@ -22,90 +20,61 @@ export default function DocumentCard({
   theme,
   sources,
   onClick,
-  onDownload,
-  blobUrl,
-  fileName,
 }: DocumentCardProps) {
   // Format sources to show first source + count of others
   const displaySource = sources.length > 0 ? sources[0] : ''
   const otherSourcesCount = sources.length > 1 ? sources.length - 1 : 0
 
-  const handleDownload = (e: React.MouseEvent) => {
-    e.stopPropagation() // Prevent card click
-    if (onDownload) {
-      onDownload()
-    } else if (blobUrl && fileName) {
-      const link = document.createElement('a')
-      link.href = blobUrl
-      link.download = fileName
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    }
-  }
-
   return (
-    <Card
-      className={`h-full ${onClick ? 'cursor-pointer transition-shadow hover:shadow-lg' : ''}`}
+    <div
+      className={cn(
+        'group relative w-full max-w-[280px] bg-white p-4 transition-all',
+        'border-[5px] border-black shadow-[8px_8px_0_#000]',
+        onClick && 'cursor-pointer hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[11px_11px_0_#000]'
+      )}
       onClick={onClick}
     >
       {/* Hero Image Placeholder */}
-      <div className="h-48 w-full bg-gradient-to-br from-amber-200 to-amber-400" />
+      <div className="mb-3 h-32 w-full bg-gradient-to-br from-amber-200 to-amber-400" />
 
-      <CardHeader className="relative">
-        <h2 className="pr-10 text-xl font-semibold text-gray-900">{title}</h2>
-        {/* Download Button (Story 2.2.1) */}
-        {(onDownload || (blobUrl && fileName)) && (
-          <div className="absolute right-4 top-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleDownload}
-              aria-label="Download document"
-              className="h-8 w-8"
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-          </div>
+      {/* Title with Underline Animation */}
+      <h2 className="relative mb-3 overflow-hidden text-xl font-black uppercase leading-tight text-black">
+        {title}
+        <span className="absolute bottom-0 left-0 h-[2px] w-[90%] translate-x-[-100%] bg-black transition-transform duration-300 group-hover:translate-x-0" />
+      </h2>
+
+      {/* Badges */}
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        {/* Source */}
+        <Badge variant="secondary" className="border border-black bg-gray-700 px-2 py-0.5 text-xs font-semibold text-white">
+          {displaySource}
+        </Badge>
+        {otherSourcesCount > 0 && (
+          <Badge variant="secondary" className="border border-black bg-gray-700 px-2 py-0.5 text-xs font-semibold text-white">
+            +{otherSourcesCount}
+          </Badge>
         )}
-      </CardHeader>
 
-      <CardContent className="space-y-4">
-        {/* Badges */}
-        <div className="flex flex-wrap gap-2">
-          {/* Source Badges */}
-          {displaySource && (
-            <Badge variant="secondary" className="bg-gray-600 text-white hover:bg-gray-700">
-              {displaySource}
-            </Badge>
-          )}
-          {otherSourcesCount > 0 && (
-            <Badge variant="secondary" className="bg-gray-600 text-white hover:bg-gray-700">
-              {otherSourcesCount} {otherSourcesCount === 1 ? 'other' : 'others'}
-            </Badge>
-          )}
+        {/* Industry */}
+        <Badge className="border border-black bg-orange-500 px-2 py-0.5 text-xs font-semibold text-white">
+          {industry}
+        </Badge>
 
-          {/* Industry Badge */}
-          <Badge className="bg-orange-500 text-white hover:bg-orange-600">
-            {industry}
-          </Badge>
+        {/* Theme */}
+        <Badge className="border border-black bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">
+          {theme}
+        </Badge>
+      </div>
 
-          {/* Theme Badge */}
-          <Badge className="bg-red-600 text-white hover:bg-red-700">
-            {theme}
-          </Badge>
-        </div>
+      {/* Summary */}
+      <p className="mb-3 text-sm leading-snug text-black">{summary}</p>
 
-        {/* Summary */}
-        <p className="text-sm text-gray-700">{summary}</p>
-
-        {/* Pagination Indicator (3 dots) */}
-        <div className="flex justify-center gap-2 pt-4">
-          <div className="h-2 w-2 rounded-full bg-gray-400" />
-          <div className="h-2 w-2 rounded-full bg-gray-400" />
-          <div className="h-2 w-2 rounded-full bg-gray-400" />
-        </div>
-      </CardContent>
-    </Card>
+      {/* Pagination Dots */}
+      <div className="flex justify-center gap-1.5">
+        <div className="h-1.5 w-1.5 rounded-full bg-black" />
+        <div className="h-1.5 w-1.5 rounded-full bg-black" />
+        <div className="h-1.5 w-1.5 rounded-full bg-black" />
+      </div>
+    </div>
   )
 }

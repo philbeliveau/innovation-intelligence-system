@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
 interface TrackCardProps {
@@ -17,41 +16,46 @@ export default function TrackCard({
   onSelect,
 }: TrackCardProps) {
   return (
-    <Card
+    <div
       className={cn(
-        'cursor-pointer transition-all',
+        'flex cursor-pointer items-center gap-4 rounded-xl bg-white p-4 shadow-sm transition-all',
         selected
-          ? 'border-2 border-blue-500 bg-blue-50'
-          : 'border-gray-300 opacity-60 hover:opacity-80'
+          ? 'border-3 border-teal-500 shadow-md ring-2 ring-teal-200'
+          : 'border-2 border-gray-200 opacity-60 hover:opacity-85 hover:shadow-md'
       )}
       onClick={onSelect}
     >
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          {/* Radio Button */}
-          <input
-            type="radio"
-            checked={selected}
-            onChange={onSelect}
-            className="h-4 w-4 cursor-pointer"
-            aria-label={`Select Track ${trackNumber}`}
-          />
-          <span className="font-medium text-gray-900">Track {trackNumber}</span>
+      {/* Track Icon with Colored Background */}
+      <div className="flex-shrink-0">
+        <div
+          className={cn(
+            'flex h-16 w-16 items-center justify-center rounded-lg',
+            trackNumber === 1 && 'bg-gradient-to-br from-teal-400 to-teal-600',
+            trackNumber === 2 && 'bg-gradient-to-br from-orange-400 to-orange-600'
+          )}
+        >
+          <svg
+            className="h-8 w-8 text-white"
+            viewBox="0 0 100 100"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <rect x="10" y="20" width="20" height="60" fill="currentColor" rx="2" />
+            <rect x="40" y="10" width="20" height="80" fill="currentColor" rx="2" />
+            <rect x="70" y="30" width="20" height="50" fill="currentColor" rx="2" />
+            <circle cx="20" cy="15" r="8" fill="#FFD700" />
+          </svg>
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="space-y-3">
-        {/* Icon Placeholder */}
-        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-200">
-          <span className="text-xl">💡</span>
-        </div>
+      {/* Track Content */}
+      <div className="flex-1 space-y-1.5">
+        {/* Title - Bold and prominent */}
+        <h3 className="text-base font-bold text-gray-900">{title}</h3>
 
-        {/* Title */}
-        <h3 className="font-medium text-gray-900">{title}</h3>
-
-        {/* Summary */}
-        <p className="text-sm text-gray-600">{summary}</p>
-      </CardContent>
-    </Card>
+        {/* Summary - Clear and readable */}
+        <p className="text-sm leading-snug text-gray-600 line-clamp-2">{summary}</p>
+      </div>
+    </div>
   )
 }
