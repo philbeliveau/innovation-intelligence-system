@@ -8,9 +8,10 @@ from brand-specific insights (Stage 4 output).
 
 import logging
 import json
+import re
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from langchain.chains import LLMChain
@@ -93,7 +94,8 @@ class Stage5Chain:
         self,
         stage4_output: str,
         brand_name: str,
-        input_source: str
+        input_source: str,
+        max_retries: int = 2
     ) -> Dict[str, Any]:
         """Execute Stage 5 chain to generate 5 opportunity cards.
 
@@ -101,6 +103,7 @@ class Stage5Chain:
             stage4_output: Stage 4 brand-specific insights text
             brand_name: Name of the brand (e.g., "Lactalis Canada")
             input_source: Original input source (e.g., "Savannah Bananas")
+            max_retries: Maximum number of retry attempts on parse failure (default: 2)
 
         Returns:
             Dictionary with:
@@ -108,7 +111,7 @@ class Stage5Chain:
                 - opportunities: List of 5 parsed opportunity dictionaries
 
         Raises:
-            ValueError: If stage4_output is invalid or parsing fails
+            ValueError: If stage4_output is invalid or parsing fails after retries
             Exception: If chain execution fails
         """
         logging.info("Starting Stage 5: Opportunity Generation Chain")
@@ -134,56 +137,179 @@ class Stage5Chain:
         )
         logging.debug(f"Brand: {brand_name}, Input Source: {input_source}")
 
-        try:
-            # Execute chain
-            result = self.chain.invoke({
-                "stage4_output": stage4_output,
-                "brand_name": brand_name,
-                "input_source": input_source
-            })
-
-            raw_output = result[self.output_key]
-
-            # Parse structured output to extract 5 opportunities
+        last_error = None
+        for attempt in range(max_retries + 1):
             try:
-                parsed_output = self.parser.parse(raw_output)
-                opportunities = parsed_output.get('opportunities', [])
+                if attempt > 0:
+                    logging.warning(f"Retry attempt {attempt}/{max_retries} for Stage 5")
 
-                # Validate exactly 5 opportunities
-                if len(opportunities) != 5:
+                # Execute chain
+                result = self.chain.invoke({
+                    "stage4_output": stage4_output,
+                    "brand_name": brand_name,
+                    "input_source": input_source
+                })
+
+                raw_output = result[self.output_key]
+
+                # Save raw output for debugging
+                self._save_raw_output_debug(raw_output, input_source, attempt)
+
+                # Parse structured output to extract 5 opportunities
+                try:
+                    parsed_output = self.parser.parse(raw_output)
+                    opportunities = parsed_output.get('opportunities', [])
+
+                    # Validate exactly 5 opportunities
+                    if len(opportunities) != 5:
+                        logging.error(
+                            f"Expected exactly 5 opportunities, got {len(opportunities)}"
+                        )
+                        raise ValueError(
+                            f"Stage 5 must generate exactly 5 opportunities. "
+                            f"Got {len(opportunities)} instead."
+                        )
+
+                    logging.info(
+                        f"Stage 5 execution completed: {len(opportunities)} "
+                        f"opportunities generated"
+                    )
+
+                    # Return both raw output and parsed opportunities
+                    return {
+                        "stage5_output": raw_output,
+                        "opportunities": opportunities
+                    }
+
+                except Exception as parse_error:
                     logging.error(
-                        f"Expected exactly 5 opportunities, got {len(opportunities)}"
+                        f"Failed to parse Stage 5 output: {parse_error}",
+                        exc_info=True
                     )
-                    raise ValueError(
-                        f"Stage 5 must generate exactly 5 opportunities. "
-                        f"Got {len(opportunities)} instead."
-                    )
+                    # Log full output for debugging (not truncated)
+                    logging.debug(f"Full raw output length: {len(raw_output)} chars")
+                    logging.debug(f"Raw output (first 1000 chars): {raw_output[:1000]}")
+                    logging.debug(f"Raw output (around error char 6059): {raw_output[6000:6200] if len(raw_output) > 6200 else 'N/A'}")
 
-                logging.info(
-                    f"Stage 5 execution completed: {len(opportunities)} "
-                    f"opportunities generated"
-                )
+                    # Attempt JSON repair
+                    logging.info("Attempting to repair malformed JSON...")
+                    repaired_output = self._attempt_json_repair(raw_output)
 
-                # Return both raw output and parsed opportunities
-                return {
-                    "stage5_output": raw_output,
-                    "opportunities": opportunities
-                }
+                    if repaired_output:
+                        try:
+                            parsed_output = self.parser.parse(repaired_output)
+                            opportunities = parsed_output.get('opportunities', [])
 
-            except Exception as parse_error:
-                logging.error(
-                    f"Failed to parse Stage 5 output: {parse_error}",
-                    exc_info=True
-                )
-                logging.debug(f"Raw output: {raw_output[:500]}...")
-                raise ValueError(
-                    f"Failed to parse Stage 5 output into structured format: "
-                    f"{parse_error}"
-                )
+                            if len(opportunities) == 5:
+                                logging.warning("JSON repair successful! Continuing with repaired output.")
+                                return {
+                                    "stage5_output": repaired_output,
+                                    "opportunities": opportunities
+                                }
+                        except Exception as repair_error:
+                            logging.error(f"JSON repair failed: {repair_error}")
 
+                    # If we have retries left, continue loop; otherwise raise
+                    last_error = parse_error
+                    if attempt < max_retries:
+                        logging.info(f"Will retry Stage 5 execution (attempt {attempt + 2}/{max_retries + 1})")
+                        continue
+                    else:
+                        raise ValueError(
+                            f"Failed to parse Stage 5 output after {max_retries + 1} attempts: "
+                            f"{parse_error}"
+                        )
+
+            except ValueError as ve:
+                # Re-raise ValueError (parsing failures)
+                raise
+            except Exception as e:
+                logging.error(f"Stage 5 execution failed: {e}", exc_info=True)
+                last_error = e
+                if attempt < max_retries:
+                    logging.info(f"Will retry Stage 5 execution (attempt {attempt + 2}/{max_retries + 1})")
+                    continue
+                else:
+                    raise
+
+        # Should not reach here, but just in case
+        raise ValueError(
+            f"Stage 5 failed after {max_retries + 1} attempts. Last error: {last_error}"
+        )
+
+    def _save_raw_output_debug(
+        self,
+        raw_output: str,
+        input_source: str,
+        attempt: int = 0
+    ) -> None:
+        """Save raw LLM output to file for debugging.
+
+        Args:
+            raw_output: Raw text output from LLM
+            input_source: Input source identifier for filename
+            attempt: Retry attempt number (0 for first attempt)
+        """
+        try:
+            debug_dir = Path("data/test-outputs") / input_source / "stage5_debug"
+            debug_dir.mkdir(parents=True, exist_ok=True)
+
+            attempt_suffix = f"_attempt{attempt}" if attempt > 0 else ""
+            debug_file = debug_dir / f"raw_output_{datetime.now().strftime('%Y%m%d_%H%M%S')}{attempt_suffix}.txt"
+            debug_file.write_text(raw_output, encoding='utf-8')
+
+            logging.debug(f"Raw output saved to: {debug_file}")
         except Exception as e:
-            logging.error(f"Stage 5 execution failed: {e}", exc_info=True)
-            raise
+            logging.warning(f"Failed to save raw output debug file: {e}")
+
+    def _attempt_json_repair(self, raw_output: str) -> Optional[str]:
+        """Attempt to repair common JSON formatting errors from LLM output.
+
+        Args:
+            raw_output: Malformed JSON string from LLM
+
+        Returns:
+            Repaired JSON string if successful, None otherwise
+        """
+        try:
+            # Extract JSON from markdown code block if present
+            json_match = re.search(r'```json\s*(\{.*?\})\s*```', raw_output, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(1)
+            else:
+                json_str = raw_output
+
+            # Common repair strategies
+            repaired = json_str
+
+            # 1. Fix missing commas between array elements (most common LLM error)
+            # Pattern: }\n\s*{ should be },\n{
+            repaired = re.sub(r'\}\s*\n\s*\{', '},\n{', repaired)
+
+            # 2. Fix missing commas between object properties
+            # Pattern: "\n\s*" should be ",\n"
+            repaired = re.sub(r'"\s*\n\s*"', '",\n"', repaired)
+
+            # 3. Fix unescaped quotes in strings (basic attempt)
+            # This is tricky - only handle apostrophes for now
+            # Pattern: 's in strings should be \'s
+            # (Skip this for now as it's complex)
+
+            # 4. Remove trailing commas before closing braces/brackets
+            repaired = re.sub(r',\s*\}', '}', repaired)
+            repaired = re.sub(r',\s*\]', ']', repaired)
+
+            # Validate the repair worked
+            json.loads(repaired)
+            logging.info("JSON repair successful")
+            return f"```json\n{repaired}\n```"
+
+        except json.JSONDecodeError as e:
+            logging.error(f"JSON repair validation failed: {e}")
+            return None
+        except Exception as e:
+            logging.error(f"Unexpected error during JSON repair: {e}")
+            return None
 
     def render_opportunity_cards(
         self,
