@@ -28,7 +28,7 @@ interface Stage1Data {
 
 interface PipelineStatus {
   run_id: string
-  status: 'running' | 'complete' | 'error'
+  status: 'running' | 'completed' | 'error'
   current_stage: number
   stage1_data?: Stage1Data
   brand_name?: string
@@ -47,7 +47,7 @@ export default function PipelinePage() {
   const router = useRouter()
   const runId = params.runId as string
 
-  const [status, setStatus] = useState<'running' | 'complete' | 'error'>('running')
+  const [status, setStatus] = useState<'running' | 'completed' | 'error'>('running')
   const [currentStage, setCurrentStage] = useState<number>(0)
   const [stage1Data, setStage1Data] = useState<Stage1Data | null>(null)
   const [brandName, setBrandName] = useState<string>()
@@ -105,7 +105,7 @@ export default function PipelinePage() {
         }
 
         // Auto-redirect when Stage 5 completes
-        if (data.current_stage === 5 && data.status === 'complete') {
+        if (data.current_stage === 5 && data.status === 'completed') {
           router.push(`/results/${runId}`)
           return
         }
