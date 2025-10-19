@@ -1,0 +1,69 @@
+# <!-- Powered by BMAD™ Core -->
+schema: 1
+story: "4.1"
+story_title: "Vertical Pipeline Viewer UI"
+gate: CONCERNS
+status_reason: "Implementation complete with high quality, but missing automated tests and has 3 reliability concerns that should be monitored in production"
+reviewer: "Quinn (Test Architect)"
+updated: "2025-10-19T00:00:00Z"
+
+waiver: { active: false }
+
+top_issues:
+  - id: "REL-001"
+    severity: medium
+    finding: "Hardcoded project root path assumption (join(process.cwd(), '..')) in API route is fragile across deployment environments"
+    suggested_action: "Use environment variable for data directory path or resolve dynamically based on Vercel deployment structure"
+  - id: "REL-002"
+    severity: medium
+    finding: "No exponential backoff for retry logic - single retry with fixed 5s delay may not handle sustained network issues"
+    suggested_action: "Implement exponential backoff: retry at 5s, 10s, 20s before giving up"
+  - id: "TEST-001"
+    severity: medium
+    finding: "No automated test coverage - only manual testing documented (acceptable for hackathon MVP but risky for production)"
+    suggested_action: "Add unit tests for calculateStageStatus() and integration tests for polling lifecycle before production deployment"
+
+risk_summary:
+  totals: { critical: 0, high: 0, medium: 3, low: 0 }
+  recommendations:
+    must_fix: []
+    monitor:
+      - "Monitor API route failures in production logs for path resolution issues"
+      - "Track polling retry patterns to validate single-retry sufficiency"
+      - "Manual regression testing required before each deployment until automated tests are added"
+
+quality_score: 70
+expires: "2025-11-02T00:00:00Z"
+
+evidence:
+  tests_reviewed: 0
+  risks_identified: 3
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16]
+    ac_gaps: [14, 15]  # AC 14: brand_name (now fixed), AC 15: no console errors (manual only)
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: "Input sanitization, XSS protection, path traversal prevention all implemented correctly"
+  performance:
+    status: PASS
+    notes: "5-second polling interval reasonable, cleanup prevents memory leaks, no performance bottlenecks identified"
+  reliability:
+    status: CONCERNS
+    notes: "Hardcoded path assumptions, missing exponential backoff, single retry may be insufficient for production"
+  maintainability:
+    status: PASS
+    notes: "Clean code structure, TypeScript strict typing, JSDoc comments, follows coding standards"
+
+recommendations:
+  immediate: []
+  future:
+    - action: "Replace hardcoded project root with environment variable DATA_DIR"
+      refs: ["app/api/status/[runId]/route.ts:86"]
+    - action: "Add exponential backoff to retry logic"
+      refs: ["app/pipeline/[runId]/page.tsx:114-122"]
+    - action: "Add unit tests for helper functions and integration tests for polling"
+      refs: ["app/pipeline/[runId]/page.tsx", "lib/stageStatus.ts"]
+    - action: "Create metadata.json file during pipeline execution to store brand_name"
+      refs: ["pipeline integration"]

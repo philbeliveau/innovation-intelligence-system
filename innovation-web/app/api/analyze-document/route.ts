@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { ChatOpenAI } from '@langchain/openai'
 import pdf from 'pdf-parse-fork'
 
 // Add Node.js runtime configuration for Vercel
@@ -40,17 +39,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Task 8: Validate environment variables
-    if (!process.env.OPENROUTER_API_KEY) {
-      console.error('Missing OPENROUTER_API_KEY environment variable')
-      return NextResponse.json(
-        { error: 'Server configuration error' },
-        { status: 500 }
-      )
-    }
-
-    // Task 2: Download PDF from Blob URL
-    console.log(`[analyze-document] Downloading PDF from: ${blob_url}`)
+    // Task 2: Quick PDF validation (download and basic text extraction)
+    console.log(`[analyze-document] Validating PDF from: ${blob_url}`)
 
     let pdfResponse
     try {
@@ -71,9 +61,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Task 2: Extract text from PDF using pdf-parse
-    console.log('[analyze-document] Extracting text from PDF')
-
+    // Quick text extraction to validate PDF is readable
     let documentText: string
     try {
       const arrayBuffer = await pdfResponse.arrayBuffer()
@@ -81,10 +69,7 @@ export async function POST(request: NextRequest) {
 
       // Parse PDF with pdf-parse-fork (Node.js compatible)
       const data = await pdf(buffer)
-      documentText = data.text
-
-      // Limit to first 2000 characters for fast LLM processing (Vercel timeout constraint)
-      documentText = documentText.slice(0, 2000)
+      documentText = data.text.slice(0, 500) // Just extract first 500 chars for validation
 
       if (!documentText || documentText.trim().length === 0) {
         console.error('[analyze-document] PDF contains no extractable text')
@@ -94,7 +79,7 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      console.log(`[analyze-document] Extracted ${documentText.length} characters from PDF`)
+      console.log(`[analyze-document] PDF validated - ${data.text.length} characters total`)
     } catch (error) {
       console.error('[analyze-document] PDF parsing error:', error)
       return NextResponse.json(
@@ -103,130 +88,33 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Task 3: Configure LangChain with OpenRouter
-    console.log('[analyze-document] Initializing LLM')
-
-    const llm = new ChatOpenAI({
-      model: process.env.LLM_MODEL || 'openai/gpt-4o-mini', // Fast model for Vercel timeout constraints
-      apiKey: process.env.OPENROUTER_API_KEY,
-      configuration: {
-        baseURL: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
-      },
-      temperature: 0.7,
-      timeout: 8000, // 8 second timeout (leave 2s for PDF processing)
-      maxRetries: 1, // Reduce retries to stay under 10s limit
-    })
-
-    // Task 4: Create LLM analysis prompt
-    const analysisPrompt = `You are an innovation intelligence analyst. Analyze the following document excerpt and extract structured metadata.
-
-DOCUMENT EXCERPT (first 2000 characters):
-"""
-${documentText}
-"""
-
-Extract the following information and respond ONLY with valid JSON in this exact format:
-
-{
-  "title": "A compelling title capturing the main innovation or trend (10-15 words)",
-  "summary": "A concise summary of the document's main points (2-3 sentences, approximately 50 words)",
-  "industry": "Primary industry as a single word (e.g., fashion, food, technology, healthcare, sports, retail, finance)",
-  "theme": "Main theme or topic in 2-3 words (e.g., 'sustainability innovation', 'customer experience', 'digital transformation')",
-  "sources": ["Array of identifiable sources mentioned (website names, publications, companies)"],
-  "tracks": [
-    {
-      "title": "First ideation track title (concise, 3-6 words)",
-      "summary": "Description of this innovation pattern or approach (2-3 sentences)",
-      "icon_url": ""
-    },
-    {
-      "title": "Second ideation track title (concise, 3-6 words)",
-      "summary": "Description of this distinct innovation pattern or approach (2-3 sentences)",
-      "icon_url": ""
-    }
-  ]
-}
-
-IMPORTANT REQUIREMENTS:
-- The two tracks must represent DISTINCT innovation patterns, not overlapping concepts
-- Each track should offer a different strategic angle or approach
-- Tracks should be actionable and specific to the document's content
-- If no sources are explicitly mentioned, use an empty array: []
-- Leave icon_url as empty string ""
-- Respond with ONLY valid JSON, no markdown formatting, no code blocks, no additional text`
-
-    // Task 5: Parse and validate LLM response
-    console.log('[analyze-document] Sending document to LLM for analysis')
-
-    let analysis: AnalysisResult
-    try {
-      const result = await llm.invoke(analysisPrompt)
-
-      let content = result.content.toString()
-
-      // Strip markdown code blocks if present
-      content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-
-      console.log('[analyze-document] LLM response received, parsing JSON')
-
-      const parsed = JSON.parse(content)
-
-      // Validate required fields
-      if (!parsed.title || !parsed.summary || !parsed.industry || !parsed.theme || !Array.isArray(parsed.tracks)) {
-        throw new Error('Missing required fields in LLM response')
-      }
-
-      if (parsed.tracks.length !== 2) {
-        throw new Error(`Expected 2 tracks, got ${parsed.tracks.length}`)
-      }
-
-      for (const track of parsed.tracks) {
-        if (!track.title || !track.summary) {
-          throw new Error('Track missing required title or summary')
-        }
-      }
-
-      // Ensure sources is an array
-      if (!Array.isArray(parsed.sources)) {
-        parsed.sources = []
-      }
-
-      analysis = parsed
-
-      console.log('[analyze-document] Analysis completed successfully')
-      console.log(`[analyze-document] Title: ${analysis.title}`)
-      console.log(`[analyze-document] Industry: ${analysis.industry}`)
-      console.log(`[analyze-document] Theme: ${analysis.theme}`)
-      console.log(`[analyze-document] Tracks: ${analysis.tracks.map(t => t.title).join(', ')}`)
-
-    } catch (error) {
-      console.error('[analyze-document] LLM response parsing error:', error)
-
-      // Fallback structure if parsing fails
-      analysis = {
-        title: 'Document Analysis (Parsing Error)',
-        summary: 'Unable to automatically generate summary. Please review the document manually.',
-        industry: 'general',
-        theme: 'innovation',
-        sources: [],
-        tracks: [
-          {
-            title: 'Track 1',
-            summary: 'Automatic track identification failed. Please review document content.',
-            icon_url: ''
-          },
-          {
-            title: 'Track 2',
-            summary: 'Automatic track identification failed. Please review document content.',
-            icon_url: ''
-          }
-        ]
-      }
-    }
-
-    // Task 6: Build response object
+    // Task 3: Return immediately with placeholder analysis
+    // Real analysis will happen during pipeline execution (Stage 1)
     const upload_id = `upload-${Date.now()}`
     const analyzed_at = new Date().toISOString()
+
+    // Extract first 200 characters as preview
+    const preview = documentText.slice(0, 200).trim()
+
+    const analysis: AnalysisResult = {
+      title: 'Document Preview',
+      summary: `Document uploaded successfully. Preview: ${preview}${documentText.length > 200 ? '...' : ''}`,
+      industry: 'pending',
+      theme: 'Analysis in progress',
+      sources: [],
+      tracks: [
+        {
+          title: 'Track 1 - Analyzing...',
+          summary: 'Full analysis will be available after pipeline execution. Click "Launch Innovation Pipeline" to begin.',
+          icon_url: ''
+        },
+        {
+          title: 'Track 2 - Analyzing...',
+          summary: 'Full analysis will be available after pipeline execution. Click "Launch Innovation Pipeline" to begin.',
+          icon_url: ''
+        }
+      ]
+    }
 
     const response: AnalyzeDocumentResponse = {
       upload_id,
@@ -235,7 +123,7 @@ IMPORTANT REQUIREMENTS:
       analyzed_at
     }
 
-    console.log(`[analyze-document] Returning analysis with upload_id: ${upload_id}`)
+    console.log(`[analyze-document] Returning placeholder analysis with upload_id: ${upload_id}`)
 
     return NextResponse.json(response)
 

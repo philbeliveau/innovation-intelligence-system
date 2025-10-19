@@ -165,18 +165,43 @@ export default function PipelinePage() {
   }
 
 
+  // Get selected and non-selected tracks
+  const selectedTrack = stage1Data ? (stage1Data.selected_track === 1 ? stage1Data.track_1 : stage1Data.track_2) : null
+  const nonSelectedTrack = stage1Data ? (stage1Data.selected_track === 1 ? stage1Data.track_2 : stage1Data.track_1) : null
+  const selectedTrackNumber = stage1Data?.selected_track
+  const nonSelectedTrackNumber = stage1Data ? (stage1Data.selected_track === 1 ? 2 : 1) : null
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Pipeline Execution</h1>
-          <p className="text-gray-600">Run ID: {runId}</p>
+      {/* Header with Back button and Company name */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                onClick={() => router.push('/upload')}
+                className="flex items-center gap-2"
+                data-testid="back-button"
+              >
+                ← Back
+              </Button>
+              <h1 className="text-2xl font-bold text-gray-900">Pipeline Execution</h1>
+            </div>
+            {brandName && (
+              <Badge variant="secondary" className="text-sm" data-testid="company-badge">
+                {brandName}
+              </Badge>
+            )}
+          </div>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column: Stage Boxes */}
-          <div className="lg:col-span-1">
+      <div className="container mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Left Sidebar: Stage Boxes + Non-selected Track */}
+          <div className="lg:col-span-3 space-y-6">
+            {/* Stage Boxes */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold mb-4">Pipeline Stages</h2>
               <div className="flex flex-col gap-4">
@@ -196,32 +221,34 @@ export default function PipelinePage() {
                 ))}
               </div>
             </div>
+
+            {/* Ideation Tracks - Non-selected track */}
+            {currentStage >= 1 && nonSelectedTrack && nonSelectedTrackNumber && (
+              <div>
+                <h3 className="text-sm font-semibold text-gray-600 mb-3 px-1">Ideation Tracks</h3>
+                <IdeationTracksSidebar
+                  trackNumber={nonSelectedTrackNumber}
+                  title={nonSelectedTrack.title}
+                  summary={nonSelectedTrack.summary}
+                />
+              </div>
+            )}
           </div>
 
-          {/* Right Column: Track Cards & Detail Panel */}
-          <div className="lg:col-span-2">
-            {/* Stage 1 Track Cards */}
+          {/* Main Content: Selected Track & Detail Panel */}
+          <div className="lg:col-span-9">
+            {/* Selected Track Card (only one, main content area) */}
             {currentStage >= 1 && (
               <div className="mb-6">
-                <h2 className="text-xl font-semibold mb-4">Selected Inspiration Tracks</h2>
-                {stage1Data ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <PipelineTrackCard
-                      trackNumber={1}
-                      title={stage1Data.track_1.title}
-                      summary={stage1Data.track_1.summary}
-                    />
-                    <PipelineTrackCard
-                      trackNumber={2}
-                      title={stage1Data.track_2.title}
-                      summary={stage1Data.track_2.summary}
-                    />
-                  </div>
+                <h2 className="text-xl font-semibold mb-4">Selected Inspiration Track</h2>
+                {selectedTrack && selectedTrackNumber ? (
+                  <PipelineTrackCard
+                    trackNumber={selectedTrackNumber}
+                    title={selectedTrack.title}
+                    summary={selectedTrack.summary}
+                  />
                 ) : currentStage === 1 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Skeleton className="h-40" />
-                    <Skeleton className="h-40" />
-                  </div>
+                  <Skeleton className="h-48" />
                 ) : null}
               </div>
             )}

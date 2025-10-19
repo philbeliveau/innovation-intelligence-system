@@ -119,16 +119,36 @@ export async function GET(
     const current_stage = detectStageFromLog(logContent)
     const status = detectStatusFromLog(logContent)
 
+    // Load brand name from run metadata (if exists)
+    let brandName: string | undefined
+    const metadataPath = join(
+      projectRoot,
+      'data',
+      'test-outputs',
+      sanitizedRunId,
+      'metadata.json'
+    )
+    if (existsSync(metadataPath)) {
+      try {
+        const metadata = JSON.parse(readFileSync(metadataPath, 'utf-8'))
+        brandName = metadata.brand_name
+      } catch (error) {
+        console.error('Failed to load metadata:', error)
+      }
+    }
+
     // Prepare response
     const response: {
       run_id: string
       status: string
       current_stage: number
+      brand_name?: string
       stage1_data?: unknown
     } = {
       run_id: sanitizedRunId,
       status,
       current_stage,
+      brand_name: brandName,
     }
 
     // If Stage 1 is completed, try to load Stage 1 JSON data
