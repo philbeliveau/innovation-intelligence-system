@@ -1,0 +1,68 @@
+schema: 1
+story: "2.2.1"
+story_title: "Source File Viewer from Intermediary Card - Brownfield Addition"
+gate: CONCERNS
+status_reason: "Implementation is solid with 100% AC coverage, but browser compatibility risk (mobile PDF embed) requires monitoring in production."
+reviewer: "Quinn (Test Architect)"
+updated: "2025-10-19T00:00:00Z"
+
+waiver: { active: false }
+
+top_issues:
+  - id: "COMPAT-001"
+    severity: medium
+    finding: "PDF embed may not work on mobile Safari - error state implemented but UX may be degraded"
+    suggested_action: "Monitor user analytics for error rate on mobile devices. Consider alternative PDF viewer library if >20% error rate"
+    suggested_owner: "dev"
+  - id: "REFACTOR-001"
+    severity: low
+    finding: "Duplicate download handler logic in FileViewerPanel and DocumentCard components"
+    suggested_action: "Extract to shared utility function `downloadFile(url, filename)` in lib/utils.ts"
+    suggested_owner: "dev"
+
+risk_summary:
+  totals:
+    critical: 0
+    high: 0
+    medium: 1  # Browser compatibility
+    low: 3     # Session storage, accessibility edge cases, performance on slow networks
+  recommendations:
+    must_fix: []
+    monitor:
+      - "Track PDF embed error rates by browser/device type"
+      - "Monitor session storage usage patterns for edge cases"
+      - "Watch for performance issues with large PDFs (20MB+)"
+
+quality_score: 90  # 100 - (0*20 for FAIL) - (1*10 for CONCERNS)
+expires: "2025-11-02T00:00:00Z"
+
+evidence:
+  tests_reviewed: 0  # Manual testing only (per story testing strategy)
+  risks_identified: 4
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]  # All 12 ACs validated
+    ac_gaps: []  # No coverage gaps
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: "No dangerouslySetInnerHTML, XSS protection via React, blob URLs acceptable for MVP"
+  performance:
+    status: PASS
+    notes: "Lazy loading implemented, loading spinner present, 25MB file limit from Story 1.2"
+  reliability:
+    status: PASS
+    notes: "Comprehensive error handling, retry functionality, backward compatibility with old sessionStorage format"
+  maintainability:
+    status: PASS
+    notes: "Clear component separation, well-defined interfaces, follows coding standards, self-documenting code"
+
+recommendations:
+  immediate: []  # No blocking issues
+  future:
+    - action: "Extract duplicate download logic to shared utility function"
+      refs: ["components/FileViewerPanel.tsx:29-36", "components/DocumentCard.tsx:33-45"]
+    - action: "Extract sessionStorage parsing to utility function for DRY compliance"
+      refs: ["app/analyze/[uploadId]/page.tsx:46-65", "app/analyze/[uploadId]/page.tsx:71-77"]
+    - action: "Consider alternative PDF viewer library if mobile error rate exceeds 20%"
+      refs: ["components/FileViewerPanel.tsx:115-126"]
