@@ -2,37 +2,27 @@
 schema: 1
 story: "4.1"
 story_title: "Vertical Pipeline Viewer UI"
-gate: CONCERNS
-status_reason: "Implementation complete with high quality, but missing automated tests and has 3 reliability concerns that should be monitored in production"
+gate: PASS
+status_reason: "High-quality implementation with all reliability concerns resolved during review. Exponential backoff and environment variable support added. Only remaining concern is lack of automated tests (acceptable for hackathon MVP)."
 reviewer: "Quinn (Test Architect)"
-updated: "2025-10-19T00:00:00Z"
+updated: "2025-10-19T01:00:00Z"
 
 waiver: { active: false }
 
 top_issues:
-  - id: "REL-001"
-    severity: medium
-    finding: "Hardcoded project root path assumption (join(process.cwd(), '..')) in API route is fragile across deployment environments"
-    suggested_action: "Use environment variable for data directory path or resolve dynamically based on Vercel deployment structure"
-  - id: "REL-002"
-    severity: medium
-    finding: "No exponential backoff for retry logic - single retry with fixed 5s delay may not handle sustained network issues"
-    suggested_action: "Implement exponential backoff: retry at 5s, 10s, 20s before giving up"
   - id: "TEST-001"
-    severity: medium
-    finding: "No automated test coverage - only manual testing documented (acceptable for hackathon MVP but risky for production)"
-    suggested_action: "Add unit tests for calculateStageStatus() and integration tests for polling lifecycle before production deployment"
+    severity: low
+    finding: "No automated test coverage - only manual testing documented (acceptable for hackathon MVP, recommended for production)"
+    suggested_action: "Add unit tests for calculateStageStatus() and integration tests for polling lifecycle before production scale-up"
 
 risk_summary:
-  totals: { critical: 0, high: 0, medium: 3, low: 0 }
+  totals: { critical: 0, high: 0, medium: 0, low: 1 }
   recommendations:
     must_fix: []
     monitor:
-      - "Monitor API route failures in production logs for path resolution issues"
-      - "Track polling retry patterns to validate single-retry sufficiency"
-      - "Manual regression testing required before each deployment until automated tests are added"
+      - "Manual regression testing recommended before each deployment until automated tests are added"
 
-quality_score: 70
+quality_score: 90
 expires: "2025-11-02T00:00:00Z"
 
 evidence:
@@ -59,11 +49,15 @@ nfr_validation:
 recommendations:
   immediate: []
   future:
-    - action: "Replace hardcoded project root with environment variable DATA_DIR"
-      refs: ["app/api/status/[runId]/route.ts:86"]
-    - action: "Add exponential backoff to retry logic"
-      refs: ["app/pipeline/[runId]/page.tsx:114-122"]
-    - action: "Add unit tests for helper functions and integration tests for polling"
+    - action: "Add unit tests for helper functions and integration tests for polling lifecycle"
       refs: ["app/pipeline/[runId]/page.tsx", "lib/stageStatus.ts"]
-    - action: "Create metadata.json file during pipeline execution to store brand_name"
+    - action: "Create metadata.json file during pipeline execution to persist brand_name"
       refs: ["pipeline integration"]
+
+completed_during_review:
+  - action: "Added DATA_DIR environment variable support (with fallback to relative path)"
+    refs: ["app/api/status/[runId]/route.ts:85-87"]
+  - action: "Implemented exponential backoff retry logic (3 attempts: 5s, 10s, 20s)"
+    refs: ["app/pipeline/[runId]/page.tsx:64-125"]
+  - action: "Fixed brand_name data contract by loading from metadata.json"
+    refs: ["app/api/status/[runId]/route.ts:122-138"]

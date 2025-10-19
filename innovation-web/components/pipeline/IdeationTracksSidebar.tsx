@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+// Sidebar component for displaying non-selected ideation track
 
 interface IdeationTracksSidebarProps {
   trackNumber: number

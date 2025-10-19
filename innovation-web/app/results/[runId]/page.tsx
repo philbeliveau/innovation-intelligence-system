@@ -18,7 +18,7 @@ interface Opportunity {
 }
 
 async function loadOpportunities(runId: string): Promise<Opportunity[]> {
-  const outputDir = `data/test-outputs/${runId}/stage5`
+  const outputDir = `../data/test-outputs/${runId}/stage5`
   const opportunities: Opportunity[] = []
 
   // Try to read all 5 opportunity files

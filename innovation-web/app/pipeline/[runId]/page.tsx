@@ -59,6 +59,12 @@ export default function PipelinePage() {
     let retryCount = 0
     const startTime = Date.now()
     const MAX_RUNTIME = 35 * 60 * 1000 // 35 minutes
+    const MAX_RETRIES = 3
+
+    // Exponential backoff: 5s, 10s, 20s
+    const getRetryDelay = (attempt: number): number => {
+      return 5000 * Math.pow(2, attempt) // 5s, 10s, 20s
+    }
 
     const pollStatus = async () => {
       try {
@@ -111,12 +117,14 @@ export default function PipelinePage() {
       } catch (err) {
         console.error('Polling error:', err)
 
-        // Retry once on network error
-        if (retryCount < 1) {
+        // Exponential backoff retry (3 attempts: 5s, 10s, 20s)
+        if (retryCount < MAX_RETRIES) {
+          const delay = getRetryDelay(retryCount)
           retryCount++
-          timeoutId = setTimeout(pollStatus, 5000)
+          console.log(`Retrying in ${delay}ms (attempt ${retryCount}/${MAX_RETRIES})`)
+          timeoutId = setTimeout(pollStatus, delay)
         } else {
-          setError('Network error - unable to connect to server')
+          setError('Network error - unable to connect to server after multiple retries')
           setStatus('error')
           setLoading(false)
         }

@@ -82,13 +82,13 @@ export async function GET(
       )
     }
 
-    // Get project root (go up from innovation-web)
-    const projectRoot = join(process.cwd(), '..')
+    // Get data directory from environment variable or fall back to relative path
+    // In production, set DATA_DIR=/path/to/data, in development it auto-resolves
+    const dataDir = process.env.DATA_DIR || join(process.cwd(), '..', 'data')
 
     // Construct log file path
     const logPath = join(
-      projectRoot,
-      'data',
+      dataDir,
       'test-outputs',
       sanitizedRunId,
       'logs',
@@ -122,8 +122,7 @@ export async function GET(
     // Load brand name from run metadata (if exists)
     let brandName: string | undefined
     const metadataPath = join(
-      projectRoot,
-      'data',
+      dataDir,
       'test-outputs',
       sanitizedRunId,
       'metadata.json'
@@ -154,8 +153,7 @@ export async function GET(
     // If Stage 1 is completed, try to load Stage 1 JSON data
     if (current_stage >= 1) {
       const stage1JsonPath = join(
-        projectRoot,
-        'data',
+        dataDir,
         'test-outputs',
         sanitizedRunId,
         'stage1',
