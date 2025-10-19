@@ -26,41 +26,29 @@ INPUT DOCUMENT:
 {input_text}
 
 TASK:
-Carefully review the input document and extract the most valuable inspiration elements. Identify 3-5 key inspirations (innovations, strategies, or successful tactics) that stand out.
+Carefully review the input document and extract the TWO most compelling inspiration tracks. These are the top 2 most impactful insights that could drive innovation strategies.
 
-For each inspiration element, analyze:
-- WHAT IT IS: Clear description of the innovation, strategy, or tactic
-- WHY IT'S INTERESTING: What makes this noteworthy or remarkable
-- POTENTIAL APPLICABILITY: How this insight could be applied in other contexts
+For each track, provide:
+- A descriptive title (concise but meaningful)
+- A 2-3 sentence summary explaining what makes this insight valuable
 
 OUTPUT FORMAT:
-Structure your analysis as markdown with the following sections:
+Structure your response EXACTLY as follows:
 
-# Document Overview
-[Provide a brief 2-3 sentence summary of the input document, its main topic, and overall context]
+## Track 1: [Give it a descriptive title]
 
-# Key Inspirations
+[Write 2-3 sentences summarizing the first main inspiration or pattern you identify. Focus on what makes this insight actionable and valuable for innovation work.]
 
-## 1. [Inspiration Title]
-**What it is:** [Clear description]
-**Why it's interesting:** [What makes it noteworthy]
-**Potential applicability:** [How it could be applied elsewhere]
+## Track 2: [Give it a descriptive title]
 
-## 2. [Inspiration Title]
-**What it is:** [Clear description]
-**Why it's interesting:** [What makes it noteworthy]
-**Potential applicability:** [How it could be applied elsewhere]
+[Write 2-3 sentences summarizing the second main inspiration or pattern you identify. Focus on what makes this insight actionable and valuable for innovation work.]
 
-[Continue for 3-5 inspirations total]
-
-# Context Notes
-[Summarize the overall significance of these inspirations. What patterns emerge? What makes this collection of insights valuable for innovation work?]
-
-IMPORTANT:
-- Extract exactly 3-5 inspirations (no more, no less)
-- Be specific and concrete in descriptions
-- Focus on actionable insights, not just interesting facts
-- Ensure output follows the exact markdown structure above
+CRITICAL REQUIREMENTS:
+- Extract EXACTLY 2 tracks (no more, no less)
+- Use the EXACT format shown above with "## Track 1:" and "## Track 2:" headers
+- Keep summaries focused and concise (2-3 sentences each)
+- These top 2 tracks will be displayed in a vertical pipeline UI and used for all subsequent analysis stages
+- Do NOT include additional tracks beyond these two
 """
 
     return PromptTemplate(

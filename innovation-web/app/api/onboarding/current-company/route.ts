@@ -26,9 +26,8 @@ export async function GET() {
       )
     }
 
-    // Load YAML file from project root data/brand-profiles/ (single source of truth)
-    const projectRoot = path.join(process.cwd(), '..')
-    const yamlPath = path.join(projectRoot, 'data', 'brand-profiles', `${sanitizedId}.yaml`)
+    // Load YAML file from data/brand-profiles/ (within innovation-web directory for Vercel deployment)
+    const yamlPath = path.join(process.cwd(), 'data', 'brand-profiles', `${sanitizedId}.yaml`)
 
     if (!fs.existsSync(yamlPath)) {
       return NextResponse.json(

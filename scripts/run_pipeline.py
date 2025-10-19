@@ -27,6 +27,7 @@ from datetime import datetime
 try:
     import yaml
     from dotenv import load_dotenv
+    from pypdf import PdfReader
 except ImportError:
     print("Error: Required packages not installed. Run: pip install -r requirements.txt")
     sys.exit(1)
@@ -339,6 +340,136 @@ def execute_pipeline(
 
         logging.error(f"{progress_prefix}Pipeline execution failed: {e}", exc_info=True)
         return False, metadata
+
+
+def run_from_uploaded_file(
+    input_file_path: str,
+    brand_id: str,
+    run_id: str,
+    selected_track: int = 1
+) -> int:
+    """Execute pipeline from uploaded PDF file for web interface.
+
+    Args:
+        input_file_path: Direct path to uploaded PDF file
+        brand_id: Brand profile ID
+        run_id: Unique run identifier
+        selected_track: Track selection (1 or 2) from UI
+
+    Returns:
+        Exit code (0 for success, 1 for failure)
+    """
+    start_time = time.time()
+    logger = logging.getLogger(__name__)
+
+    try:
+        # Validate brand exists
+        if not validate_brand_id(brand_id):
+            return 1
+
+        # Create output directory using run_id
+        output_dir = Path(f"data/test-outputs/{run_id}")
+        output_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Output directory created: {output_dir}")
+
+        # Setup pipeline logging
+        setup_pipeline_logging(output_dir)
+
+        # Read PDF file
+        logger.info(f"Reading PDF file: {input_file_path}")
+        reader = PdfReader(input_file_path)
+        input_text = "".join(page.extract_text() for page in reader.pages)
+        logger.info(f"PDF extracted: {len(input_text)} characters from {len(reader.pages)} pages")
+
+        # Load brand profile and research data
+        logger.info(f"Loading brand profile: {brand_id}")
+        brand_profile = load_brand_profile(brand_id)
+        brand_name = brand_profile.get('company_name', brand_id)
+        logger.info(f"Brand profile loaded: {brand_name}")
+
+        logger.info(f"Loading research data: {brand_id}")
+        research_data = load_research_data(brand_id)
+        logger.info(f"Research data loaded: {len(research_data)} characters")
+
+        # Stage 1: Input Processing
+        logger.info("=" * 60)
+        logger.info("Starting Stage 1: Input Processing")
+        logger.info("=" * 60)
+        stage1_start = time.time()
+        stage1_chain = create_stage1_chain()
+        stage1_result = stage1_chain.run(input_text)
+        stage1_output = stage1_result[stage1_chain.output_key]
+        stage1_file = stage1_chain.save_output(stage1_output, output_dir, selected_track)
+        logger.info(f"Stage 1 execution completed ({time.time() - stage1_start:.1f}s)")
+        logger.info(f"Output saved: {stage1_file}")
+
+        # Stage 2: Signal Amplification
+        logger.info("=" * 60)
+        logger.info("Starting Stage 2: Signal Amplification")
+        logger.info("=" * 60)
+        stage2_start = time.time()
+        stage2_chain = create_stage2_chain()
+        stage2_result = stage2_chain.run(stage1_output)
+        stage2_output = stage2_result[stage2_chain.output_key]
+        stage2_file = stage2_chain.save_output(stage2_output, output_dir)
+        logger.info(f"Stage 2 execution completed ({time.time() - stage2_start:.1f}s)")
+        logger.info(f"Output saved: {stage2_file}")
+
+        # Stage 3: General Translation
+        logger.info("=" * 60)
+        logger.info("Starting Stage 3: General Translation")
+        logger.info("=" * 60)
+        stage3_start = time.time()
+        stage3_chain = create_stage3_chain()
+        stage3_result = stage3_chain.run(stage1_output, stage2_output)
+        stage3_output = stage3_result[stage3_chain.output_key]
+        stage3_file = stage3_chain.save_output(stage3_output, output_dir)
+        logger.info(f"Stage 3 execution completed ({time.time() - stage3_start:.1f}s)")
+        logger.info(f"Output saved: {stage3_file}")
+
+        # Stage 4: Brand Contextualization
+        logger.info("=" * 60)
+        logger.info("Starting Stage 4: Brand Contextualization")
+        logger.info("=" * 60)
+        stage4_start = time.time()
+        stage4_chain = create_stage4_chain()
+        stage4_result = stage4_chain.run(stage3_output, brand_profile, research_data)
+        stage4_output = stage4_result[stage4_chain.output_key]
+        stage4_file = stage4_chain.save_output(stage4_output, output_dir)
+        logger.info(f"Stage 4 execution completed ({time.time() - stage4_start:.1f}s)")
+        logger.info(f"Output saved: {stage4_file}")
+
+        # Stage 5: Opportunity Generation
+        logger.info("=" * 60)
+        logger.info("Starting Stage 5: Opportunity Generation")
+        logger.info("=" * 60)
+        stage5_start = time.time()
+        stage5_chain = create_stage5_chain()
+        stage5_result = stage5_chain.run(stage4_output, brand_name, run_id)
+        opportunities = stage5_result['opportunities']
+        logger.info(f"Generated {len(opportunities)} opportunities")
+
+        opportunity_files = stage5_chain.render_opportunity_cards(
+            opportunities, brand_name, run_id, output_dir
+        )
+        logger.info(f"Rendered {len(opportunity_files)} opportunity cards")
+
+        summary_file = stage5_chain.generate_summary_file(opportunities, output_dir)
+        logger.info(f"Stage 5 execution completed ({time.time() - stage5_start:.1f}s)")
+        logger.info(f"Summary saved: {summary_file}")
+
+        total_time = time.time() - start_time
+        logger.info("=" * 60)
+        logger.info(f"Pipeline execution completed successfully")
+        logger.info(f"Total time: {total_time:.1f}s")
+        logger.info(f"Output directory: {output_dir}")
+        logger.info("=" * 60)
+
+        return 0
+
+    except Exception as e:
+        logger.error(f"Pipeline execution failed: {e}", exc_info=True)
+        return 1
 
 
 def run_single(input_id: str, brand_id: str, manifest: Dict[str, Any]) -> int:
@@ -882,6 +1013,26 @@ For more information, see: docs/architecture.md
         help='Enable verbose (DEBUG level) logging'
     )
 
+    # Web execution arguments
+    parser.add_argument(
+        '--input-file',
+        type=str,
+        help='Direct PDF file path for web-triggered execution (e.g., /tmp/run-123456.pdf)'
+    )
+
+    parser.add_argument(
+        '--run-id',
+        type=str,
+        help='Unique run identifier for web execution (e.g., run-123456)'
+    )
+
+    parser.add_argument(
+        '--selected-track',
+        type=int,
+        choices=[1, 2],
+        help='Track selection (1 or 2) from Story 2.2 UI'
+    )
+
     return parser.parse_args()
 
 
@@ -900,6 +1051,17 @@ def main() -> int:
     logging.info("Innovation Intelligence Pipeline - Starting")
 
     try:
+        # Check for web execution mode first
+        if args.input_file and args.brand and args.run_id:
+            logging.info("Execution mode: WEB (Uploaded File)")
+            selected_track = args.selected_track if args.selected_track else 1
+            return run_from_uploaded_file(
+                args.input_file,
+                args.brand,
+                args.run_id,
+                selected_track
+            )
+
         # Validate retry-failed flag
         if args.retry_failed and not args.batch:
             logging.error("Error: --retry-failed must be used with --batch")

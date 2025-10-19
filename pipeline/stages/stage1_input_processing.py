@@ -83,7 +83,7 @@ class Stage1Chain:
             logging.error(f"Stage 1 execution failed: {e}", exc_info=True)
             raise
 
-    def save_output(self, output: str, output_dir: Path) -> Path:
+    def save_output(self, output: str, output_dir: Path, selected_track: int = 1) -> Path:
         """Save Stage 1 output to markdown and JSON files.
 
         This saves both the full markdown analysis AND a JSON file with
@@ -92,6 +92,7 @@ class Stage1Chain:
         Args:
             output: Stage 1 analysis text
             output_dir: Base output directory for this pipeline run
+            selected_track: Track selection (1 or 2) from UI, defaults to 1
 
         Returns:
             Path to saved markdown output file
@@ -114,14 +115,14 @@ class Stage1Chain:
             json_file = stage1_dir / "inspirations.json"
 
             json_data = {
-                "selected_tracks": [1, 2],  # Only top 2 tracks selected
+                "selected_track": selected_track,  # Single selected track (1 or 2)
                 "track_1": tracks[0] if len(tracks) > 0 else self._empty_track(1),
                 "track_2": tracks[1] if len(tracks) > 1 else self._empty_track(2),
                 "completed_at": datetime.now().isoformat()
             }
 
             json_file.write_text(json.dumps(json_data, indent=2), encoding='utf-8')
-            logging.info(f"Stage 1 JSON output saved: {json_file}")
+            logging.info(f"Stage 1 JSON output saved: {json_file} (selected_track={selected_track})")
 
             return output_file
 

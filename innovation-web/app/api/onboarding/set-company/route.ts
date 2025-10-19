@@ -19,9 +19,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Construct path to YAML file from project root (single source of truth)
-    const projectRoot = join(process.cwd(), '..')
-    const yamlPath = join(projectRoot, 'data', 'brand-profiles', `${company_id}.yaml`)
+    // Construct path to YAML file (within innovation-web directory for Vercel deployment)
+    const yamlPath = join(process.cwd(), 'data', 'brand-profiles', `${company_id}.yaml`)
 
     // Read YAML file
     let yamlContent: string
