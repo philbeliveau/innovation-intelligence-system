@@ -1,9 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { useRouter, usePathname } from 'next/navigation'
 
 interface Track {
   trackNumber: number
@@ -14,11 +12,19 @@ interface Track {
 
 export function LeftSidebar() {
   const router = useRouter()
+  const pathname = usePathname()
   const [isVisible, setIsVisible] = useState(false)
   const [nonSelectedTrack, setNonSelectedTrack] = useState<Track | null>(null)
 
   useEffect(() => {
-    // Retrieve non-selected track from sessionStorage
+    // Clear track data when on home/upload page
+    if (pathname === '/' || pathname === '/upload') {
+      sessionStorage.removeItem('non_selected_track')
+      setNonSelectedTrack(null)
+      return
+    }
+
+    // Retrieve non-selected track from sessionStorage on other pages
     const trackData = sessionStorage.getItem('non_selected_track')
     if (trackData) {
       try {
@@ -27,7 +33,14 @@ export function LeftSidebar() {
         console.error('Failed to parse non-selected track data:', error)
       }
     }
-  }, [])
+  }, [pathname])
+
+  const handleHomeClick = () => {
+    // Clear track data when navigating home
+    sessionStorage.removeItem('non_selected_track')
+    setNonSelectedTrack(null)
+    router.push('/upload')
+  }
 
   const truncateSummary = (text: string, maxLength: number = 100) => {
     if (!text) return ''
@@ -46,44 +59,55 @@ export function LeftSidebar() {
 
       {/* Sidebar */}
       <div
-        className={`fixed left-0 top-0 h-full w-60 bg-gray-800 text-white z-50 transition-transform duration-300 ease-in-out overflow-y-auto ${
+        className={`fixed left-4 top-1/2 -translate-y-1/2 z-50 transition-transform duration-300 ease-in-out ${
           isVisible ? 'translate-x-0' : '-translate-x-full'
         }`}
         onMouseLeave={() => setIsVisible(false)}
       >
-        <div className="p-4 space-y-4">
-          {/* Home Button */}
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-white hover:bg-gray-700"
-            onClick={() => router.push('/upload')}
-          >
-            🏠 Home
-          </Button>
+        <div className="flex bg-white w-fit px-1.5 py-1.5 shadow-lg rounded-2xl">
+          <div className="rounded-2xl w-full px-1.5 py-1.5 md:px-3 md:py-3">
+            {/* Home Button */}
+            <button
+              title="Go to the home page"
+              onClick={handleHomeClick}
+              className="text-gray-600 hover:text-black border-2 inline-flex items-center mr-4 last-of-type:mr-0 p-2.5 border-transparent bg-gray-50 shadow-sm hover:shadow-md focus:opacity-100 focus:outline-none active:shadow-inner font-medium rounded-full text-sm text-center"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-5 h-5"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"
+                ></path>
+              </svg>
+            </button>
 
-          {/* Ideation Tracks Section */}
-          {nonSelectedTrack && (
-            <div className="mt-6">
-              <h3 className="text-sm font-semibold mb-2 text-gray-300">
-                Ideation Tracks
-              </h3>
-              <Card className="bg-gray-100 p-3 opacity-80">
-                <div className="flex items-start gap-2">
-                  <span className="text-2xl font-bold text-gray-400">
-                    {nonSelectedTrack.trackNumber}
-                  </span>
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-800">
-                      {nonSelectedTrack.title}
-                    </h4>
-                    <p className="text-xs text-gray-600 mt-1">
-                      {truncateSummary(nonSelectedTrack.summary)}
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            </div>
-          )}
+            {/* Ideation Track Button (if track exists) */}
+            {nonSelectedTrack && (
+              <button
+                title={`Track ${nonSelectedTrack.trackNumber}: ${nonSelectedTrack.title}`}
+                className="text-gray-600 hover:text-black border-2 inline-flex items-center mr-0 p-2.5 border-transparent bg-gray-50 shadow-sm hover:shadow-md focus:opacity-100 focus:outline-none active:shadow-inner font-medium rounded-full text-sm text-center"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-5 h-5"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"
+                  ></path>
+                  <path
+                    fillRule="evenodd"
+                    d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
+                    clipRule="evenodd"
+                  ></path>
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </>
