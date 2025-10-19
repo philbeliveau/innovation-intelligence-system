@@ -177,6 +177,7 @@ def setup_pipeline_logging(
 
     # File handler - pipeline.log (DEBUG level - all logs)
     logs_dir = output_dir / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)  # Ensure logs directory exists
     pipeline_log_file = logs_dir / "pipeline.log"
 
     file_handler = logging.FileHandler(pipeline_log_file, encoding='utf-8')

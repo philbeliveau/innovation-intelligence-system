@@ -118,9 +118,9 @@ EOF
 
 print_status $? "Batch mode argument parsing works"
 
-# Step 4: Verify backward compatibility - old CLI modes still work
+# Step 4: Verify backward compatibility - old CLI modes still work (3.2-INT-012)
 echo ""
-echo "Step 4: Testing backward compatibility with --input and --brand modes..."
+echo "Step 4: Testing backward compatibility with --input and --brand modes (3.2-INT-012)..."
 
 $PYTHON_CMD << 'EOF'
 import sys
@@ -140,7 +140,7 @@ assert args.batch == False, "Batch should be False in single mode"
 print("✓ Single run mode (--input/--brand) still works")
 EOF
 
-print_status $? "Single run mode backward compatibility verified"
+print_status $? "Single run mode backward compatibility verified (3.2-INT-012)"
 
 # Step 5: Verify new web execution mode doesn't break batch
 echo ""

@@ -46,12 +46,12 @@ function detectStageFromLog(logContent: string): number {
  * ```
  */
 function detectStatusFromLog(logContent: string): string {
-  // Check for errors
+  // Check for errors (be specific to avoid false positives)
   if (
-    logContent.includes('ERROR') ||
-    logContent.includes('Exception') ||
-    logContent.includes('failed') ||
-    logContent.includes('CRITICAL')
+    logContent.includes(' ERROR ') ||
+    logContent.includes(' CRITICAL ') ||
+    logContent.includes('Traceback (most recent call last)') ||
+    logContent.includes('Pipeline execution failed')
   ) {
     return 'error'
   }

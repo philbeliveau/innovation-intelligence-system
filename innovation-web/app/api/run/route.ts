@@ -89,17 +89,29 @@ export async function POST(request: NextRequest) {
 
     // Execute Python pipeline in background using execFile (prevents command injection)
     // Using array arguments instead of shell string prevents injection attacks
-    execFile(pythonBin, [pythonScript, ...args], { cwd: projectRoot }, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`[${run_id}] Pipeline execution error:`, error)
+    // Set PYTHONPATH to project root so Python can find the pipeline module
+    // Set maxBuffer to handle large output and timeout to 10 minutes for LLM processing
+    execFile(
+      pythonBin,
+      [pythonScript, ...args],
+      {
+        cwd: projectRoot,
+        env: { ...process.env, PYTHONPATH: projectRoot },
+        timeout: 600000, // 10 minutes timeout for LLM processing
+        maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large outputs
+      },
+      (error, stdout, stderr) => {
+        if (error) {
+          console.error(`[${run_id}] Pipeline execution error:`, error)
+        }
+        if (stdout) {
+          console.log(`[${run_id}] Pipeline stdout:`, stdout)
+        }
+        if (stderr) {
+          console.error(`[${run_id}] Pipeline stderr:`, stderr)
+        }
       }
-      if (stdout) {
-        console.log(`[${run_id}] Pipeline stdout:`, stdout)
-      }
-      if (stderr) {
-        console.error(`[${run_id}] Pipeline stderr:`, stderr)
-      }
-    })
+    )
 
     // Return immediately with run_id (non-blocking)
     return NextResponse.json({
