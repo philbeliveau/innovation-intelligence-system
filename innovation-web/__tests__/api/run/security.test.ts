@@ -132,7 +132,8 @@ describe('POST /api/run - Security Tests', () => {
 
       // Verify args are passed as array, not string
       const callArgs = execFile.mock.calls[0]
-      expect(callArgs[0]).toBe('python')
+      // Python binary should be from venv
+      expect(callArgs[0]).toContain('venv/bin/python3')
       expect(Array.isArray(callArgs[1])).toBe(true)
       expect(callArgs[1]).toContain('--brand')
       expect(callArgs[1]).toContain('test-company')

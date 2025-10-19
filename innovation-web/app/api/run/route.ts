@@ -80,14 +80,16 @@ export async function POST(request: NextRequest) {
     // Get project root (go up from innovation-web)
     const projectRoot = join(process.cwd(), '..')
 
-    // Execute Python pipeline in background using execFile (prevents command injection)
-    // Using array arguments instead of shell string prevents injection attacks
+    // Use Python from venv to ensure correct module resolution
+    const pythonBin = join(projectRoot, 'venv', 'bin', 'python3')
     const pythonScript = join(projectRoot, 'scripts', 'run_pipeline.py')
     const args = ['--input-file', tmpPath, '--brand', sanitizedCompanyId, '--run-id', run_id]
 
-    console.log(`[${run_id}] Executing pipeline: python ${pythonScript} ${args.join(' ')}`)
+    console.log(`[${run_id}] Executing pipeline: ${pythonBin} ${pythonScript} ${args.join(' ')}`)
 
-    execFile('python', [pythonScript, ...args], { cwd: projectRoot }, (error, stdout, stderr) => {
+    // Execute Python pipeline in background using execFile (prevents command injection)
+    // Using array arguments instead of shell string prevents injection attacks
+    execFile(pythonBin, [pythonScript, ...args], { cwd: projectRoot }, (error, stdout, stderr) => {
       if (error) {
         console.error(`[${run_id}] Pipeline execution error:`, error)
       }
