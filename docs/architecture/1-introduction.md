@@ -1,37 +1,30 @@
 # 1. Introduction
 
-## 1.1 Purpose
+## Purpose
 
-This architecture defines a **simple CLI-based Python tool** for validating the Innovation Intelligence Pipeline hypothesis. This is a **throwaway demo** designed for rapid validation (1-2 week build target), not a production system.
+Build a **minimal web interface** that wraps the existing Python pipeline, enabling users to:
+1. **Pre-select company** during team-led onboarding (loads brand context from YAML profiles)
+2. Upload PDF trend reports via drag & drop
+3. Watch real-time pipeline execution across 5 stages
+4. View extracted trends, insights, and opportunity cards
 
-**Core Question:** Can an automated pipeline systematically transform market signals into brand-specific, actionable innovation opportunities worth $149-$1,500/month?
+**Key Change:** Brand selection happens during onboarding (before homepage), not on the homepage itself. This enables clean client presentations without exposing multi-brand selector.
 
-## 1.2 Scope
+## Core Philosophy
 
-**In Scope:**
-- Local Python CLI tool (`run_pipeline.py`)
-- 5-stage LangChain pipeline (Input → Signal → Translation → Context → Opportunities)
-- File-based storage (no database)
-- Single test and batch execution modes
-- Manual quality review with checklists
-- 100 opportunity card generation (20 tests × 5 opportunities)
+**Reuse, Don't Rebuild**
+- Keep 100% of existing Python pipeline logic
+- Add thin Next.js web layer on top
+- Focus on UI/UX, not backend refactoring
+- Ship in 1 day
 
-**Out of Scope:**
-- Web UI or frontend
-- Database or cloud storage
-- Deployment infrastructure
-- Real-time monitoring dashboards
-- Automated quality scoring
-- Production-grade error handling
+## Key Constraints
 
-## 1.3 Design Philosophy
-
-> **"Make it work, then make it better"** - Focus on proving the transformation works, not building perfect software.
-
-- **Simplicity over sophistication** - Hardcoded configurations acceptable
-- **Local-first** - Everything runs on developer's machine
-- **File-based** - All state persisted to filesystem
-- **Manual intervention OK** - If a stage fails, manual retry is acceptable for 20 tests
-- **Copy-paste patterns** - Use LangChain cookbook examples directly
+- ⏱️ **8-10 hour build time** (hackathon scope)
+- 🎨 **Ultra-minimal UI** (shadcn/ui components only)
+- 🚫 **No database** (file-based state)
+- 🚫 **No complex orchestration** (sequential API calls)
+- ✅ **Vercel Blob for file storage**
+- ✅ **Real-time stage visualization**
 
 ---
