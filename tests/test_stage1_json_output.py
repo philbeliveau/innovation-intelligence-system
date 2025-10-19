@@ -164,8 +164,9 @@ Track 2 summary content here."""
 
     # Validate structure
     assert "selected_track" in json_data
-    assert isinstance(json_data["selected_track"], int)
-    assert json_data["selected_track"] in [1, 2]
+    assert isinstance(json_data["selected_track"], int), "selected_track must be integer, not list/array"
+    assert json_data["selected_track"] in [1, 2], "selected_track must be 1 or 2"
+    assert not isinstance(json_data["selected_track"], list), "selected_track must be single integer, not array"
     assert "track_1" in json_data
     assert "track_2" in json_data
     assert "completed_at" in json_data

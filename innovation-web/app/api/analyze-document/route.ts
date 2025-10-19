@@ -1,21 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ChatOpenAI } from '@langchain/openai'
+import pdf from 'pdf-parse-fork'
 
 // Add Node.js runtime configuration for Vercel
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-
-// Lazy load pdfjs to avoid initialization issues
-async function loadPdfJs() {
-  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
-
-  // Configure worker path for Node.js environment (no actual import needed)
-  if (typeof process !== 'undefined') {
-    pdfjs.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs'
-  }
-
-  return pdfjs
-}
+export const maxDuration = 10 // Vercel Hobby plan limit
 
 interface AnalysisResult {
   title: string
@@ -81,34 +71,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Task 2: Extract text from PDF using pdfjs-dist
+    // Task 2: Extract text from PDF using pdf-parse
     console.log('[analyze-document] Extracting text from PDF')
 
     let documentText: string
     try {
       const arrayBuffer = await pdfResponse.arrayBuffer()
+      const buffer = Buffer.from(arrayBuffer)
 
-      // Lazy load pdfjs
-      const pdfjs = await loadPdfJs()
+      // Parse PDF with pdf-parse-fork (Node.js compatible)
+      const data = await pdf(buffer)
+      documentText = data.text
 
-      // Load PDF document
-      const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise
-
-      // Extract text from all pages
-      const textParts: string[] = []
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i)
-        const textContent = await page.getTextContent()
-        const pageText = textContent.items
-          .map((item) => ('str' in item ? item.str : ''))
-          .join(' ')
-        textParts.push(pageText)
-      }
-
-      documentText = textParts.join('\n')
-
-      // Limit to first 4000 characters for LLM processing
-      documentText = documentText.slice(0, 4000)
+      // Limit to first 2000 characters for fast LLM processing (Vercel timeout constraint)
+      documentText = documentText.slice(0, 2000)
 
       if (!documentText || documentText.trim().length === 0) {
         console.error('[analyze-document] PDF contains no extractable text')
@@ -131,20 +107,20 @@ export async function POST(request: NextRequest) {
     console.log('[analyze-document] Initializing LLM')
 
     const llm = new ChatOpenAI({
-      model: process.env.LLM_MODEL || 'deepseek/deepseek-chat',
+      model: process.env.LLM_MODEL || 'openai/gpt-4o-mini', // Fast model for Vercel timeout constraints
       apiKey: process.env.OPENROUTER_API_KEY,
       configuration: {
         baseURL: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
       },
       temperature: 0.7,
-      timeout: 90000, // 90 second timeout
-      maxRetries: 3,
+      timeout: 8000, // 8 second timeout (leave 2s for PDF processing)
+      maxRetries: 1, // Reduce retries to stay under 10s limit
     })
 
     // Task 4: Create LLM analysis prompt
     const analysisPrompt = `You are an innovation intelligence analyst. Analyze the following document excerpt and extract structured metadata.
 
-DOCUMENT EXCERPT (first 4000 characters):
+DOCUMENT EXCERPT (first 2000 characters):
 """
 ${documentText}
 """
