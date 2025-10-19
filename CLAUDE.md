@@ -1,67 +1,74 @@
 # Innovation Intelligence System - Claude Configuration
 
 Project Context: CPG Innovation Intelligence Tool (Working Title)
-Status: Early validation phase. Problem definition in progress.
-Core Premise (Unvalidated):
-Innovation teams at large CPG companies (P&G, Unilever, etc.) struggle to convert market signals (trend reports, competitor launches, startup activity) into actionable, brand-specific innovation opportunities. Current tools provide data but don't help translate insights into their specific context or build internal conviction around ideas.
-Proposed Solution Architecture:
-The engine generates brand-specific innovation opportunities (5-10 ideas delivered on a regular cadence—frequency TBD). These are "freshly baked" ideas, not raw data dumps.
-Optional Elicitation Layer:
-Users can choose to engage in guided elicitation conversations with AI to refine, stress-test, and deepen any idea they find promising. This is not mandatory—it's an on-demand feature for users who want to take an idea to the next level and build stronger internal conviction/ownership. The elicitation uses questioning techniques to help them adapt the idea to their specific context, identify obstacles, and strengthen their business case.
-Target Buyer (Hypothesis):
-Innovation teams at large CPG companies. Specific titles, team structures, and decision-making processes still being mapped.
-Key Metric (Hypothesis):
-Enable teams to process 3x more opportunities with the same headcount—though whether "more opportunities" is actually their constraint is unproven.
-Critical Open Questions:
+Status: **ACTIVE DEVELOPMENT - Hackathon Build Phase**
 
-Is the problem volume (not enough ideas), quality (too many bad ideas), speed (too slow), translation (can't contextualize), or conviction (can't get buy-in)?
-What makes a "freshly baked idea" valuable vs. just another trend report summary? What's the right level of specificity?
-Does optional elicitation actually add value, or will users ignore it? (Testing via workshop)
-What data sources power the engine, and what signal gaps must we fill that existing tools don't provide?
-Why won't they just build this internally once we prove the concept?
-What's the minimum viable improvement that makes this worth paying for?
+## Current Sprint: Web Application MVP
 
-Current Validation Plan:
+**Build Goal:** Minimal web interface wrapping existing Python pipeline (8-10 hour hackathon scope)
 
-Run elicitation workshop with control/test groups to validate methodology
-Map actual workflow and data sources of target innovation teams
-Identify defensible moat beyond prompt engineering
+**Architecture Decided:**
+- Next.js 15 frontend with shadcn/ui components
+- Vercel Blob for file storage
+- Existing Python pipeline (unchanged - 5-stage LLM processing)
+- Real-time pipeline visualization
+- File-based state (no database)
+
+**Key Features:**
+1. Company pre-selection during onboarding (loads brand YAML profiles)
+2. PDF upload via drag & drop
+3. LLM-powered document analysis (intermediary card)
+4. Real-time pipeline execution viewer (5 stages)
+5. Opportunity card results display
+
+**Development Status:**
+- ✅ Architecture finalized (`docs/architecture.md` - sharded into 15 modules)
+- ✅ Tech stack selected (Next.js 15, shadcn/ui, Vercel Blob, Python)
+- 🚧 Ready to begin implementation (Hour 0 of 10-hour build)
+- 📋 Implementation roadmap defined with hour-by-hour tasks
+
+**Repository Structure:**
+- `docs/architecture/` - Complete technical specifications (sharded)
+- `pipeline/` - Existing Python implementation (stages 1-5)
+- `data/brand-profiles/` - Company YAML configurations
+- `innovation-web/` - New Next.js application (to be created)
 
 ## Project Overview
 
-This repository contains research and analysis for a potential **Innovation Intelligence System** that could transform how organizations discover, validate, and implement breakthrough innovations.
+This repository contains a **working Innovation Intelligence Pipeline** that processes trend reports and generates brand-specific innovation opportunities through a 5-stage LLM workflow.
 
-**⚠️ DEVELOPMENT STATUS: RESEARCH & EXPLORATION PHASE**
-- All technical implementations described below are **research concepts** - no technical decisions have been made
-- Architecture, agent count, data sources, and technical approaches are **completely undefined**
-- Current focus is on exploring feasibility, identifying technical bottlenecks, and validating business assumptions
-- **NO COMMITMENT TO ANY SPECIFIC TECHNICAL APPROACH** - everything is still being evaluated
+**✅ VALIDATED PIPELINE:**
+- Stage 1: Input Processing (extract 2 main inspirations)
+- Stage 2: Signal Amplification (identify trends)
+- Stage 3: General Translation (universal lessons)
+- Stage 4: Brand Contextualization (brand-specific insights)
+- Stage 5: Opportunity Generation (5 actionable opportunity cards)
 
-The project explores whether an AI-driven intelligence system could process multiple information streams to generate actionable innovation insights. The actual technical implementation, if any, remains to be determined.
+**🚧 IN DEVELOPMENT - Web Interface:**
+Building minimal web wrapper to make pipeline accessible via browser with real-time visualization.
 
-### Core Capabilities (Conceptual)
+### Core Capabilities (Implemented)
 
-**Proposed Intelligence Processing Pipeline:**
-- Multi-source data ingestion (patents, research, startups, market signals, social media) - *data sources TBD*
-- Real-time weak signal detection and pattern recognition - *technical approach TBD*
-- Cross-domain opportunity identification and translation - *methodology TBD*
-- Systematic validation through psychological frameworks - *framework implementation TBD*
-- Actionable intelligence packaging and distribution - *delivery mechanism TBD*
+**Current Pipeline Implementation:**
+- ✅ PDF document processing with text extraction
+- ✅ 5-stage LLM workflow for opportunity generation
+- ✅ Brand profile integration (YAML-based)
+- ✅ Brand research data contextualization (Markdown)
+- ✅ Structured opportunity card output format
 
-**Potential AI Architecture Concepts (Under Research):**
-- Number of AI components: *Completely undefined - could be single system, multiple agents, or hybrid approach*
-- Research areas being explored:
-  - Pattern recognition techniques (TRIZ/SIT systematic innovation)
-  - Cross-domain knowledge translation (biomimicry and analogical reasoning)
-  - Market psychology and adoption analysis
-  - Critical analysis and validation methods
-  - Trend analysis and strategic foresight
-  - Information synthesis and integration
+**Web Interface (In Development):**
+- 🚧 Next.js 15 frontend with App Router
+- 🚧 Real-time pipeline progress visualization
+- 🚧 Document analysis with LLM extraction
+- 🚧 Company onboarding and brand context loading
+- 🚧 Opportunity card display and export
 
-**Validation Framework Research:**
-- SPECTRE concept exploration (Structural, Psychological, Economic, Cultural, Technical, Risk, Execution) - *conceptual only*
-- Progressive validation methodology research - *no implementation decisions made*
-- Multi-perspective analysis approaches - *theoretical exploration only*
+**Technical Architecture:**
+- LangChain for LLM orchestration
+- OpenRouter API (Claude Sonnet 4.5 via DeepSeek)
+- Vercel deployment with Blob storage
+- File-based state management
+- Sequential stage execution with logging
 
 ## Working with This Repository
 
@@ -261,15 +268,15 @@ This repository leverages the **BMAD™ Core** agent orchestration system for sy
 - Corporate venture capital and strategic planning teams
 
 **Value Proposition:**
-- Automated discovery of breakthrough innovation opportunities
-- Systematic validation preventing costly implementation failures
-- Cross-industry intelligence normally requiring expensive consulting
-- Continuous intelligence flow versus periodic reports
+- Transform trend reports into brand-specific innovation opportunities
+- 5-stage LLM pipeline generates actionable opportunity cards
+- Cross-industry pattern recognition and translation
+- Reduces time from trend report to innovation brief from weeks to minutes
 
-**Proposed Revenue Model (Conceptual):**
-- Tier 1: $149/month - Weekly newsletter with validated innovations - *pricing TBD*
-- Tier 2: $449/month - Daily opportunities with implementation guides - *pricing TBD*
-- Tier 3: $1,500/month - Enterprise with custom focus and consulting - *pricing TBD*
+**Current Implementation Focus:**
+- Hackathon MVP: Web interface for existing pipeline
+- Demo-ready product for stakeholder validation
+- Foundation for future SaaS platform
 
 ## Development Guidelines
 
@@ -278,87 +285,100 @@ This repository leverages the **BMAD™ Core** agent orchestration system for sy
 **Core Configuration (`/.bmad-core/core-config.yaml`):**
 ```yaml
 slashPrefix: BMad  # Enables /BMad:agents:* commands
-markdownExploder: true  # Enhanced document processing
+markdownExploder: true  # Enhanced document processing (md-tree)
 prd:
   prdFile: docs/prd.md
-  prdSharded: true  # Supports innovation intelligence documentation
+  prdSharded: true  # PRD split into modular sections
 architecture:
   architectureFile: docs/architecture.md
-  architectureSharded: true  # Modular system architecture
+  architectureSharded: true  # Architecture split into 15 modules
+  architectureShardedLocation: docs/architecture
 ```
 
-**Innovation Intelligence Research Integration:**
-- BMAD agents support research into various intelligence processing concepts
-- Templates facilitate exploration of validation methodologies
-- Tasks support advanced elicitation and multi-method research techniques
-- Workflows coordinate between research areas for systematic exploration
-
-**Research Agent Activation Protocol:**
+**Active Development Agent Protocol:**
 ```bash
-# Primary research coordination
-/BMad:agents:analyst  # For market research and competitive analysis
+# Primary development coordination
+/BMad:agents:architect  # System design and architecture (Winston)
+/BMad:agents:dev        # Implementation and coding tasks
+/BMad:agents:qa         # Testing and validation
 
-# Supporting research areas
-/BMad:agents:qa      # For validation methodology research
-/BMad:agents:architect  # For technical feasibility exploration
-/BMad:agents:bmad-master  # For complex research coordination
+# Supporting development
+/BMad:agents:pm         # Project coordination and roadmap
+/BMad:agents:ux-expert  # UI/UX design and component specs
 ```
 
-### Code Style
-- Follow existing patterns in research documentation
-- Maintain academic rigor with practical applicability
-- Use evidence-based approaches with proper citations
-- Structure content for both human readability and AI processing
-- **BMAD Integration**: Use agent commands for structured workflows vs. ad-hoc analysis
+**Current Build Focus:**
+- Hour-by-hour implementation roadmap (`docs/architecture/9-implementation-roadmap.md`)
+- shadcn/ui component generation via MCP tool
+- Next.js 15 App Router patterns
+- Vercel deployment optimization
 
-### Documentation Standards
-- Each document should be self-contained yet interconnected
-- Provide clear psychological and methodological foundations
-- Include practical implementation guidance
-- Reference academic sources and established frameworks
-- **BMAD Templates**: Leverage `.bmad-core/templates/` for consistent documentation structure
+### Code Style (Web Application)
+- Next.js 15 App Router patterns (React Server Components)
+- TypeScript strict mode
+- Tailwind CSS utility-first styling
+- shadcn/ui component library
+- File-based routing conventions
 
-### Research Validation Requirements
-- All research concepts should be thoroughly analyzed and challenged
-- Apply appropriate analytical rigor based on research objectives
-- Maintain academic standards while ensuring practical relevance
-- Document research evidence and reasoning
-- **BMAD Research**: Use `/BMad:agents:qa *validate-innovation` for research methodology assessment
+### Implementation Priorities
+1. **Speed over perfection** - 8-10 hour hackathon build
+2. **Minimal UI** - shadcn/ui components only, no custom CSS frameworks
+3. **Reuse existing pipeline** - Zero refactoring of Python code
+4. **File-based state** - No database setup overhead
+5. **Real-time visualization** - Core UX feature for demo impact
 
-### Quality Assurance
-- Systematic review of all research output and analysis
-- Cross-validation between multiple research perspectives
-- Continuous learning and methodology refinement
-- Regular framework updates based on research findings
-- **BMAD Orchestration**: Use `/BMad:agents:bmad-master` for multi-disciplinary research coordination
+### Quality Standards
+- **Functional completeness** - All 5 pipeline stages visualized
+- **Error handling** - Graceful failures with user feedback
+- **Security basics** - XSS protection in markdown rendering, no SQL injection risk (no DB)
+- **Mobile responsive** - Basic Tailwind responsive classes
+- **Browser compatibility** - Modern browsers only (Chrome, Safari, Firefox)
 
-## Key Research Areas
+## Quick Start Guide
 
-**Creativity Psychology:**
-- Csikszentmihalyi's systems model (Domain-Field-Individual)
-- Amabile's componential theory (motivation, skills, processes)
-- Flow theory and optimal challenge-skill balance
-- 2024 neuroscience research on divergent-convergent thinking
+### For Development:
 
-**Innovation Methodologies:**
-- TRIZ 40 inventive principles and contradiction resolution
-- SIT 5 systematic techniques with constraint-based innovation
-- Lateral thinking and alternative perspective generation
-- Biomimicry with 3.8 billion years of evolutionary optimization
+1. **Review Architecture:**
+   ```bash
+   # Read sharded architecture docs
+   cat docs/architecture/index.md
+   cat docs/architecture/9-implementation-roadmap.md
+   ```
 
-**Validation Psychology:**
-- Dual-system thinking integration (intuitive and analytical)
-- Cognitive bias identification and mitigation protocols
-- Psychological safety and growth mindset maintenance
-- Multi-stakeholder perspective simulation
+2. **Start Development:**
+   ```bash
+   # Activate architect agent for guidance
+   /BMad:agents:architect
 
-## Usage Notes
+   # Or activate developer agent to begin coding
+   /BMad:agents:dev
+   ```
 
-This repository represents 24 comprehensive documents with 60,000+ words of detailed research, analysis, and conceptual planning. The proposed system aims to:
+3. **Follow Implementation Roadmap:**
+   - Hour 0-1: Project setup (Next.js + shadcn/ui)
+   - Hour 1-2: Onboarding page
+   - Hour 2-3: Homepage UI
+   - Hour 3-4: Intermediary card page
+   - Hour 4-5: API routes
+   - Hour 5-6: Pipeline modifications
+   - Hour 6-8: Pipeline viewer UI
+   - Hour 8-9: Results page
+   - Hour 9-10: Polish and deployment
 
-1. **Transform VP Innovation teams** from industry-siloed thinkers into cross-domain innovation orchestrators
-2. **Automate intelligence discovery** through systematic processing of multiple data streams
-3. **Ensure implementation success** through rigorous psychological validation frameworks
-4. **Generate continuous value** through learning and adaptation mechanisms
+### Key Files:
 
-The business opportunity may represent a $1.5B+ total addressable market with the potential to fundamentally transform how organizations approach innovation discovery and validation. *Market size and opportunity validation required.*
+- `docs/architecture/` - Complete technical specifications
+- `docs/prd.md` - Product requirements
+- `pipeline/stages/` - 5-stage Python implementation
+- `data/brand-profiles/` - Company YAML configurations
+- `scripts/run_pipeline.py` - Pipeline entry point
+
+### Testing Existing Pipeline:
+
+```bash
+# Run pipeline locally
+python scripts/run_pipeline.py \
+  --input-file data/test-docs/sample.pdf \
+  --brand lactalis-canada \
+  --run-id test-001
+```

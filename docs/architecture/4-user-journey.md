@@ -22,11 +22,12 @@
 └─────────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│ HOMEPAGE: Upload Only (Brand Pre-Selected)                      │
+│ HOMEPAGE: Upload with History (Brand Pre-Selected)              │
 │ - Display selected company name at top (e.g. "Lactalis Canada") │
 │ - Drag & drop PDF (trend report)                                │
 │ - File uploads to Vercel Blob                                   │
-│ - Redirect to intermediary card page                            │
+│ - Upload history cards appear below (Story 1.4)                 │
+│ - User stays on page, can upload more or click history card     │
 └─────────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────────┐
@@ -108,22 +109,29 @@
 - **Top Navigation:** "Everything" | "Spaces" | "Serendipity" (visual only)
 - **Background:** Light gray/off-white with subtle texture
 
-### Step 1: Homepage - Upload Only (1-2 minutes)
+### Step 1: Homepage - Upload with History (1-2 minutes)
 1. User lands on homepage matching `docs/image/main-page.png` design
 2. **Company name displayed at top** (e.g. "Lactalis Canada")
 3. **"My Board of Ideators"** title with brand styling
 4. **Upload sources** card with drag & drop zone
 5. User drags PDF trend report → file uploads to Vercel Blob
 6. **No brand selector visible** (already selected in onboarding)
-7. After successful upload → redirect to `/analyze/[uploadId]`
+7. **After successful upload** (Story 1.4):
+   - User stays on `/upload` page (no automatic redirect)
+   - Upload metadata saved to localStorage
+   - "or Select a Starting Points" section appears below upload zone
+   - Previously uploaded documents display as coral/pink gradient cards
+   - Cards show: filename, upload timestamp (relative), document icon
+   - User can upload additional files OR click a history card to navigate to `/analyze/[uploadId]`
 
-### Step 2: Intermediary Card - Document Analysis (30-60 seconds)
+### Step 2: Intermediary Card - Document Analysis with Track Selection (30-60 seconds)
 1. Display loading state: "Analyzing document..."
-2. Backend calls LLM to extract:
+2. Backend calls LLM (Story 2.1 - `/api/analyze-document`) to extract:
    - **Summary:** 2-3 sentence concise description of document content
    - **Industry:** Primary industry/sector identified (e.g. "fashion", "food & beverage", "sports")
    - **Source:** Document source if identifiable (e.g. "trendwatching.com")
    - **Theme:** Main topic or category (e.g. "marketing strategies", "sustainability")
+   - **2 Ideation Tracks:** LLM identifies 2 main inspiration patterns with titles and summaries (both returned)
 3. Display extracted information in card format matching `docs/image/intermediary-card.png`:
    - Hero image placeholder
    - Title (generated from summary)
@@ -131,14 +139,23 @@
    - Industry badge (orange pill)
    - Theme badge (red pill)
    - Summary text
-4. Show "Launch" button at bottom
-5. Click "Launch" → POST to `/api/run` → redirect to `/pipeline/[runId]`
+4. Display 2 ideation tracks side-by-side with radio button selection (Story 2.2):
+   - Track 1 pre-selected by default (highlighted with blue border)
+   - Track 2 displayed with dimmed appearance
+   - User can click either track to select it (radio button interaction)
+   - Selected track gets highlighted border/background (border-blue-500, bg-blue-50)
+   - Non-selected track gets dimmed (opacity-60, border-gray-300)
+5. Show "Launch" button at bottom
+6. Click "Launch" → Store selected track ID (1 or 2) in sessionStorage → POST to `/api/run` with `selected_track: 1` or `selected_track: 2` → redirect to `/pipeline/[runId]`
+7. Non-selected track data stored in sessionStorage for sidebar display (Story 4.1)
 
 ### Step 3: Pipeline Execution (15-30 minutes)
-**Stage 1: Special UI (2 Inspiration Tracks)**
-- Displays 2 side-by-side cards
-- Each card shows inspiration title + loading animation
-- When complete: Shows extracted inspiration text (~2-3 paragraphs each)
+**Stage 1: Special UI (Selected Inspiration Track)**
+- Main content area displays only the selected track card
+- Card shows inspiration title + loading animation
+- When complete: Shows extracted inspiration text (~2-3 paragraphs)
+- Non-selected track visible in left sidebar under "Ideation Tracks" section
+- Sidebar displays: track number, title, truncated summary (100 chars)
 
 **Stages 2-5: Minimal Box UI**
 - Each stage = single box with:

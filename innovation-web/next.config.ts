@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Set Turbopack root explicitly to avoid workspace root inference issues
+  turbopack: {
+    root: __dirname,
+  },
+
   // Exclude parent directories from file watching to avoid symlink issues
   webpack: (config, { isServer }) => {
     if (!isServer) {

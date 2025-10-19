@@ -260,20 +260,39 @@ export default function OnboardingPage() {
 - **Max Size:** 25MB (Vercel Blob limit)
 - **Validation:** Display error if unsupported file type or oversized
 - **Feedback:** Show file name, size, and upload progress bar
-- **Action:** After successful upload, redirect to `/analyze/{uploadId}`
+- ~~**Action:** After successful upload, redirect to `/analyze/{uploadId}`~~ **MODIFIED by Story 1.4**
+- **Action (Story 1.4):** After successful upload, user stays on `/upload` page
+  - Upload metadata saved to localStorage (company-scoped)
+  - Success message displayed briefly
+  - Upload form resets to allow additional uploads
+  - Upload history section appears below with document cards
 
-**FR-HP-4: Starting Points (Phase 2 - Out of Scope)**
+**FR-HP-4: Upload History Display (Story 1.4 - P2)**
+- **Trigger:** Appears when localStorage contains upload history for current company
+- **Section Heading:** "or Select a Starting Points" (matches reference design)
+- **Display:** 3-4 most recent uploads as coral/pink gradient cards (horizontal scroll if >4)
+- **Card Content:** Document icon (📄), filename (truncated 40 chars), relative timestamp ("2 hours ago", "Yesterday")
+- **Interaction:** Click card navigates to `/analyze/{uploadId}`
+- **Company Filtering:** Only show uploads for current company context
+- **Persistence:** LocalStorage with key format `upload_history_${company_id}`
+- **Max Limit:** 20 uploads per company (FIFO - oldest removed)
+- **Empty State:** Section hidden when no upload history exists
+
+**FR-HP-5: Starting Points - Pre-loaded Examples (Phase 2 - Out of Scope)**
 - Display 3 pre-loaded example reports
 - Click to auto-populate upload with example
-- **Hackathon:** Static cards with no functionality
+- **Hackathon:** Not implemented (replaced by Story 1.4 upload history feature)
 
 ### 4.1.3 Technical Specifications
 
 **Components:**
-- `app/page.tsx` - Main homepage component
+- `app/upload/page.tsx` - Upload page component (route: `/upload`)
 - `components/FileUpload.tsx` - Drag & drop zone (use `react-dropzone`)
 - `components/CompanyBadge.tsx` - Display company name (shadcn/ui Badge)
-- `components/GenerateButton.tsx` - CTA button (shadcn/ui Button)
+- `components/upload/UploadHistorySection.tsx` - Upload history container (Story 1.4)
+- `components/upload/UploadHistoryCard.tsx` - Individual history card (Story 1.4)
+- `lib/upload-history.ts` - LocalStorage utility functions (Story 1.4)
+- `lib/format-relative-time.ts` - Time formatting utility (Story 1.4)
 
 **API Integration:**
 ```typescript
@@ -299,7 +318,7 @@ export default function Home() {
       })
   }, [])
 
-  // File upload flow
+  // File upload flow (Story 1.4 - Modified behavior)
   const handleFileUpload = async (file: File) => {
     const formData = new FormData()
     formData.append('file', file)
@@ -311,8 +330,18 @@ export default function Home() {
 
     const { blob_url, upload_id } = await response.json()
 
-    // Redirect to intermediary card page for analysis
-    router.push(`/analyze/${upload_id}`)
+    // Story 1.4: Save to localStorage instead of redirecting
+    addUploadToHistory(companyId, {
+      upload_id,
+      filename: file.name,
+      uploaded_at: Date.now(),
+      blob_url,
+      company_id: companyId
+    })
+
+    // Reset form and show success message (no redirect)
+    setSuccessMessage(`✓ ${file.name} uploaded successfully`)
+    // Upload history section will automatically re-render to show new card
   }
 
   return (
@@ -329,7 +358,7 @@ export default function Home() {
 
 **Reference:** `docs/image/intermediary-card.png` and `docs/image/track-division.png`
 
-**Purpose:** Display LLM-extracted document summary with ideation track selection before launching horizontal pipeline
+**Purpose:** Display LLM-extracted document summary with user track selection before launching vertical pipeline
 
 **Layout:**
 ```
@@ -353,7 +382,7 @@ export default function Home() {
 │  └────────────────────────┘                                            │
 │                                                                         │
 │                           [Launch]                                      │
-│                 (Start horizontal pipeline flow)                       │
+│                 (Start vertical pipeline flow)                         │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -373,18 +402,23 @@ export default function Home() {
 - **Theme Badge:** Red pill with 2-3 word theme
 - **Summary:** 2-3 sentences (~50 words) explaining the document
 
-**FR-IC-3: Data Display - Right Section (Ideation Tracks)**
+**FR-IC-3: Data Display - Right Section (Ideation Tracks with Selection)**
 - **Reference UI:** Must match `docs/image/track-division.png` exactly
-- **Track Cards:** Display 2 ideation tracks identified by LLM
-- **Selection:** Both tracks shown as selected (highlighted with checkmark)
-- **Visual Style:** Icon + title + 2-3 sentence summary per track
+- **Track Cards:** Display 2 ideation tracks identified by LLM side-by-side
+- **Selection Interaction:** User must select exactly 1 track via radio button
+- **Default State:** Track 1 pre-selected on page load
+- **Selected Track Style:** Highlighted with blue border (border-2 border-blue-500) and light background (bg-blue-50)
+- **Non-Selected Track Style:** Dimmed appearance (opacity-60, border-gray-300)
+- **Visual Components:** Radio button + icon + title + 2-3 sentence summary per track
 
 **FR-IC-4: Launch Action**
 - **Button:** "Launch" at bottom center
 - **Behavior:**
-  1. Call `/api/run` with blob URL, upload ID, and selected track IDs ([1, 2])
-  2. Transition animation from vertical card to horizontal pipeline
-  3. Redirect to `/pipeline/{runId}` with horizontal flow layout
+  1. Store selected track ID in sessionStorage: `sessionStorage.setItem('selected_track', selectedTrack)`
+  2. Store non-selected track data in sessionStorage: `sessionStorage.setItem('non_selected_track', JSON.stringify(trackData))`
+  3. Call `/api/run` with blob URL, upload ID, and selected track ID ([1] or [2])
+  4. Smooth transition animation: selected track stays in main area, non-selected moves to sidebar
+  5. Redirect to `/pipeline/{runId}` with vertical flow layout
 - **Loading State:** Show spinner on button during API call
 
 ### 4.2.3 Technical Specifications
@@ -491,23 +525,37 @@ export default function AnalyzePage() {
 
 ---
 
-## 4.3 Pipeline Viewer - Horizontal Flow (Priority: P0)
+## 4.3 Pipeline Viewer - Vertical Flow (Priority: P0)
 
-### 4.3.1 Visual Design - Horizontal Pipeline Layout
+### 4.3.1 Visual Design - Vertical Pipeline Layout
 
 **Reference:** `docs/image/track-division.png` for track display at Stage 1
 
-**Layout:** Pipeline flows horizontally from left to right
+**Layout:** Pipeline flows vertically from top to bottom
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
 │  ◀ Back              Innovation Pipeline          Company: Lactalis  │
 ├──────────────────────────────────────────────────────────────────────┤
 │                                                                       │
-│  ┌────────┐   ┌────────┐   ┌────────┐   ┌────────┐   ┌────────┐   │
-│  │Stage 1 │ → │Stage 2 │ → │Stage 3 │ → │Stage 4 │ → │Stage 5 │   │
-│  │Tracks  │   │Signals │   │Lessons │   │Context │   │Opport. │   │
-│  │  ✓     │   │  ⏳    │   │  ⌛    │   │  ⌛    │   │  ⌛    │   │
-│  └────────┘   └────────┘   └────────┘   └────────┘   └────────┘   │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │ Stage 1 - Tracks                                         ✓   │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                              ↓                                        │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │ Stage 2 - Signals                                        ⏳  │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                              ↓                                        │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │ Stage 3 - Lessons                                        ⌛  │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                              ↓                                        │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │ Stage 4 - Context                                        ⌛  │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                              ↓                                        │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │ Stage 5 - Opportunities                                  ⌛  │   │
+│  └──────────────────────────────────────────────────────────────┘   │
 │                                                                       │
 │  ┌──────────────────────────────────────────────────────────────┐   │
 │  │ Current: Stage 2 - Signal Amplification                      │   │
@@ -527,25 +575,27 @@ export default function AnalyzePage() {
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.3.2 Horizontal Pipeline Requirements
+### 4.3.2 Vertical Pipeline Requirements
 
-**FR-PV-1: Horizontal Stage Navigation**
-- **Layout:** All 5 stages displayed in single horizontal row at top
+**FR-PV-1: Vertical Stage Navigation**
+- **Layout:** All 5 stages displayed in single vertical column flowing downward
 - **Stage Boxes:** Each shows stage number, short name ("Tracks", "Signals", etc.), status icon
 - **Active Stage:** Highlighted with border and pulse animation
 - **Completed Stages:** Green checkmark (✓) indicator
 - **Pending Stages:** Grayed out with hourglass icon (⌛)
-- **Flow Direction:** Left-to-right with arrow connectors between stages
+- **Flow Direction:** Top-to-bottom with downward arrow connectors between stages
 
-**FR-PV-2: Stage 1 - Track Division Display**
+**FR-PV-2: Stage 1 - Selected Track Display**
 - **Reference:** Must match `docs/image/track-division.png` UI exactly
-- **Display:** Show the 2 selected tracks from intermediary card
-- **Track Cards:** Side-by-side layout matching track division design
-- **Selection Indicator:** Both tracks shown with checkmark and "Selected" label
+- **Main Content:** Display only the selected track in main content area (single card, not side-by-side)
+- **Sidebar:** Display non-selected track in left sidebar under "Ideation Tracks" section
+- **Selected Track Card:** Full card with icon, title, complete summary, and "Selected ✓" indicator
+- **Sidebar Track Card:** Compact card showing track number, title, truncated summary (100 chars), dimmed styling (bg-gray-100, opacity-80)
+- **State Retrieval:** Read selected track ID from sessionStorage: `sessionStorage.getItem('selected_track')`
 - **Data Source:** Read from `data/test-outputs/{run_id}/stage1/inspirations.json`:
   ```json
   {
-    "selected_tracks": [1, 2],
+    "selected_tracks": [1],  // or [2] based on user selection
     "track_1": {
       "title": "Track 1 Title",
       "summary": "Summary of first track...",
@@ -559,9 +609,10 @@ export default function AnalyzePage() {
     "completed_at": "2025-10-19T14:23:45.123Z"
   }
   ```
+- **Display Logic:** If `selectedTrack === 1`, show track_1 in main area and track_2 in sidebar; vice versa if `selectedTrack === 2`
 
 **FR-PV-3: Current Stage Detail Panel**
-- **Position:** Below horizontal stage indicator row
+- **Position:** Below vertical stage indicator column
 - **Content:**
   - Stage name and full description
   - Progress bar showing estimated completion percentage
@@ -569,10 +620,10 @@ export default function AnalyzePage() {
   - Estimated time remaining
 - **Updates:** Refreshed every 5 seconds via polling
 
-### 4.3.3 Stages 2-5: Horizontal Progress Indicators
+### 4.3.3 Stages 2-5: Vertical Progress Indicators
 
-**FR-PV-4: Horizontal Stage Boxes**
-- **Layout:** All 5 stages in single horizontal row at page top
+**FR-PV-4: Vertical Stage Boxes**
+- **Layout:** All 5 stages in single vertical column flowing downward
 - **Each Stage Box:**
   - Stage number (1-5)
   - Short name ("Tracks", "Signals", "Lessons", "Context", "Opport.")
@@ -1182,7 +1233,7 @@ STAGE1_TEMPLATE = """
 Analyze this innovation signal document and extract the TWO most compelling inspiration tracks.
 
 IMPORTANT: Only extract the TOP 2 most impactful inspiration tracks. These will be displayed
-in a horizontal pipeline UI and used for all subsequent analysis stages.
+in a vertical pipeline UI and used for all subsequent analysis stages.
 
 # Track 1: [Give it a descriptive title]
 

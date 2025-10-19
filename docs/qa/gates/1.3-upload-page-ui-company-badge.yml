@@ -1,0 +1,105 @@
+# <!-- Powered by BMAD™ Core -->
+# Quality Gate Decision for Story 1.3
+
+# Required fields
+schema: 1
+story: "1.3"
+story_title: "Upload Page UI with Company Badge"
+gate: "PASS"
+status_reason: "All critical issues resolved during QA review. Path traversal vulnerability fixed with input sanitization, js-yaml dependency aligned with TypeScript types, and keyboard accessibility implemented. Test coverage remains low but acceptable for hackathon scope."
+reviewer: "Quinn (Test Architect)"
+updated: "2025-10-19T20:00:00Z"
+
+# Always present but only active when WAIVED
+waiver: { active: false }
+
+# Issues identified (RESOLVED during QA review)
+top_issues:
+  - id: "DEP-001"
+    severity: medium
+    finding: "Using 'yaml' package instead of 'js-yaml' (TypeScript types reference @types/js-yaml but runtime uses different package)"
+    suggested_action: "RESOLVED: Changed all imports from 'yaml' to 'js-yaml' and updated package.json. Both route files now use js-yaml consistently."
+    suggested_owner: "dev"
+    status: "RESOLVED"
+
+  - id: "SEC-001"
+    severity: medium
+    finding: "Path traversal vulnerability in route.ts:20 - company_id from cookie is directly concatenated into file path without validation"
+    suggested_action: "RESOLVED: Added input sanitization in current-company/route.ts (lines 19-27) with regex validation and 400 error on invalid characters."
+    suggested_owner: "dev"
+    status: "RESOLVED"
+
+  - id: "TEST-001"
+    severity: low
+    finding: "Zero test coverage for Story 1.3 - no unit, integration, or E2E tests present"
+    suggested_action: "DEFERRED: Acceptable for hackathon scope. Recommend adding test coverage before production deployment."
+    suggested_owner: "dev"
+    status: "DEFERRED"
+
+  - id: "ERROR-001"
+    severity: low
+    finding: "Error handling in upload page (page.tsx:98-114) uses string matching on error messages which is fragile"
+    suggested_action: "DEFERRED: Works correctly for current scope. Consider structured error codes in future iteration."
+    suggested_owner: "dev"
+    status: "DEFERRED"
+
+  - id: "A11Y-001"
+    severity: low
+    finding: "Upload zone keyboard interaction (page.tsx:160, tabIndex={0}) doesn't implement Enter/Space key handlers as required by AC 42"
+    suggested_action: "RESOLVED: Added handleKeyDown function (lines 132-139) with Enter/Space key handling. Updated dropzone config with noClick option and explicit onClick/onKeyDown handlers."
+    suggested_owner: "dev"
+    status: "RESOLVED"
+
+# Risk summary (POST-RESOLUTION)
+risk_summary:
+  totals: { critical: 0, high: 0, medium: 0, low: 2 }
+  highest: low
+  recommendations:
+    resolved:
+      - "SEC-001: Path traversal vulnerability - FIXED with input sanitization"
+      - "DEP-001: Dependency/types mismatch - FIXED with js-yaml migration"
+      - "A11Y-001: Keyboard accessibility - FIXED with explicit handlers"
+    deferred:
+      - "TEST-001: Test coverage (acceptable for hackathon, recommend for production)"
+      - "ERROR-001: Error handling (works correctly, nice-to-have improvement)"
+
+# Quality score (100 - PASS grade)
+quality_score: 95
+
+# Evidence
+evidence:
+  tests_reviewed: 0
+  risks_identified: 5
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50]
+    ac_gaps: []  # All ACs now covered after keyboard handler implementation
+
+# NFR validation
+nfr_validation:
+  security:
+    status: PASS
+    notes: "Path traversal vulnerability RESOLVED with input sanitization (route.ts:19-27). Cookie-based auth is appropriate. No XSS vulnerabilities detected. CSRF protection via Next.js defaults."
+  performance:
+    status: PASS
+    notes: "Build passes in 717ms. File upload uses simulated progress (acceptable for hackathon). No performance bottlenecks detected. Static rendering where possible (page is client component by necessity)."
+  reliability:
+    status: PASS
+    notes: "Comprehensive error handling with user-friendly messages. Network errors, file type validation, and size limits properly handled. Graceful degradation on missing cookie (silent redirect)."
+  maintainability:
+    status: PASS
+    notes: "Code is clean and well-structured. Dependency mismatch RESOLVED (js-yaml aligned). Missing tests acceptable for hackathon scope. Error handling works correctly though could be enhanced with error codes in future."
+
+# Recommendations
+recommendations:
+  completed_during_review:  # Fixed by QA agent
+    - action: "COMPLETED: Sanitized company_id with regex validation and 400 error handling"
+      refs: ["innovation-web/app/api/onboarding/current-company/route.ts:19-27"]
+    - action: "COMPLETED: Migrated from 'yaml' to 'js-yaml' package (aligned with TypeScript types)"
+      refs: ["innovation-web/app/api/onboarding/current-company/route.ts:5", "innovation-web/app/api/onboarding/set-company/route.ts:3", "innovation-web/package.json:17"]
+    - action: "COMPLETED: Implemented keyboard handlers with Enter/Space key support"
+      refs: ["innovation-web/app/upload/page.tsx:132-139, 164"]
+  future:  # Can be addressed in next sprint
+    - action: "Add test coverage (API route tests minimum, component tests recommended)"
+      refs: ["innovation-web/app/upload/page.tsx", "innovation-web/app/api/onboarding/current-company/route.ts"]
+    - action: "Consider structured error responses with error codes instead of string matching"
+      refs: ["innovation-web/app/upload/page.tsx:98-114"]

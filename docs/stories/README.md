@@ -64,17 +64,39 @@ This directory contains all user stories for the Innovation Intelligence Web App
 **Priority:** P0
 **Estimated Time:** 1.5 hours
 **Dependencies:** Story 1.1 (cookie), Story 1.2 (API)
-**Status:** Ready for Implementation
+**Status:** Complete (Modified by Story 1.4)
 
-**Summary:** Build `/upload` page with drag & drop zone, company badge, and upload progress. On success, save blob URL to sessionStorage and redirect to analysis page.
+**Summary:** Build `/upload` page with drag & drop zone, company badge, and upload progress. ~~On success, save blob URL to sessionStorage and redirect to analysis page.~~ **Modified by Story 1.4:** User stays on page after upload to enable upload history feature.
 
 **Key Deliverables:**
 - Upload page UI with drag & drop
 - Company badge from cookie
 - Upload progress tracking
 - SessionStorage integration
+- **Modified:** No automatic redirect (Story 1.4)
 
-**Document:** [Story 1.3 Details](./epic-1-story-1.3.md)
+**Document:** [Story 1.3 Details](./1.3.upload-page-ui-company-badge.md)
+
+---
+
+### **Story 1.4: Upload History Display with Card Navigation**
+
+**Priority:** P2
+**Estimated Time:** 1.5-2 hours
+**Dependencies:** Story 1.1 (cookie), Story 1.2 (API), Story 1.3 (upload page)
+**Status:** Ready for Implementation
+
+**Summary:** Display previously uploaded documents as coral/pink gradient cards below the upload zone. User stays on `/upload` page after successful upload instead of automatic redirect. Upload history persists in localStorage (company-scoped) with max 20 uploads per company.
+
+**Key Deliverables:**
+- Remove automatic redirect from Story 1.3
+- LocalStorage utility functions for upload history
+- UploadHistorySection component with "or Select a Starting Points" heading
+- UploadHistoryCard component with gradient design
+- Card navigation to `/analyze/{uploadId}`
+- Company filtering and FIFO limit enforcement
+
+**Document:** [Story 1.4 Details](./1.4.upload-history-card-navigation.md)
 
 ---
 
@@ -84,9 +106,10 @@ Stories must be completed **in sequence** for Epic 1:
 
 1. **Story 1.1** → Establishes company context via cookie
 2. **Story 1.2** → Enables file storage via Vercel Blob API
-3. **Story 1.3** → Connects user flow (reads cookie, calls API, redirects)
+3. **Story 1.3** → Connects user flow (reads cookie, calls API) ✅ Complete
+4. **Story 1.4** → Adds upload history and multi-upload workflow (optional enhancement)
 
-**Critical Path:** All three stories required for functional upload flow.
+**Critical Path:** Stories 1.1-1.3 required for functional upload flow. Story 1.4 is optional P2 enhancement.
 
 ---
 
@@ -150,8 +173,17 @@ npm test
 
 #### Story 1.3
 - [ ] Visit `/upload` without cookie → redirects to `/`
-- [ ] Drag & drop PDF → shows progress → redirects to `/analyze/{uploadId}`
+- [ ] Drag & drop PDF → shows progress → ~~redirects to `/analyze/{uploadId}`~~ stays on page (Story 1.4)
 - [ ] Check sessionStorage → `upload_{uploadId}` contains blob URL
+
+#### Story 1.4
+- [ ] Upload file → stays on `/upload` page (no redirect)
+- [ ] "or Select a Starting Points" section appears
+- [ ] Upload history card displays with filename and timestamp
+- [ ] Click history card → navigates to `/analyze/{uploadId}`
+- [ ] Check localStorage → `upload_history_{company_id}` contains upload array
+- [ ] Upload 21st file → oldest upload removed (20-limit enforced)
+- [ ] Switch company → history filters to new company's uploads
 
 ### CLI Regression Testing
 
@@ -193,8 +225,8 @@ docs/stories/
 
 Epic 1 is complete when:
 
-- [x] All 3 stories meet their acceptance criteria
-- [x] End-to-end flow works: `/` → type company → `/upload` → upload file → redirect to `/analyze/{uploadId}`
+- [x] All 3 stories (1.1-1.3) meet their acceptance criteria
+- [x] End-to-end flow works: `/` → type company → `/upload` → upload file → ~~redirect to `/analyze/{uploadId}`~~ stay on page (Story 1.4)
 - [x] Company context persists across navigation (cookie)
 - [x] File uploads successfully to Vercel Blob
 - [x] Blob URL saved to sessionStorage
@@ -202,6 +234,14 @@ Epic 1 is complete when:
 - [x] No console errors or TypeScript compilation errors
 - [x] Existing Python CLI pipeline still works unchanged
 - [x] Manual testing completed for all 4 brands
+
+**Story 1.4 Complete (Optional Enhancement) when:**
+- [ ] Upload history cards display below upload zone
+- [ ] User stays on `/upload` after successful upload
+- [ ] History persists in localStorage (company-scoped)
+- [ ] Click history card navigates to `/analyze/{uploadId}`
+- [ ] 20-upload limit enforced (FIFO)
+- [ ] Empty state handled (section hidden when no history)
 
 ---
 

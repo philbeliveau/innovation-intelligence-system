@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { readFile } from 'fs/promises'
-import { parse } from 'yaml'
+import { load } from 'js-yaml'
 import { join } from 'path'
 import { cookies } from 'next/headers'
 
@@ -19,9 +19,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Construct path to YAML file (go up from innovation-web to parent directory)
-    const projectRoot = join(process.cwd(), '..')
-    const yamlPath = join(projectRoot, 'data', 'brand-profiles', `${company_id}.yaml`)
+    // Construct path to YAML file (within innovation-web directory)
+    const yamlPath = join(process.cwd(), 'data', 'brand-profiles', `${company_id}.yaml`)
 
     // Read YAML file
     let yamlContent: string
@@ -38,7 +37,7 @@ export async function POST(request: NextRequest) {
     // Parse YAML
     let profile: { brand_name?: string }
     try {
-      profile = parse(yamlContent) as { brand_name?: string }
+      profile = load(yamlContent) as { brand_name?: string }
     } catch (error) {
       console.error(`Failed to parse YAML for ${company_id}:`, error)
       return NextResponse.json(

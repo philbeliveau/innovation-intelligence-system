@@ -86,31 +86,40 @@
 │   │   └──────────────┘  └──────────────┘                 │  │
 │   └───────────────────────────────────────────────────────┘  │
 │                                                               │
-│            or Select a Starting Point                         │
+│            or Select a Starting Points                        │
+│            (Story 1.4 - appears when upload history exists)  │
 │                                                               │
 │   ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│   │ 📄           │  │ 📄           │  │ 📄           │     │
 │   │ Food & Bev   │  │ Food & Bev   │  │ Food & Bev   │     │
 │   │ Sept 2025    │  │ Sept 2025    │  │ Sept 2025    │     │
 │   │ SERENDIPITY  │  │ SERENDIPITY  │  │ SERENDIPITY  │     │
 │   │ SEEKERS      │  │ SEEKERS      │  │ SEEKERS      │     │
+│   │              │  │              │  │              │     │
+│   │ report.pdf   │  │ trends.pdf   │  │ market.pdf   │     │
+│   │ 2 hours ago  │  │ Yesterday    │  │ 3 days ago   │     │
 │   └──────────────┘  └──────────────┘  └──────────────┘     │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-**After File Upload:**
+**After File Upload (Story 1.4 Behavior):**
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │              Company: Lactalis Canada 🏢                      │
 │                                                               │
 │   ✓ File uploaded: sustainable-packaging-2025.pdf             │
+│   (User stays on page - no automatic redirect)               │
 │                                                               │
-│   [Generate Opportunities →]                                  │
-│   (no brand selector - already set in onboarding)            │
+│            or Select a Starting Points                        │
+│                                                               │
+│   [Upload history cards appear here - see above layout]      │
+│   Click any card to navigate to /analyze/{uploadId}          │
+│                                                               │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 **shadcn/ui Components Used:**
-- `Card` - Upload container
+- `Card` - Upload container + Upload history cards
 - `Button` - Primary CTA
 - `Badge` - File upload status + Company indicator
 - Custom drag & drop zone (react-dropzone)
@@ -119,29 +128,44 @@
 - ✅ No brand selector on homepage (moved to onboarding)
 - ✅ Company name displayed at top-right corner
 - ✅ Cleaner presentation for client demos
+- ✅ **Story 1.4:** No automatic redirect after upload - user stays on page
+- ✅ **Story 1.4:** Upload history cards appear dynamically below upload zone
+- ✅ **Story 1.4:** Users can upload multiple documents in single session
+- ✅ **Story 1.4:** Click history card to navigate to analysis page
 
 ---
 
-## 5.2 Left Sidebar - Collapsible Home Menu
+## 5.2 Left Sidebar - Collapsible Home Menu with Ideation Tracks
 
 **Hover Behavior:**
 - Cursor moves to left edge → sidebar slides in (300ms transition)
-- Shows minimal menu with home navigation
+- Shows home navigation and non-selected ideation track
 
 **Layout:**
 ```
-┌─────────────────┐
-│                 │
-│   🏠 Home       │
-│                 │
-│                 │
-└─────────────────┘
+┌─────────────────────────────┐
+│                             │
+│   🏠 Home                   │
+│                             │
+│   Ideation Tracks           │
+│   ┌───────────────────────┐ │
+│   │ 2                     │ │
+│   │ Track Title           │ │
+│   │ Summary of this tra...│ │
+│   └───────────────────────┘ │
+│                             │
+└─────────────────────────────┘
 ```
 
 **Implementation:**
-- Click "Home" → navigate to `/` (homepage)
+- Width: 240px (w-60) to accommodate track card
+- Click "Home" → navigate to `/upload` (homepage)
 - Collapsed by default (only visible on hover at left edge)
+- Displays non-selected track from sessionStorage
+- Track card shows: track number, title, truncated summary (100 chars)
+- Dimmed styling (bg-gray-100, opacity-80)
 - Allows user to return to upload page from any view
+- Keeps context of non-selected track visible throughout pipeline
 
 ---
 
@@ -181,53 +205,74 @@
 1. After file upload, call `/api/analyze-document` with blob URL
 2. LLM extracts structured data from document AND identifies 2 key ideation tracks
 3. Display document card (left) + track division showing 2 tracks (right)
-4. Both tracks displayed as selected (matching `track-division.png` UI)
-5. User reviews and clicks "Launch"
-6. Navigate to horizontal pipeline viewer with selected tracks
+4. User selects exactly 1 track via radio button (Track 1 or Track 2)
+5. Selected track displays with highlighted border/background (border-blue-500, bg-blue-50)
+6. Non-selected track displays with dimmed appearance (opacity-60, border-gray-300)
+7. User reviews selection and clicks "Launch"
+8. Selected track data stored in sessionStorage for pipeline viewer
+9. Non-selected track data stored in sessionStorage for sidebar display
+10. Navigate to vertical pipeline viewer with selected track flowing downward
+11. Non-selected track appears in left sidebar under "Ideation Tracks"
 
 ---
 
-## 5.4 Pipeline Viewer - Horizontal Flow Layout
+## 5.4 Pipeline Viewer - Vertical Flow Layout
 
 **Reference:** `docs/image/track-division.png` for track UI at Stage 1
 
-**Horizontal Pipeline Layout:**
+**Vertical Pipeline Layout:**
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────┐
 │  ◀ Back                  Innovation Pipeline             Company: Lactalis  │
-├────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌───────┐
-│  │ Stage 1  │ →  │ Stage 2  │ →  │ Stage 3  │ →  │ Stage 4  │ →  │Stage 5│
-│  │ Tracks   │    │ Signals  │    │ Lessons  │    │ Context  │    │Opport.│
-│  │   ✓      │    │   ⏳     │    │   ⌛     │    │   ⌛     │    │  ⌛   │
-│  └──────────┘    └──────────┘    └──────────┘    └──────────┘    └───────┘
-│                                                                             │
-│  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │ Current Stage: Stage 2 - Signal Amplification                        │  │
-│  │                                                                       │  │
-│  │ Extracting broader trends from selected inspiration tracks...        │  │
-│  │                                                                       │  │
-│  │ Progress: ████████████░░░░░ 75%        Est. time: 2 min remaining   │  │
-│  └──────────────────────────────────────────────────────────────────────┘  │
-│                                                                             │
-│  Stage 1 Output (Completed):                                               │
-│  ┌─────────────────────────────┐  ┌─────────────────────────────┐         │
-│  │ Track 1 (Selected) ✓        │  │ Track 2 (Selected) ✓        │         │
-│  │ [Track Icon/Image]          │  │ [Track Icon/Image]          │         │
-│  │ Experience Theater          │  │ Community Building          │         │
-│  │ Summary of this track...    │  │ Summary of this track...    │         │
-│  └─────────────────────────────┘  └─────────────────────────────┘         │
-└────────────────────────────────────────────────────────────────────────────┘
+├──┬─────────────────────────────────────────────────────────────────────────┤
+│S │                                                                          │
+│I │  ┌───────────────────────────────────────────────────────────────────┐  │
+│D │  │ Stage 1 - Tracks                                              ✓  │  │
+│E │  └───────────────────────────────────────────────────────────────────┘  │
+│B │                                  ↓                                       │
+│A │  ┌───────────────────────────────────────────────────────────────────┐  │
+│R │  │ Stage 2 - Signals                                             ⏳ │  │
+│  │  └───────────────────────────────────────────────────────────────────┘  │
+│T │                                  ↓                                       │
+│r │  ┌───────────────────────────────────────────────────────────────────┐  │
+│a │  │ Stage 3 - Lessons                                             ⌛ │  │
+│c │  └───────────────────────────────────────────────────────────────────┘  │
+│k │                                  ↓                                       │
+│  │  ┌───────────────────────────────────────────────────────────────────┐  │
+│2 │  │ Stage 4 - Context                                             ⌛ │  │
+│  │  └───────────────────────────────────────────────────────────────────┘  │
+│  │                                  ↓                                       │
+│  │  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │  │ Stage 5 - Opportunities                                       ⌛ │  │
+│  │  └───────────────────────────────────────────────────────────────────┘  │
+│  │                                                                          │
+│  │  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │  │ Current Stage: Stage 2 - Signal Amplification                     │  │
+│  │  │                                                                    │  │
+│  │  │ Extracting broader trends from selected inspiration track...      │  │
+│  │  │                                                                    │  │
+│  │  │ Progress: ████████████░░░░░ 75%     Est. time: 2 min remaining    │  │
+│  │  └───────────────────────────────────────────────────────────────────┘  │
+│  │                                                                          │
+│  │  Stage 1 Output (Completed):                                            │
+│  │  ┌──────────────────────────────────────────────┐                       │
+│  │  │ Track 1 (Selected) ✓                         │                       │
+│  │  │ [Track Icon/Image]                           │                       │
+│  │  │ Experience Theater                           │                       │
+│  │  │ Summary of this track...                     │                       │
+│  │  │ More content about the selected track...     │                       │
+│  │  └──────────────────────────────────────────────┘                       │
+└──┴─────────────────────────────────────────────────────────────────────────┘
 ```
 
 **Layout Features:**
-1. **Horizontal Stage Row:** All 5 stages displayed in single horizontal row at top
-2. **Active Stage Panel:** Below stages, shows current stage details and progress
-3. **Completed Output:** Previous stage outputs shown below (e.g., Stage 1 tracks)
-4. **Flow Direction:** Left to right with arrow indicators between stages
-5. **Track Division:** Stage 1 displays the 2 selected tracks matching `track-division.png` UI
+1. **Left Sidebar:** Non-selected track displayed in collapsible sidebar (hover to reveal)
+2. **Vertical Stage Column:** All 5 stages displayed in single vertical column flowing downward in main content area
+3. **Active Stage Panel:** Below stages, shows current stage details and progress
+4. **Completed Output:** Stage 1 shows only the selected track in main content area
+5. **Flow Direction:** Top to bottom with downward arrow indicators between stages
+6. **Track Division:** Stage 1 displays only the selected track (single card, not side-by-side)
 
 **shadcn/ui Components:**
 - `Card` - Stage boxes and track containers
@@ -237,11 +282,11 @@
 
 ---
 
-## 5.5 Pipeline Viewer - Stages 2-5 (Horizontal Progress)
+## 5.5 Pipeline Viewer - Stages 2-5 (Vertical Progress)
 
-**Horizontal Stage Indicators:**
+**Vertical Stage Indicators:**
 
-Each stage in the horizontal row shows:
+Each stage in the vertical column shows:
 - Stage number (1-5)
 - Short name
 - Status icon

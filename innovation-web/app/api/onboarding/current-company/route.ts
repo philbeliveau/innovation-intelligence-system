@@ -16,8 +16,18 @@ export async function GET() {
       )
     }
 
-    // Load YAML file from data/brand-profiles/
-    const yamlPath = path.join(process.cwd(), '..', 'data', 'brand-profiles', `${companyId}.yaml`)
+    // Sanitize company_id to prevent path traversal attacks
+    const sanitizedId = companyId.replace(/[^a-z0-9-]/gi, '')
+
+    if (sanitizedId !== companyId) {
+      return NextResponse.json(
+        { error: 'Invalid company identifier' },
+        { status: 400 }
+      )
+    }
+
+    // Load YAML file from data/brand-profiles/ (within innovation-web directory)
+    const yamlPath = path.join(process.cwd(), 'data', 'brand-profiles', `${sanitizedId}.yaml`)
 
     if (!fs.existsSync(yamlPath)) {
       return NextResponse.json(

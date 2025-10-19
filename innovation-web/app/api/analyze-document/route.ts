@@ -86,7 +86,9 @@ export async function POST(request: NextRequest) {
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i)
         const textContent = await page.getTextContent()
-        const pageText = textContent.items.map((item: any) => item.str).join(' ')
+        const pageText = textContent.items
+          .map((item) => ('str' in item ? item.str : ''))
+          .join(' ')
         textParts.push(pageText)
       }
 
