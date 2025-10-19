@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { ChatOpenAI } from '@langchain/openai'
 import pdf from 'pdf-parse-fork'
 
 // Add Node.js runtime configuration for Vercel
@@ -61,15 +62,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Quick text extraction to validate PDF is readable
+    // Extract text from PDF for LLM analysis
     let documentText: string
+    let fullText: string
     try {
       const arrayBuffer = await pdfResponse.arrayBuffer()
       const buffer = Buffer.from(arrayBuffer)
 
       // Parse PDF with pdf-parse-fork (Node.js compatible)
       const data = await pdf(buffer)
-      documentText = data.text.slice(0, 500) // Just extract first 500 chars for validation
+      fullText = data.text
+
+      // Limit to first 2000 characters for LLM processing (optimized for speed)
+      documentText = fullText.slice(0, 2000)
 
       if (!documentText || documentText.trim().length === 0) {
         console.error('[analyze-document] PDF contains no extractable text')
@@ -79,7 +84,7 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      console.log(`[analyze-document] PDF validated - ${data.text.length} characters total`)
+      console.log(`[analyze-document] Extracted ${documentText.length} of ${fullText.length} total characters for LLM analysis`)
     } catch (error) {
       console.error('[analyze-document] PDF parsing error:', error)
       return NextResponse.json(
@@ -88,32 +93,134 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Task 3: Return immediately with placeholder analysis
-    // Real analysis will happen during pipeline execution (Stage 1)
+    // Task 3: Configure LangChain with OpenRouter (optimized for speed)
+    console.log('[analyze-document] Initializing LLM for document summarization')
+
+    // Validate API key
+    if (!process.env.OPENROUTER_API_KEY) {
+      console.error('Missing OPENROUTER_API_KEY environment variable')
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      )
+    }
+
+    const llm = new ChatOpenAI({
+      model: process.env.LLM_MODEL || 'deepseek/deepseek-chat',
+      apiKey: process.env.OPENROUTER_API_KEY,
+      configuration: {
+        baseURL: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
+      },
+      temperature: 0.7,
+      timeout: 30000, // 30 second timeout (optimized)
+      maxRetries: 2, // Reduced retries for speed
+      maxTokens: 800, // Reduced token limit for faster response
+    })
+
+    // Task 4: Create LLM analysis prompt (NO TRACKS - metadata only)
+    const analysisPrompt = `You are an innovation intelligence analyst. Analyze the following document excerpt and extract structured metadata.
+
+DOCUMENT EXCERPT (first 2000 characters):
+"""
+${documentText}
+"""
+
+Extract the following information and respond ONLY with valid JSON in this exact format:
+
+{
+  "title": "A compelling title capturing the main innovation or trend (10-15 words)",
+  "summary": "A concise summary of the document's main points (2-3 sentences, approximately 50 words)",
+  "industry": "Primary industry as a single word (e.g., fashion, food, technology, healthcare, sports, retail, finance)",
+  "theme": "Main theme or topic in 2-3 words (e.g., 'sustainability innovation', 'customer experience', 'digital transformation')",
+  "sources": ["Array of identifiable sources mentioned (website names, publications, companies)"]
+}
+
+IMPORTANT REQUIREMENTS:
+- Focus on the MAIN innovation or trend in the document
+- If no sources are explicitly mentioned, use an empty array: []
+- Respond with ONLY valid JSON, no markdown formatting, no code blocks, no additional text`
+
+    // Task 5: Parse and validate LLM response
+    console.log('[analyze-document] Sending document to LLM for analysis')
+
     const upload_id = `upload-${Date.now()}`
     const analyzed_at = new Date().toISOString()
 
-    // Extract first 200 characters as preview
-    const preview = documentText.slice(0, 200).trim()
+    let analysis: AnalysisResult
+    try {
+      const result = await llm.invoke(analysisPrompt)
 
-    const analysis: AnalysisResult = {
-      title: 'Document Preview',
-      summary: `Document uploaded successfully. Preview: ${preview}${documentText.length > 200 ? '...' : ''}`,
-      industry: 'pending',
-      theme: 'Analysis in progress',
-      sources: [],
-      tracks: [
-        {
-          title: 'Track 1 - Analyzing...',
-          summary: 'Full analysis will be available after pipeline execution. Click "Launch Innovation Pipeline" to begin.',
-          icon_url: ''
-        },
-        {
-          title: 'Track 2 - Analyzing...',
-          summary: 'Full analysis will be available after pipeline execution. Click "Launch Innovation Pipeline" to begin.',
-          icon_url: ''
-        }
-      ]
+      let content = result.content.toString()
+
+      // Strip markdown code blocks if present
+      content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+
+      console.log('[analyze-document] LLM response received, parsing JSON')
+
+      const parsed = JSON.parse(content)
+
+      // Validate required fields
+      if (!parsed.title || !parsed.summary || !parsed.industry || !parsed.theme) {
+        throw new Error('Missing required fields in LLM response')
+      }
+
+      // Ensure sources is an array
+      if (!Array.isArray(parsed.sources)) {
+        parsed.sources = []
+      }
+
+      // Build analysis with LLM-generated metadata and placeholder tracks
+      analysis = {
+        title: parsed.title,
+        summary: parsed.summary,
+        industry: parsed.industry,
+        theme: parsed.theme,
+        sources: parsed.sources,
+        tracks: [
+          {
+            title: 'Track 1',
+            summary: 'Full track analysis will be available after pipeline execution.',
+            icon_url: ''
+          },
+          {
+            title: 'Track 2',
+            summary: 'Full track analysis will be available after pipeline execution.',
+            icon_url: ''
+          }
+        ]
+      }
+
+      console.log('[analyze-document] Analysis completed successfully')
+      console.log(`[analyze-document] Title: ${analysis.title}`)
+      console.log(`[analyze-document] Industry: ${analysis.industry}`)
+      console.log(`[analyze-document] Theme: ${analysis.theme}`)
+
+    } catch (error) {
+      console.error('[analyze-document] LLM response parsing error:', error)
+
+      // Fallback structure if LLM parsing fails
+      const preview = documentText.slice(0, 200).trim()
+      const firstSentence = preview.split('.')[0] + '.'
+
+      analysis = {
+        title: firstSentence || 'Document Analysis',
+        summary: `${preview}${documentText.length > 200 ? '...' : ''}`,
+        industry: 'general',
+        theme: 'innovation',
+        sources: [],
+        tracks: [
+          {
+            title: 'Track 1',
+            summary: 'Track analysis will be available after pipeline execution.',
+            icon_url: ''
+          },
+          {
+            title: 'Track 2',
+            summary: 'Track analysis will be available after pipeline execution.',
+            icon_url: ''
+          }
+        ]
+      }
     }
 
     const response: AnalyzeDocumentResponse = {
