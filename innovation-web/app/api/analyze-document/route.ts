@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ChatOpenAI } from '@langchain/openai'
-import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs'
 
-// Configure worker for Node.js environment
-if (typeof process !== 'undefined') {
-  pdfjs.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs'
+// Add Node.js runtime configuration for Vercel
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+// Lazy load pdfjs to avoid initialization issues
+async function loadPdfJs() {
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
+
+  // Configure worker path for Node.js environment (no actual import needed)
+  if (typeof process !== 'undefined') {
+    pdfjs.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs'
+  }
+
+  return pdfjs
 }
 
 interface AnalysisResult {
@@ -77,6 +87,9 @@ export async function POST(request: NextRequest) {
     let documentText: string
     try {
       const arrayBuffer = await pdfResponse.arrayBuffer()
+
+      // Lazy load pdfjs
+      const pdfjs = await loadPdfJs()
 
       // Load PDF document
       const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise
