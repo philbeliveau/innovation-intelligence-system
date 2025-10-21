@@ -28,8 +28,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#F5F5F5] relative overflow-hidden">
-      {/* Decorative Teal Circles - Centered to match target design */}
-      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+      {/* Decorative Teal Circles - Centered to match target design - Hidden on mobile, scaled on tablet */}
+      <div className="hidden md:block absolute inset-0 pointer-events-none" aria-hidden="true">
         {/* Container centered */}
         <div className="absolute left-[50%] top-[50%]">
           <div className="relative">
@@ -38,12 +38,12 @@ export default function Home() {
                 key={index}
                 className="absolute rounded-full"
                 style={{
-                  width: `${circle.size}px`,
-                  height: `${circle.size}px`,
+                  width: `${circle.size * 0.7}px`, // 70% size on tablet
+                  height: `${circle.size * 0.7}px`,
                   backgroundColor: circle.color,
                   opacity: circle.opacity,
-                  left: `${circle.x}px`,
-                  top: `${circle.y}px`,
+                  left: `${circle.x * 0.7}px`,
+                  top: `${circle.y * 0.7}px`,
                   transform: `translate(-50%, -50%)`,
                 }}
               />
@@ -54,23 +54,23 @@ export default function Home() {
 
       {/* Main Content - centered */}
       <div className="flex flex-col items-center justify-center min-h-screen relative z-10 px-4">
-        <div className="flex flex-col items-center gap-3">
-          {/* Light gray circle behind title */}
-          <div className="absolute w-[400px] h-[400px] bg-white/60 rounded-full -z-10 left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2" aria-hidden="true"></div>
+        <div className="flex flex-col items-center gap-3 w-full max-w-md">
+          {/* Light gray circle behind title - Responsive sizing */}
+          <div className="absolute w-[280px] h-[280px] md:w-[400px] md:h-[400px] bg-white/60 rounded-full -z-10 left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2" aria-hidden="true"></div>
 
-          {/* Title - Exact match to landing page */}
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 relative">
+          {/* Title - Responsive text sizing */}
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 relative text-center">
             <span className="font-[family-name:var(--font-dancing-script)] text-[#5B9A99]">My</span> Board of Ideators
           </h1>
 
-          {/* Subtitle - "Signals to Sparks" - offset to the right */}
-          <p className="text-base md:text-lg italic text-[#5B9A99] self-end pr-8">
+          {/* Subtitle - "Signals to Sparks" - Centered on mobile, offset on desktop */}
+          <p className="text-sm sm:text-base md:text-lg italic text-[#5B9A99] self-center md:self-end md:pr-8">
             Signals to Sparks
           </p>
 
-          {/* Authentication UI - Shows before company input */}
+          {/* Authentication UI - Shows before company input - Centered on mobile */}
           <SignedOut>
-            <div className="mt-2 text-center self-end pr-8">
+            <div className="mt-2 text-center self-center md:self-end md:pr-8">
               <p className="text-gray-600 mb-3 text-sm">Please sign in to continue</p>
               <SignInButton mode="modal">
                 <button className="bg-[#5B9A99] hover:bg-[#4A7F7E] text-white font-semibold py-2 px-6 rounded-xl shadow-lg transition-all hover:shadow-xl text-sm">
@@ -80,10 +80,10 @@ export default function Home() {
             </div>
           </SignedOut>
 
-          {/* Company Input - Only shows when signed in */}
+          {/* Company Input - Only shows when signed in - Centered on mobile */}
           <SignedIn>
             {/* Company Input Component */}
-            <div className="w-64 self-end pr-8">
+            <div className="w-full sm:w-64 self-center md:self-end md:pr-8">
               <CompanyInput />
             </div>
           </SignedIn>

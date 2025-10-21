@@ -105,20 +105,20 @@ export default async function ResultsPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-amber-50">
-      {/* Header */}
-      <div className="bg-white border-b-[5px] border-black">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+      {/* Header - Mobile responsive with flex-wrap */}
+      <div className="bg-white border-b-[3px] md:border-b-[5px] border-black">
+        <div className="container mx-auto px-4 py-3 sm:py-4">
+          <div className="flex items-center justify-between flex-wrap gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <Link href="/upload">
-                <button className="bg-black text-white px-4 py-2 font-bold uppercase text-sm border-2 border-black shadow-[4px_4px_0_#000] hover:shadow-[6px_6px_0_#000] hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all">
+                <button className="bg-black text-white px-3 py-1.5 sm:px-4 sm:py-2 font-bold uppercase text-xs sm:text-sm border-2 border-black shadow-[3px_3px_0_#000] sm:shadow-[4px_4px_0_#000] hover:shadow-[4px_4px_0_#000] sm:hover:shadow-[6px_6px_0_#000] hover:translate-x-[-1px] hover:translate-y-[-1px] sm:hover:translate-x-[-2px] sm:hover:translate-y-[-2px] transition-all">
                   ← Back
                 </button>
               </Link>
-              <h1 className="text-2xl font-black uppercase text-black">Innovation Opportunities</h1>
+              <h1 className="text-lg sm:text-xl md:text-2xl font-black uppercase text-black">Innovation Opportunities</h1>
             </div>
             {companyName && (
-              <span className="bg-gray-700 text-white px-3 py-1 font-bold uppercase text-xs border-2 border-black">
+              <span className="bg-gray-700 text-white px-2 py-0.5 sm:px-3 sm:py-1 font-bold uppercase text-xs border-2 border-black">
                 {companyName}
               </span>
             )}
@@ -126,11 +126,11 @@ export default async function ResultsPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Warning Banner (if some files are missing) */}
+      {/* Warning Banner (if some files are missing) - Responsive borders */}
       {opportunities.length < 5 && (
-        <div className="container mx-auto px-4 pt-6">
-          <div className="bg-yellow-200 border-4 border-black p-4 shadow-[4px_4px_0_#000]">
-            <p className="text-black font-bold">
+        <div className="container mx-auto px-4 pt-4 sm:pt-6">
+          <div className="bg-yellow-200 border-[3px] md:border-4 border-black p-3 sm:p-4 shadow-[3px_3px_0_#000] sm:shadow-[4px_4px_0_#000]">
+            <p className="text-black font-bold text-sm sm:text-base">
               ⚠️ Warning: Only {opportunities.length} of 5 opportunities are available. Some files may be missing.
             </p>
           </div>
@@ -138,25 +138,25 @@ export default async function ResultsPage({ params }: PageProps) {
       )}
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-8">
-        {/* Action Buttons */}
-        <div className="flex flex-wrap gap-4 mb-8">
-          <Link href="/upload">
-            <button className="bg-orange-500 text-white px-6 py-3 font-black uppercase text-lg border-4 border-black shadow-[6px_6px_0_#000] hover:shadow-[8px_8px_0_#000] hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all">
+      <div className="container mx-auto px-4 py-6 sm:py-8">
+        {/* Action Buttons - Stack on mobile, side-by-side on desktop */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <Link href="/upload" className="w-full sm:w-auto">
+            <button className="w-full sm:w-auto bg-orange-500 text-white px-4 py-2.5 sm:px-6 sm:py-3 font-black uppercase text-base sm:text-lg border-[3px] sm:border-4 border-black shadow-[4px_4px_0_#000] sm:shadow-[6px_6px_0_#000] hover:shadow-[6px_6px_0_#000] sm:hover:shadow-[8px_8px_0_#000] hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all">
               🚀 New Pipeline
             </button>
           </Link>
           <button
             disabled
             title="PDF export coming in Phase 2"
-            className="bg-gray-300 text-gray-600 px-6 py-3 font-black uppercase text-lg border-4 border-black shadow-[6px_6px_0_#000] cursor-not-allowed opacity-50"
+            className="w-full sm:w-auto bg-gray-300 text-gray-600 px-4 py-2.5 sm:px-6 sm:py-3 font-black uppercase text-base sm:text-lg border-[3px] sm:border-4 border-black shadow-[4px_4px_0_#000] sm:shadow-[6px_6px_0_#000] cursor-not-allowed opacity-50"
           >
             📄 Download PDF
           </button>
         </div>
 
-        {/* Opportunity Cards */}
-        <div className="flex flex-wrap gap-6 justify-center max-w-6xl mx-auto">
+        {/* Opportunity Cards - Responsive grid: 1 col mobile, 2 col tablet, 3 col desktop */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 justify-items-center max-w-6xl mx-auto">
           {opportunities.map((opp) => (
             <OpportunityCard
               key={opp.number}

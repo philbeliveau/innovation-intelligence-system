@@ -92,17 +92,17 @@ export default function CompanyInput() {
           placeholder="your company URL"
           aria-label="Company name"
           disabled={isLoading}
-          className="w-full h-10 px-4 text-center text-sm bg-white border border-gray-300 rounded-lg shadow-md placeholder:text-gray-400 focus:border-[#5B9A99] focus:outline-none focus:ring-2 focus:ring-[#5B9A99]/20 disabled:opacity-50 transition-all"
+          className="w-full h-10 sm:h-11 px-3 sm:px-4 text-center text-xs sm:text-sm bg-white border border-gray-300 rounded-lg shadow-md placeholder:text-gray-400 focus:border-[#5B9A99] focus:outline-none focus:ring-2 focus:ring-[#5B9A99]/20 disabled:opacity-50 transition-all min-h-[44px]"
         />
         {isLoading && (
-          <div className="absolute right-5 top-1/2 -translate-y-1/2">
-            <div className="w-5 h-5 border-2 border-[#5B9A99] border-t-transparent rounded-full animate-spin" />
+          <div className="absolute right-3 sm:right-5 top-1/2 -translate-y-1/2">
+            <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-[#5B9A99] border-t-transparent rounded-full animate-spin" />
           </div>
         )}
       </div>
 
       {error && (
-        <p className="mt-3 text-sm text-red-600 text-center" role="alert">
+        <p className="mt-2 sm:mt-3 text-xs sm:text-sm text-red-600 text-center" role="alert">
           {error}
         </p>
       )}

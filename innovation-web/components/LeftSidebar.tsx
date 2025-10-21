@@ -16,6 +16,15 @@ export function LeftSidebar() {
   const pathname = usePathname()
   const [isVisible, setIsVisible] = useState(false)
   const [nonSelectedTrack, setNonSelectedTrack] = useState<Track | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Detect mobile on mount
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   useEffect(() => {
     // Clear track data when on home/upload page
@@ -51,22 +60,59 @@ export function LeftSidebar() {
 
   return (
     <>
-      {/* Hover detection zone */}
-      <div
-        className="fixed left-0 top-0 h-full w-5 z-40"
-        onMouseEnter={() => setIsVisible(true)}
-        aria-hidden="true"
-      />
+      {/* Mobile: Floating toggle button */}
+      {isMobile && !isVisible && (
+        <button
+          onClick={() => setIsVisible(true)}
+          className="fixed left-4 top-4 z-50 bg-white p-2 rounded-full shadow-lg border border-gray-200 hover:bg-gray-50"
+          aria-label="Open menu"
+        >
+          <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      )}
 
-      {/* Sidebar */}
+      {/* Desktop: Hover detection zone */}
+      {!isMobile && (
+        <div
+          className="fixed left-0 top-0 h-full w-5 z-40"
+          onMouseEnter={() => setIsVisible(true)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Mobile overlay backdrop */}
+      {isMobile && isVisible && (
+        <div
+          className="fixed inset-0 bg-black/20 z-40"
+          onClick={() => setIsVisible(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar - Mobile: slide from left, Desktop: hover reveal */}
       <div
-        className={`fixed left-4 top-1/2 -translate-y-1/2 z-50 transition-transform duration-300 ease-in-out ${
+        className={`fixed ${isMobile ? 'left-0 top-0 bottom-0' : 'left-4 top-1/2 -translate-y-1/2'} z-50 transition-transform duration-300 ease-in-out ${
           isVisible ? 'translate-x-0' : '-translate-x-full'
         }`}
-        onMouseLeave={() => setIsVisible(false)}
+        onMouseLeave={() => !isMobile && setIsVisible(false)}
       >
-        <div className="flex bg-white w-fit px-1.5 py-1.5 shadow-lg rounded-2xl">
-          <div className="rounded-2xl w-full px-1.5 py-1.5 md:px-3 md:py-3">
+        <div className={`flex bg-white ${isMobile ? 'h-full flex-col p-4' : 'w-fit'} px-1.5 py-1.5 shadow-lg ${isMobile ? 'rounded-r-2xl' : 'rounded-2xl'}`}>
+          {/* Mobile: Close button */}
+          {isMobile && (
+            <button
+              onClick={() => setIsVisible(false)}
+              className="self-end mb-4 p-2 hover:bg-gray-100 rounded-full"
+              aria-label="Close menu"
+            >
+              <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+
+          <div className={`rounded-2xl w-full px-1.5 py-1.5 md:px-3 md:py-3 ${isMobile ? 'flex flex-col gap-4' : ''}`}>
             {/* Home Button */}
             <button
               title="Go to the home page"

@@ -185,17 +185,17 @@ export default function AnalyzePage() {
 
   // Success state
   return (
-    <main className="min-h-screen bg-gray-50 p-6">
+    <main className="min-h-screen bg-gray-50 p-4 sm:p-6">
       <div className="mx-auto max-w-6xl">
-        {/* Header: My Board of Ideators */}
-        <h1 className="mb-8 mt-12 text-center text-5xl font-bold text-gray-900">
+        {/* Header: My Board of Ideators - Responsive sizing */}
+        <h1 className="mb-6 sm:mb-8 mt-8 sm:mt-12 text-center text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900">
           <span className="italic text-[#4A9B8E]">My</span> Board of Ideators
         </h1>
 
         {!isPipelineRunning ? (
           /* BEFORE LAUNCH: Document card and launch button */
           <>
-            <div className="flex justify-center">
+            <div className="flex justify-center px-4 sm:px-0">
               {analysis && blobUrl && (
                 <DocumentCard
                   title={analysis.analysis.title}
@@ -241,10 +241,10 @@ export default function AnalyzePage() {
             </div>
           </>
         ) : (
-          /* AFTER LAUNCH: 2-column layout with document + pipeline */
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[480px_1fr]">
-            {/* Left: Document card */}
-            <div className="flex justify-center lg:justify-start">
+          /* AFTER LAUNCH: Single column mobile, 2-column desktop with document + pipeline */
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[minmax(320px,480px)_1fr]">
+            {/* Left: Document card - Responsive sizing */}
+            <div className="flex justify-center lg:justify-start px-4 sm:px-0">
               {analysis && blobUrl && (
                 <DocumentCard
                   title={analysis.analysis.title}
@@ -259,8 +259,8 @@ export default function AnalyzePage() {
               )}
             </div>
 
-            {/* Right: Pipeline viewer */}
-            <div className="space-y-6">
+            {/* Right: Pipeline viewer - Responsive spacing */}
+            <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
               {runId && (
                 <PipelineViewer
                   runId={runId}

@@ -57,24 +57,24 @@ export default function OpportunityCard({ number, title, markdown }: Opportunity
     <>
       <div
         className={cn(
-          'group relative w-full max-w-[280px] bg-white p-4 transition-all cursor-pointer',
-          'border-[5px] border-black shadow-[8px_8px_0_#000]',
-          'hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[11px_11px_0_#000]'
+          'group relative w-full max-w-full sm:max-w-[280px] bg-white p-3 sm:p-4 transition-all cursor-pointer',
+          'border-[3px] sm:border-[5px] border-black shadow-[6px_6px_0_#000] sm:shadow-[8px_8px_0_#000]',
+          'hover:translate-x-[-2px] hover:translate-y-[-2px] sm:hover:translate-x-[-3px] sm:hover:translate-y-[-3px] hover:shadow-[8px_8px_0_#000] sm:hover:shadow-[11px_11px_0_#000]'
         )}
         onClick={() => setIsModalOpen(true)}
       >
-        {/* Hero Image Gradient with Opportunity Number */}
+        {/* Hero Image Gradient with Opportunity Number - Reduced height on mobile */}
         <div className={cn(
-          'mb-3 h-32 w-full bg-gradient-to-br flex items-center justify-center',
+          'mb-3 h-24 sm:h-32 w-full bg-gradient-to-br flex items-center justify-center',
           getGradientClasses(number)
         )}>
           <div className="text-center">
-            <div className="text-5xl font-black text-black/20">#{number}</div>
+            <div className="text-3xl sm:text-5xl font-black text-black/20">#{number}</div>
           </div>
         </div>
 
-        {/* Title with Underline Animation */}
-        <h2 className="relative mb-3 overflow-hidden text-xl font-black uppercase leading-tight text-black">
+        {/* Title with Underline Animation - Responsive text size */}
+        <h2 className="relative mb-2 sm:mb-3 overflow-hidden text-lg sm:text-xl font-black uppercase leading-tight text-black">
           {title}
           <span className="absolute bottom-0 left-0 h-[2px] w-[90%] translate-x-[-100%] bg-black transition-transform duration-300 group-hover:translate-x-0" />
         </h2>

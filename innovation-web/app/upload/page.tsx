@@ -172,8 +172,8 @@ export default function UploadPage() {
 
   return (
     <div className="min-h-screen bg-[#F5F5F5] relative overflow-hidden">
-      {/* Decorative Teal Circles - Following landing page design */}
-      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+      {/* Decorative Teal Circles - Hidden on mobile to prevent overflow */}
+      <div className="hidden lg:block absolute inset-0 pointer-events-none" aria-hidden="true">
         {/* Top Left */}
         <div className="absolute top-[10%] left-[15%] w-32 h-32 rounded-full bg-[#5B9A99] opacity-70"></div>
         <div className="absolute top-[25%] left-[8%] w-24 h-24 rounded-full bg-[#6BAAA9] opacity-60"></div>
@@ -192,14 +192,14 @@ export default function UploadPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-col items-center px-4 pt-16 md:pt-24 relative z-10">
-        {/* Title - Following landing page exact styling */}
-        <h1 className="text-4xl md:text-5xl font-bold mb-3 text-center text-gray-900">
+      <div className="flex flex-col items-center px-4 pt-12 sm:pt-16 md:pt-24 relative z-10">
+        {/* Title - Responsive text sizing */}
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 text-center text-gray-900">
           <span className="italic text-[#5B9A99]">My</span> Board of Ideators
         </h1>
 
         {/* Subtitle - "Signals to Sparks" in italic teal */}
-        <p className="text-lg md:text-xl italic text-[#5B9A99] mb-4">
+        <p className="text-base sm:text-lg md:text-xl italic text-[#5B9A99] mb-4">
           Signals to Sparks
         </p>
 
@@ -212,8 +212,8 @@ export default function UploadPage() {
           </div>
         )}
 
-        {/* Upload Zone */}
-        <Card className="w-full max-w-2xl p-8 bg-white shadow-lg border-0">
+        {/* Upload Zone - Responsive sizing */}
+        <Card className="w-full max-w-full sm:max-w-2xl p-4 sm:p-8 bg-white shadow-lg border-0">
           {!uploading && !uploadSuccess && (
             <>
               <div
@@ -271,9 +271,9 @@ export default function UploadPage() {
                 </p>
               </div>
 
-              {/* Action Buttons - Minimalist style */}
+              {/* Action Buttons - Grid on mobile for better organization */}
               <div className="mt-6">
-                <div className="flex gap-2 justify-center flex-wrap">
+                <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 justify-center">
                   <button
                     disabled
                     className="flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm"

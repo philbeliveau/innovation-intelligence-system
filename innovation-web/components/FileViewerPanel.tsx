@@ -45,22 +45,23 @@ export function FileViewerPanel({
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent
         side="right"
-        className="w-full p-0 md:w-[60vw] md:min-w-[500px] md:max-w-[800px]"
+        className="w-full p-0 sm:w-[80vw] md:w-[60vw] md:min-w-[500px] md:max-w-[800px]"
       >
-        {/* Header */}
-        <SheetHeader className="sticky top-0 z-10 flex flex-row items-center justify-between border-b bg-white px-6 py-4">
-          <SheetTitle className="flex-1 truncate pr-4 text-lg font-semibold">
+        {/* Header - Responsive padding and sizing */}
+        <SheetHeader className="sticky top-0 z-10 flex flex-row items-center justify-between border-b bg-white px-4 sm:px-6 py-3 sm:py-4">
+          <SheetTitle className="flex-1 truncate pr-2 sm:pr-4 text-base sm:text-lg font-semibold">
             {fileName}
           </SheetTitle>
           <SheetDescription className="sr-only">
             PDF document viewer. Use download button to save file or close button to return to analysis.
           </SheetDescription>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <Button
               variant="ghost"
               size="icon"
               onClick={handleDownload}
               aria-label="Download file"
+              className="h-9 w-9 sm:h-10 sm:w-10"
             >
               <Download className="h-4 w-4" />
             </Button>
@@ -69,14 +70,15 @@ export function FileViewerPanel({
               size="icon"
               onClick={onClose}
               aria-label="Close panel"
+              className="h-9 w-9 sm:h-10 sm:w-10"
             >
               <X className="h-4 w-4" />
             </Button>
           </div>
         </SheetHeader>
 
-        {/* Content */}
-        <div className="relative h-[calc(100vh-73px)]">
+        {/* Content - Responsive height calculation */}
+        <div className="relative h-[calc(100vh-65px)] sm:h-[calc(100vh-73px)]">
           {/* Loading State */}
           {loading && !error && (
             <div className="flex h-full items-center justify-center">

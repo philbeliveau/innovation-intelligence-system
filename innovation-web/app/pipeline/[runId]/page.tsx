@@ -181,23 +181,23 @@ export default function PipelinePage() {
 
   return (
     <div className="min-h-screen bg-[#F5F5F5]">
-      {/* Header with Back button and Company name */}
+      {/* Header with Back button and Company name - Mobile responsive */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="container mx-auto px-4 py-4 max-w-7xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="container mx-auto px-4 py-3 sm:py-4 max-w-7xl">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2 sm:gap-4">
               <Button
                 variant="outline"
                 onClick={() => router.push('/upload')}
-                className="flex items-center gap-2 hover:border-[#5B9A99] hover:text-[#5B9A99] transition-colors"
+                className="flex items-center gap-1 sm:gap-2 hover:border-[#5B9A99] hover:text-[#5B9A99] transition-colors text-xs sm:text-sm px-2 sm:px-4"
                 data-testid="back-button"
               >
                 ← Back
               </Button>
-              <h1 className="text-2xl font-bold text-gray-900">Pipeline Execution</h1>
+              <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Pipeline Execution</h1>
             </div>
             {brandName && (
-              <Badge variant="secondary" className="text-sm bg-teal-50 text-[#5B9A99] border-teal-200" data-testid="company-badge">
+              <Badge variant="secondary" className="text-xs sm:text-sm bg-teal-50 text-[#5B9A99] border-teal-200" data-testid="company-badge">
                 {brandName}
               </Badge>
             )}
@@ -205,13 +205,13 @@ export default function PipelinePage() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 md:px-6 py-8 md:py-12 max-w-7xl">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 lg:gap-12">
+      <div className="container mx-auto px-4 md:px-6 py-4 sm:py-8 md:py-12 max-w-7xl">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 md:gap-8 lg:gap-12">
           {/* Left Sidebar: Stage Boxes + Non-selected Track */}
-          <div className="lg:col-span-3 flex-shrink-0 space-y-4 md:space-y-6">
-            {/* Stage Boxes - Scrollable Container */}
-            <div className="bg-white rounded-xl shadow-md p-4 md:p-6 max-h-[600px] md:max-h-[700px] overflow-y-auto scrollbar-thin scrollbar-thumb-teal-200 scrollbar-track-gray-100">
-              <h2 className="text-base md:text-lg font-semibold mb-4 md:mb-6 text-gray-900">Pipeline Stages</h2>
+          <div className="lg:col-span-3 flex-shrink-0 space-y-3 sm:space-y-4 md:space-y-6">
+            {/* Stage Boxes - Scrollable Container - Reduced height on mobile */}
+            <div className="bg-white rounded-xl shadow-md p-3 sm:p-4 md:p-6 max-h-[400px] sm:max-h-[500px] md:max-h-[700px] overflow-y-auto scrollbar-thin scrollbar-thumb-teal-200 scrollbar-track-gray-100">
+              <h2 className="text-sm sm:text-base md:text-lg font-semibold mb-3 sm:mb-4 md:mb-6 text-gray-900">Pipeline Stages</h2>
               <div className="flex flex-col gap-4">
                 {stages.map((stage, index) => (
                   <div key={stage.number}>
@@ -230,9 +230,9 @@ export default function PipelinePage() {
               </div>
             </div>
 
-            {/* Ideation Tracks - Non-selected track (Fixed size) */}
+            {/* Ideation Tracks - Non-selected track - Hidden on mobile to save space */}
             {currentStage >= 1 && nonSelectedTrack && nonSelectedTrackNumber && (
-              <div className="flex-shrink-0">
+              <div className="hidden lg:block flex-shrink-0">
                 <h3 className="text-sm font-semibold text-gray-600 mb-3 px-1">Ideation Tracks</h3>
                 <IdeationTracksSidebar
                   trackNumber={nonSelectedTrackNumber}
@@ -247,8 +247,8 @@ export default function PipelinePage() {
           <div className="lg:col-span-9">
             {/* Selected Track Card (only one, main content area) */}
             {currentStage >= 1 && (
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold mb-4">Selected Inspiration Track</h2>
+              <div className="mb-4 sm:mb-6">
+                <h2 className="text-base sm:text-lg md:text-xl font-semibold mb-3 sm:mb-4">Selected Inspiration Track</h2>
                 {selectedTrack && selectedTrackNumber ? (
                   <PipelineTrackCard
                     trackNumber={selectedTrackNumber}
