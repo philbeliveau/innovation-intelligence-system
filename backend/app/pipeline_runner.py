@@ -228,7 +228,7 @@ def execute_pipeline_background(
         update_stage_status(run_id, 3, "running")
 
         stage3 = Stage3Chain()
-        stage3_result = stage3.run(stage2_output_text)
+        stage3_result = stage3.run(stage1_output_text, stage2_output_text)
 
         save_stage_output(run_id, 3, stage3_result)
         update_stage_status(run_id, 3, "complete")
