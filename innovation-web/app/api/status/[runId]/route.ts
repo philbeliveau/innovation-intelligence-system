@@ -1,69 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { readFileSync, existsSync } from 'fs'
-import { join } from 'path'
-
-/**
- * Detect current pipeline stage from log content by parsing stage start/completion messages
- *
- * @param logContent - The full content of the pipeline.log file
- * @returns Stage number (0-5): 0 = not started, 1-5 = current/completed stage
- * @example
- * ```typescript
- * const stage = detectStageFromLog(logContent)
- * // stage === 3 if log contains "Starting Stage 3" or "Stage 3 execution completed"
- * ```
- */
-function detectStageFromLog(logContent: string): number {
-  // Check for completion messages first (higher priority)
-  if (logContent.includes('Stage 5 execution completed')) return 5
-  if (logContent.includes('Stage 4 execution completed')) return 4
-  if (logContent.includes('Stage 3 execution completed')) return 3
-  if (logContent.includes('Stage 2 execution completed')) return 2
-  if (logContent.includes('Stage 1 execution completed')) return 1
-
-  // Check for starting messages
-  if (logContent.includes('Starting Stage 5')) return 5
-  if (logContent.includes('Starting Stage 4')) return 4
-  if (logContent.includes('Starting Stage 3')) return 3
-  if (logContent.includes('Starting Stage 2')) return 2
-  if (logContent.includes('Starting Stage 1')) return 1
-
-  // Default: pipeline not started yet
-  return 0
-}
-
-/**
- * Determine pipeline execution status from log content by detecting error/completion markers
- *
- * @param logContent - The full content of the pipeline.log file
- * @returns Pipeline status: "running" (in progress), "completed" (all stages done), or "error" (failure detected)
- * @example
- * ```typescript
- * const status = detectStatusFromLog(logContent)
- * if (status === 'error') {
- *   // Handle pipeline failure
- * }
- * ```
- */
-function detectStatusFromLog(logContent: string): string {
-  // Check for errors (be specific to avoid false positives)
-  if (
-    logContent.includes(' ERROR ') ||
-    logContent.includes(' CRITICAL ') ||
-    logContent.includes('Traceback (most recent call last)') ||
-    logContent.includes('Pipeline execution failed')
-  ) {
-    return 'error'
-  }
-
-  // Check for completion
-  if (logContent.includes('Stage 5 execution completed') || logContent.includes('Pipeline completed successfully')) {
-    return 'completed'
-  }
-
-  // Default: still running
-  return 'running'
-}
+import { getStatus } from '@/lib/backend-client'
 
 export async function GET(
   request: NextRequest,
@@ -73,7 +9,7 @@ export async function GET(
     // Extract runId from URL parameter
     const { runId } = await params
 
-    // Sanitize runId to prevent path traversal
+    // Sanitize runId to prevent injection attacks
     const sanitizedRunId = runId.replace(/[^a-z0-9-]/gi, '')
     if (sanitizedRunId !== runId) {
       return NextResponse.json(
@@ -82,96 +18,58 @@ export async function GET(
       )
     }
 
-    // Get data directory from environment variable or fall back to relative path
-    // In production, set DATA_DIR=/path/to/data, in development it auto-resolves
-    const dataDir = process.env.DATA_DIR || join(process.cwd(), '..', 'data')
+    console.log(`[API /status] Fetching status for run: ${sanitizedRunId}`)
 
-    // Construct log file path
-    const logPath = join(
-      dataDir,
-      'test-outputs',
-      sanitizedRunId,
-      'logs',
-      'pipeline.log'
-    )
-
-    // Check if log file exists
-    if (!existsSync(logPath)) {
-      return NextResponse.json(
-        { error: 'Run ID not found or pipeline not started yet' },
-        { status: 404 }
-      )
-    }
-
-    // Read log file
-    let logContent: string
+    // Call Railway backend to get status
+    let statusResponse
     try {
-      logContent = readFileSync(logPath, 'utf-8')
+      statusResponse = await getStatus(sanitizedRunId)
     } catch (error) {
-      console.error(`Failed to read log file at ${logPath}:`, error)
+      console.error('[API /status] Backend client error:', error)
+
+      // Handle specific error cases
+      if (error instanceof Error) {
+        // 404 - Run ID not found
+        if (error.message.includes('not found') || error.message.includes('404')) {
+          return NextResponse.json(
+            { error: 'Run ID not found or pipeline not started yet' },
+            { status: 404 }
+          )
+        }
+
+        // Timeout errors
+        if (error.message.includes('timeout')) {
+          return NextResponse.json(
+            { error: 'Backend is slow to respond. Please wait and try again.' },
+            { status: 504 }
+          )
+        }
+
+        // Network errors
+        if (error.message.includes('fetch failed') || error.message.includes('Failed to fetch')) {
+          return NextResponse.json(
+            { error: 'Cannot connect to backend. Please try again later.' },
+            { status: 503 }
+          )
+        }
+
+        // Generic backend error
+        return NextResponse.json(
+          { error: error.message || 'Failed to fetch pipeline status' },
+          { status: 500 }
+        )
+      }
+
+      // Unknown error
       return NextResponse.json(
-        { error: 'Failed to read pipeline logs' },
+        { error: 'Internal server error' },
         { status: 500 }
       )
     }
 
-    // Detect current stage and status
-    const current_stage = detectStageFromLog(logContent)
-    const status = detectStatusFromLog(logContent)
-
-    // Load brand name from run metadata (if exists)
-    let brandName: string | undefined
-    const metadataPath = join(
-      dataDir,
-      'test-outputs',
-      sanitizedRunId,
-      'metadata.json'
-    )
-    if (existsSync(metadataPath)) {
-      try {
-        const metadata = JSON.parse(readFileSync(metadataPath, 'utf-8'))
-        brandName = metadata.brand_name
-      } catch (error) {
-        console.error('Failed to load metadata:', error)
-      }
-    }
-
-    // Prepare response
-    const response: {
-      run_id: string
-      status: string
-      current_stage: number
-      brand_name?: string
-      stage1_data?: unknown
-    } = {
-      run_id: sanitizedRunId,
-      status,
-      current_stage,
-      brand_name: brandName,
-    }
-
-    // If Stage 1 is completed, try to load Stage 1 JSON data
-    if (current_stage >= 1) {
-      const stage1JsonPath = join(
-        dataDir,
-        'test-outputs',
-        sanitizedRunId,
-        'stage1',
-        'inspirations.json'
-      )
-
-      if (existsSync(stage1JsonPath)) {
-        try {
-          const stage1Content = readFileSync(stage1JsonPath, 'utf-8')
-          response.stage1_data = JSON.parse(stage1Content)
-        } catch (error) {
-          console.error(`Failed to read/parse Stage 1 JSON at ${stage1JsonPath}:`, error)
-          // Don't fail the whole request if Stage 1 data is missing or invalid
-        }
-      }
-    }
-
-    return NextResponse.json(response)
+    // Proxy Railway backend response to frontend
+    console.log(`[API /status] Status: ${statusResponse.status}, Stage: ${statusResponse.current_stage}`)
+    return NextResponse.json(statusResponse)
   } catch (error) {
     console.error('Unexpected error in /api/status/[runId]:', error)
     return NextResponse.json(

@@ -7,24 +7,22 @@ interface IdeationTracksSidebarProps {
 }
 
 export default function IdeationTracksSidebar({ trackNumber, title, summary }: IdeationTracksSidebarProps) {
-  // Truncate summary to first 100 characters
-  const truncatedSummary = summary.length > 100
-    ? summary.substring(0, 100) + '...'
-    : summary
-
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 opacity-60" data-testid={`sidebar-track-${trackNumber}`}>
-      <div className="p-4">
+    <div
+      className="h-[140px] flex-shrink-0 bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-teal-200 hover:border-l-[#5B9A99] transition-colors duration-200"
+      data-testid={`sidebar-track-${trackNumber}`}
+    >
+      <div className="p-4 flex flex-col h-full">
         <div className="flex items-start gap-3">
-          <div className="flex-shrink-0 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-semibold text-sm">
+          <div className="flex-shrink-0 w-8 h-8 bg-[#5B9A99] rounded-full flex items-center justify-center text-white font-semibold text-sm">
             {trackNumber}
           </div>
-          <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-semibold text-gray-700 mb-1 truncate" data-testid="sidebar-track-title">
+          <div className="flex-1 min-w-0 overflow-hidden">
+            <h4 className="text-sm font-semibold text-gray-900 mb-1.5 truncate" data-testid="sidebar-track-title">
               {title}
             </h4>
-            <p className="text-xs text-gray-500" data-testid="sidebar-track-summary">
-              {truncatedSummary}
+            <p className="text-xs text-gray-500 line-clamp-3 leading-relaxed" data-testid="sidebar-track-summary">
+              {summary}
             </p>
           </div>
         </div>

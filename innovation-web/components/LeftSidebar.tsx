@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs'
 
 interface Track {
   trackNumber: number
@@ -88,7 +89,7 @@ export function LeftSidebar() {
             {nonSelectedTrack && (
               <button
                 title={`Track ${nonSelectedTrack.trackNumber}: ${nonSelectedTrack.title}`}
-                className="text-gray-600 hover:text-black border-2 inline-flex items-center mr-0 p-2.5 border-transparent bg-gray-50 shadow-sm hover:shadow-md focus:opacity-100 focus:outline-none active:shadow-inner font-medium rounded-full text-sm text-center"
+                className="text-gray-600 hover:text-black border-2 inline-flex items-center mr-4 last-of-type:mr-0 p-2.5 border-transparent bg-gray-50 shadow-sm hover:shadow-md focus:opacity-100 focus:outline-none active:shadow-inner font-medium rounded-full text-sm text-center"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -107,6 +108,40 @@ export function LeftSidebar() {
                 </svg>
               </button>
             )}
+
+            {/* Authentication UI */}
+            <SignedOut>
+              <SignInButton mode="modal">
+                <button
+                  title="Sign In"
+                  className="text-gray-600 hover:text-black border-2 inline-flex items-center p-2.5 border-transparent bg-gray-50 shadow-sm hover:shadow-md focus:opacity-100 focus:outline-none active:shadow-inner font-medium rounded-full text-sm text-center"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-5 h-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M3 3a1 1 0 011 1v12a1 1 0 11-2 0V4a1 1 0 011-1zm7.707 3.293a1 1 0 010 1.414L9.414 9H17a1 1 0 110 2H9.414l1.293 1.293a1 1 0 01-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              </SignInButton>
+            </SignedOut>
+            <SignedIn>
+              <div className="flex items-center">
+                <UserButton
+                  appearance={{
+                    elements: {
+                      avatarBox: "w-10 h-10"
+                    }
+                  }}
+                />
+              </div>
+            </SignedIn>
           </div>
         </div>
       </div>

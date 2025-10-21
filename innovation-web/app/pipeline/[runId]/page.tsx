@@ -144,14 +144,14 @@ export default function PipelinePage() {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+      <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full text-center border border-gray-200">
           <div className="text-red-500 text-5xl mb-4">⚠️</div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
           <p className="text-gray-600 mb-6">{error}</p>
           <button
             onClick={() => router.push('/')}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
+            className="bg-[#5B9A99] hover:bg-[#4A8887] text-white px-6 py-2.5 rounded-lg transition-colors duration-200 font-medium"
           >
             Back to Upload
           </button>
@@ -163,10 +163,10 @@ export default function PipelinePage() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading pipeline status...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-teal-100 border-t-[#5B9A99] mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading pipeline status...</p>
         </div>
       </div>
     )
@@ -180,16 +180,16 @@ export default function PipelinePage() {
   const nonSelectedTrackNumber = stage1Data ? (stage1Data.selected_track === 1 ? 2 : 1) : null
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F5F5F5]">
       {/* Header with Back button and Company name */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="container mx-auto px-4 py-4">
+      <div className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="container mx-auto px-4 py-4 max-w-7xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button
                 variant="outline"
                 onClick={() => router.push('/upload')}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 hover:border-[#5B9A99] hover:text-[#5B9A99] transition-colors"
                 data-testid="back-button"
               >
                 ← Back
@@ -197,7 +197,7 @@ export default function PipelinePage() {
               <h1 className="text-2xl font-bold text-gray-900">Pipeline Execution</h1>
             </div>
             {brandName && (
-              <Badge variant="secondary" className="text-sm" data-testid="company-badge">
+              <Badge variant="secondary" className="text-sm bg-teal-50 text-[#5B9A99] border-teal-200" data-testid="company-badge">
                 {brandName}
               </Badge>
             )}
@@ -205,13 +205,13 @@ export default function PipelinePage() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="container mx-auto px-4 md:px-6 py-8 md:py-12 max-w-7xl">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 lg:gap-12">
           {/* Left Sidebar: Stage Boxes + Non-selected Track */}
-          <div className="lg:col-span-3 space-y-6">
-            {/* Stage Boxes */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold mb-4">Pipeline Stages</h2>
+          <div className="lg:col-span-3 flex-shrink-0 space-y-4 md:space-y-6">
+            {/* Stage Boxes - Scrollable Container */}
+            <div className="bg-white rounded-xl shadow-md p-4 md:p-6 max-h-[600px] md:max-h-[700px] overflow-y-auto scrollbar-thin scrollbar-thumb-teal-200 scrollbar-track-gray-100">
+              <h2 className="text-base md:text-lg font-semibold mb-4 md:mb-6 text-gray-900">Pipeline Stages</h2>
               <div className="flex flex-col gap-4">
                 {stages.map((stage, index) => (
                   <div key={stage.number}>
@@ -222,7 +222,7 @@ export default function PipelinePage() {
                     />
                     {index < stages.length - 1 && (
                       <div className="flex justify-center py-2">
-                        <div className="text-gray-400 text-2xl">↓</div>
+                        <div className="text-[#5B9A99] text-xl opacity-30">↓</div>
                       </div>
                     )}
                   </div>
@@ -230,9 +230,9 @@ export default function PipelinePage() {
               </div>
             </div>
 
-            {/* Ideation Tracks - Non-selected track */}
+            {/* Ideation Tracks - Non-selected track (Fixed size) */}
             {currentStage >= 1 && nonSelectedTrack && nonSelectedTrackNumber && (
-              <div>
+              <div className="flex-shrink-0">
                 <h3 className="text-sm font-semibold text-gray-600 mb-3 px-1">Ideation Tracks</h3>
                 <IdeationTracksSidebar
                   trackNumber={nonSelectedTrackNumber}

@@ -171,35 +171,59 @@ export default function UploadPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 relative">
-      {/* Company Badge */}
-      {companyName && (
-        <div className="absolute top-6 right-6">
-          <Badge variant="secondary" className="text-sm px-4 py-2">
-            {companyName} 🏢
-          </Badge>
-        </div>
-      )}
+    <div className="min-h-screen bg-[#F5F5F5] relative overflow-hidden">
+      {/* Decorative Teal Circles - Following landing page design */}
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+        {/* Top Left */}
+        <div className="absolute top-[10%] left-[15%] w-32 h-32 rounded-full bg-[#5B9A99] opacity-70"></div>
+        <div className="absolute top-[25%] left-[8%] w-24 h-24 rounded-full bg-[#6BAAA9] opacity-60"></div>
+
+        {/* Top Right */}
+        <div className="absolute top-[12%] right-[18%] w-40 h-40 rounded-full bg-[#5B9A99] opacity-75"></div>
+        <div className="absolute top-[8%] right-[35%] w-28 h-28 rounded-full bg-[#6BAAA9] opacity-65"></div>
+
+        {/* Bottom Left */}
+        <div className="absolute bottom-[15%] left-[12%] w-36 h-36 rounded-full bg-[#5B9A99] opacity-70"></div>
+        <div className="absolute bottom-[8%] left-[25%] w-24 h-24 rounded-full bg-[#6BAAA9] opacity-60"></div>
+
+        {/* Bottom Right */}
+        <div className="absolute bottom-[20%] right-[15%] w-32 h-32 rounded-full bg-[#5B9A99] opacity-65"></div>
+        <div className="absolute bottom-[10%] right-[8%] w-20 h-20 rounded-full bg-[#6BAAA9] opacity-55"></div>
+      </div>
 
       {/* Main Content */}
-      <div className="flex flex-col items-center px-4 pt-24">
-        {/* Title */}
-        <h1 className="text-5xl font-bold mb-16 text-center">
-          <span className="italic text-[#4A9B8E]">My</span> Board of Ideators
+      <div className="flex flex-col items-center px-4 pt-16 md:pt-24 relative z-10">
+        {/* Title - Following landing page exact styling */}
+        <h1 className="text-4xl md:text-5xl font-bold mb-3 text-center text-gray-900">
+          <span className="italic text-[#5B9A99]">My</span> Board of Ideators
         </h1>
 
+        {/* Subtitle - "Signals to Sparks" in italic teal */}
+        <p className="text-lg md:text-xl italic text-[#5B9A99] mb-4">
+          Signals to Sparks
+        </p>
+
+        {/* Company Name - White rounded rectangle like landing page */}
+        {companyName && (
+          <div className="mb-8">
+            <div className="bg-white px-6 py-2 rounded-lg shadow-sm border border-gray-200">
+              <p className="text-base text-gray-800 font-medium">{companyName}</p>
+            </div>
+          </div>
+        )}
+
         {/* Upload Zone */}
-        <Card className="w-full max-w-2xl p-6 bg-white">
+        <Card className="w-full max-w-2xl p-8 bg-white shadow-lg border-0">
           {!uploading && !uploadSuccess && (
             <>
               <div
                 {...getRootProps()}
                 onKeyDown={handleKeyDown}
                 className={`
-                  border-2 border-dashed rounded-lg p-6 text-center cursor-pointer
-                  transition-all duration-200
-                  ${isDragActive ? 'border-[#4A9B8E] bg-teal-50' : 'border-gray-200 bg-gray-50'}
-                  hover:border-gray-300
+                  border-2 border-dashed rounded-xl p-10 text-center cursor-pointer
+                  transition-all duration-300
+                  ${isDragActive ? 'border-[#5B9A99] bg-teal-50/50 shadow-lg' : 'border-gray-200 bg-white'}
+                  hover:border-[#5B9A99]/50 hover:bg-teal-50/20
                 `}
                 role="button"
                 aria-label="Upload file"
@@ -208,28 +232,28 @@ export default function UploadPage() {
                 <input {...getInputProps()} />
 
                 {/* Upload Icon */}
-                <div className="flex justify-center mb-2">
-                  <div className="w-12 h-12 rounded-full bg-[#4A9B8E]/10 flex items-center justify-center">
-                    <svg className="w-6 h-6 text-[#4A9B8E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex justify-center mb-4">
+                  <div className="w-14 h-14 rounded-full bg-[#5B9A99]/10 flex items-center justify-center">
+                    <svg className="w-7 h-7 text-[#5B9A99]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
                   </div>
                 </div>
 
                 {/* Upload Heading */}
-                <h2 className="text-base font-semibold text-gray-900 mb-1.5">
+                <h2 className="text-lg font-semibold text-gray-900 mb-3">
                   Upload sources
                 </h2>
 
                 {/* Drag & drop text with link */}
-                <p className="text-sm text-gray-600 mb-1.5">
+                <p className="text-sm text-gray-600 mb-2">
                   Drag & drop or{' '}
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
                       open()
                     }}
-                    className="text-[#4A9B8E] hover:text-[#3A8B7E] underline font-medium"
+                    className="text-[#5B9A99] hover:text-[#4A8887] underline font-medium transition-colors"
                   >
                     choose file
                   </button>
@@ -237,22 +261,22 @@ export default function UploadPage() {
                 </p>
 
                 {/* Supported file types */}
-                <p className="text-xs text-gray-500 mb-1.5">
+                <p className="text-xs text-gray-500 mb-2">
                   Supported file types: PDF, txt, Markdown, Audio (e.g. mp3)
                 </p>
 
                 {/* Blue link text */}
-                <p className="text-sm text-[#4A9B8E] font-medium">
+                <p className="text-sm text-[#5B9A99] font-medium">
                   Trend Report, Article, etc.
                 </p>
               </div>
 
-              {/* Action Buttons */}
-              <div className="mt-4">
+              {/* Action Buttons - Minimalist style */}
+              <div className="mt-6">
                 <div className="flex gap-2 justify-center flex-wrap">
                   <button
                     disabled
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    className="flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
@@ -261,25 +285,25 @@ export default function UploadPage() {
                   </button>
                   <button
                     disabled
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    className="flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm"
                   >
-                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
                     </svg>
-                    <span className="text-blue-600">Website</span>
+                    Website
                   </button>
                   <button
                     disabled
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    className="flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm"
                   >
-                    <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                     </svg>
-                    <span className="text-red-600">YouTube</span>
+                    YouTube
                   </button>
                   <button
                     disabled
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    className="flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -288,12 +312,12 @@ export default function UploadPage() {
                   </button>
                   <button
                     disabled
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    className="flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm"
                   >
-                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                     </svg>
-                    <span className="text-blue-600">Copied text</span>
+                    Copied text
                   </button>
                 </div>
               </div>
@@ -302,11 +326,16 @@ export default function UploadPage() {
 
           {/* Uploading State */}
           {uploading && !uploadSuccess && (
-            <div className="space-y-4 text-center py-8">
-              <div className="text-lg font-medium text-gray-700">
+            <div className="space-y-5 text-center py-12">
+              <div className="flex justify-center">
+                <div className="w-16 h-16 rounded-full bg-[#5B9A99]/10 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-10 w-10 border-4 border-teal-100 border-t-[#5B9A99]"></div>
+                </div>
+              </div>
+              <div className="text-lg font-medium text-gray-800">
                 Uploading... {uploadProgress}%
               </div>
-              <Progress value={uploadProgress} className="w-full" />
+              <Progress value={uploadProgress} className="w-full [&>div]:bg-[#5B9A99]" />
               <div className="text-sm text-gray-600" aria-live="polite">
                 {fileName} ({formatFileSize(fileSize)})
               </div>
@@ -315,9 +344,15 @@ export default function UploadPage() {
 
           {/* Success State */}
           {uploadSuccess && (
-            <div className="space-y-4 text-center py-8">
-              <div className="text-6xl">✓</div>
-              <div className="text-lg font-medium text-green-600">
+            <div className="space-y-5 text-center py-12">
+              <div className="flex justify-center">
+                <div className="w-16 h-16 rounded-full bg-[#5B9A99]/10 flex items-center justify-center">
+                  <svg className="w-10 h-10 text-[#5B9A99]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </div>
+              <div className="text-lg font-medium text-[#5B9A99]">
                 Upload complete!
               </div>
             </div>
@@ -326,7 +361,7 @@ export default function UploadPage() {
           {/* Error Message */}
           {error && (
             <div
-              className="mt-4 p-4 bg-red-50 border-2 border-red-200 rounded-lg"
+              className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl"
               role="alert"
             >
               <p className="text-red-700 text-sm font-medium">{error}</p>
@@ -336,7 +371,7 @@ export default function UploadPage() {
                   setFileName('')
                   setFileSize(0)
                 }}
-                className="mt-2 text-red-600 text-sm underline hover:text-red-800"
+                className="mt-2 text-red-600 text-sm underline hover:text-red-800 transition-colors"
               >
                 Try Again
               </button>
@@ -346,11 +381,11 @@ export default function UploadPage() {
           {/* Success Message (Story 1.4) */}
           {successMessage && (
             <div
-              className="mt-4 p-4 bg-green-50 border-2 border-green-200 rounded-lg"
+              className="mt-6 p-4 bg-teal-50 border border-[#5B9A99]/30 rounded-xl"
               role="alert"
               aria-live="polite"
             >
-              <p className="text-green-700 text-sm font-medium">{successMessage}</p>
+              <p className="text-[#5B9A99] text-sm font-medium">{successMessage}</p>
             </div>
           )}
         </Card>
