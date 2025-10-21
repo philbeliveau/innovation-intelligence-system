@@ -5,9 +5,11 @@ fastapi==0.115.0
 uvicorn==0.32.0
 
 # LangChain Core (from existing pipeline)
-langchain>=0.1.0
-langchain-openai>=0.0.5
-langchain-community>=0.0.1
+# Using 0.1.x to preserve legacy langchain.chains imports
+langchain==0.1.20
+langchain-openai==0.0.8
+langchain-community==0.0.38
+langchain-core==0.1.52
 
 # OpenAI API Client (required by langchain-openai)
 openai>=1.0.0
