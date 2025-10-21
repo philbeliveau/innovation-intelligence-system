@@ -41,10 +41,10 @@ async function loadOpportunities(runId: string): Promise<Opportunity[]> {
     const opportunitiesData = stage5.output?.opportunities || []
 
     // Transform backend format to frontend format
-    return opportunitiesData.map((opp: any, index: number) => ({
+    return opportunitiesData.map((opp: Record<string, unknown>, index: number) => ({
       number: index + 1,
-      title: opp.title || `Opportunity ${index + 1}`,
-      markdown: opp.markdown || opp.content || ''
+      title: (opp.title as string) || `Opportunity ${index + 1}`,
+      markdown: (opp.markdown as string) || (opp.content as string) || ''
     }))
   } catch (error) {
     console.error('Error loading opportunities:', error)
