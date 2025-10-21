@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import OpportunityModal from './OpportunityModal'
+import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { Sparkles } from 'lucide-react'
 
 interface OpportunityCardProps {
   number: number
@@ -41,57 +41,59 @@ export default function OpportunityCard({ number, title, markdown }: Opportunity
   // Get innovation type from tags
   const innovationType = tags.split(',')[0]?.trim() || 'innovation'
 
-  // Color scheme based on opportunity number (similar to TrackCard)
-  const getColorClasses = (num: number) => {
-    const colors = [
-      'from-teal-400 to-teal-600',
-      'from-blue-400 to-blue-600',
-      'from-purple-400 to-purple-600',
-      'from-orange-400 to-orange-600',
-      'from-pink-400 to-pink-600',
+  // Color scheme for gradient hero based on opportunity number
+  const getGradientClasses = (num: number) => {
+    const gradients = [
+      'from-teal-200 to-teal-400',
+      'from-blue-200 to-blue-400',
+      'from-purple-200 to-purple-400',
+      'from-orange-200 to-orange-400',
+      'from-pink-200 to-pink-400',
     ]
-    return colors[(num - 1) % colors.length]
+    return gradients[(num - 1) % gradients.length]
   }
 
   return (
     <>
       <div
         className={cn(
-          'flex cursor-pointer items-start gap-4 rounded-xl bg-white p-4 shadow-sm transition-all',
-          'border-2 border-gray-200 hover:shadow-md hover:border-teal-300'
+          'group relative w-full max-w-[280px] bg-white p-4 transition-all cursor-pointer',
+          'border-[5px] border-black shadow-[8px_8px_0_#000]',
+          'hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[11px_11px_0_#000]'
         )}
         onClick={() => setIsModalOpen(true)}
       >
-        {/* Opportunity Icon with Colored Background */}
-        <div className="flex-shrink-0">
-          <div
-            className={cn(
-              'flex h-16 w-16 items-center justify-center rounded-lg bg-gradient-to-br',
-              getColorClasses(number)
-            )}
-          >
-            <div className="text-center">
-              <Sparkles className="h-6 w-6 text-white mb-1 mx-auto" />
-              <div className="text-white text-xs font-bold">#{number}</div>
-            </div>
+        {/* Hero Image Gradient with Opportunity Number */}
+        <div className={cn(
+          'mb-3 h-32 w-full bg-gradient-to-br flex items-center justify-center',
+          getGradientClasses(number)
+        )}>
+          <div className="text-center">
+            <div className="text-5xl font-black text-black/20">#{number}</div>
           </div>
         </div>
 
-        {/* Opportunity Content */}
-        <div className="flex-1 space-y-2">
-          {/* Title - Bold and prominent */}
-          <h3 className="text-base font-bold text-gray-900 line-clamp-2">{title}</h3>
+        {/* Title with Underline Animation */}
+        <h2 className="relative mb-3 overflow-hidden text-xl font-black uppercase leading-tight text-black">
+          {title}
+          <span className="absolute bottom-0 left-0 h-[2px] w-[90%] translate-x-[-100%] bg-black transition-transform duration-300 group-hover:translate-x-0" />
+        </h2>
 
-          {/* Summary - Clear and readable */}
-          <p className="text-sm leading-snug text-gray-600 line-clamp-2">{subtitle}</p>
+        {/* Innovation Type Badge */}
+        <div className="mb-3 flex flex-wrap gap-1.5">
+          <Badge className="border border-black bg-orange-500 px-2 py-0.5 text-xs font-semibold text-white uppercase">
+            {innovationType}
+          </Badge>
+        </div>
 
-          {/* Innovation Type Badge */}
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700 capitalize">
-              {innovationType}
-            </span>
-            <span className="text-xs text-gray-400">Click to view details</span>
-          </div>
+        {/* Summary */}
+        <p className="mb-3 text-sm leading-snug text-black line-clamp-3">{subtitle}</p>
+
+        {/* Pagination Dots */}
+        <div className="flex justify-center gap-1.5">
+          <div className="h-1.5 w-1.5 rounded-full bg-black" />
+          <div className="h-1.5 w-1.5 rounded-full bg-black" />
+          <div className="h-1.5 w-1.5 rounded-full bg-black" />
         </div>
       </div>
 
