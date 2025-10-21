@@ -95,6 +95,12 @@ temp/
 .tmp/
 .temp/
 
+# Backend-specific
+backend/.env
+backend/tmp/
+backend/__pycache__/
+backend/*.pyc
+
 # AI model files
 *.model
 *.pkl

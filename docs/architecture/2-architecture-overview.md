@@ -4,7 +4,7 @@
 
 ```mermaid
 graph TB
-    subgraph "Frontend - Next.js 15"
+    subgraph "Frontend - Next.js 15 (Vercel)"
         A0[Onboarding<br/>Company Selection]
         A[Homepage<br/>Drag & Drop Only]
         A1[Intermediary Card<br/>Document Summary + Industry]
@@ -12,14 +12,20 @@ graph TB
         C[Left Sidebar<br/>Collapsible Home Menu]
     end
 
-    subgraph "API Layer - Next.js Route Handlers"
+    subgraph "API Layer - Next.js Route Handlers (Vercel)"
         D[POST /api/upload<br/>Save to Vercel Blob]
         D1[POST /api/analyze-document<br/>LLM Extract Summary + Industry]
-        E[POST /api/run<br/>Execute Pipeline Stages]
-        F[GET /api/status/:runId<br/>Poll Stage Progress]
+        E[POST /api/run<br/>Proxy to Railway Backend]
+        F[GET /api/status/:runId<br/>Proxy Status from Railway]
     end
 
-    subgraph "Pipeline Execution - Python"
+    subgraph "Backend - FastAPI (Railway)"
+        R1[POST /run<br/>Download PDF & Execute Pipeline]
+        R2[GET /status/:runId<br/>Return Pipeline Status]
+        R3[GET /health<br/>Health Check]
+    end
+
+    subgraph "Pipeline Execution - Python (Railway)"
         G1[Stage 1: Input Processing<br/>Extract 2 Main Inspirations]
         G2[Stage 2: Signal Amplification<br/>Extract Trends]
         G3[Stage 3: General Translation<br/>Universal Lessons]
@@ -29,7 +35,7 @@ graph TB
 
     subgraph "Storage"
         H[Vercel Blob<br/>PDF Files]
-        I[Local Filesystem<br/>Stage Outputs + Logs]
+        I[Railway Filesystem<br/>Stage Outputs + Logs]
     end
 
     A --> D
@@ -40,30 +46,54 @@ graph TB
     C --> A
 
     D --> H
-    D1 --> I
-    E --> G1
+    E --> R1
+    F --> R2
+    R1 --> H
+    R1 --> G1
     G1 --> G2
     G2 --> G3
     G3 --> G4
     G4 --> G5
     G5 --> I
-
-    F --> I
+    R2 --> I
 
     style G1 fill:#e3f2fd
     style G2 fill:#f3e5f5
     style G3 fill:#fff3e0
     style G4 fill:#e8f5e9
     style G5 fill:#fce4ec
+    style R1 fill:#fff9c4
+    style R2 fill:#fff9c4
+    style R3 fill:#fff9c4
 ```
 
 ## Architecture Principles
 
-1. **Minimal Web Wrapper**: Next.js frontend + API routes trigger existing Python pipeline
-2. **Vercel Blob Storage**: Store uploaded PDFs, serve via public URLs
-3. **File-Based State**: No database - use filesystem for stage outputs
-4. **Sequential Execution**: Run stages 1-5 sequentially in single API call
-5. **Log-Based Progress**: Poll log files to detect current stage
-6. **shadcn/ui MCP**: Use Magic component builder for rapid UI development
+1. **Backend Separation**: FastAPI backend on Railway handles Python pipeline execution (Stories 5.1-5.3)
+2. **Frontend Proxy Pattern**: Next.js API routes proxy requests to Railway backend
+3. **Vercel Blob Storage**: Store uploaded PDFs, Railway backend downloads via blob URLs
+4. **File-Based State**: No database - Railway filesystem stores stage outputs
+5. **Sequential Execution**: Run stages 1-5 sequentially on Railway infrastructure
+6. **CORS & Environment**: Railway backend configured with CORS for Vercel domains
+7. **shadcn/ui MCP**: Use Magic component builder for rapid UI development
+
+## Deployment Architecture (Epic 5)
+
+**Frontend (Vercel):**
+- Next.js 15 application
+- API routes proxy to Railway backend
+- Environment variable: `NEXT_PUBLIC_BACKEND_URL`
+
+**Backend (Railway):**
+- FastAPI application with 3 endpoints: `/run`, `/status/:runId`, `/health`
+- Python pipeline execution (stages 1-5)
+- Dockerfile deployment with uvicorn server
+- Environment variables: `OPENROUTER_API_KEY`, `VERCEL_BLOB_READ_WRITE_TOKEN`
+
+**Benefits:**
+- ✅ No Vercel serverless timeout issues (300s limit)
+- ✅ Independent scaling of backend processing
+- ✅ Simplified development (local Docker backend + Vercel frontend)
+- ✅ Clear separation of concerns
 
 ---

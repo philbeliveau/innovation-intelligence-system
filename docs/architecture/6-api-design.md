@@ -242,7 +242,7 @@ export async function POST(request: Request) {
 ---
 
 ### `POST /api/run`
-**Purpose:** Execute pipeline with uploaded file (brand from session)
+**Purpose:** Proxy pipeline execution request to Railway backend
 
 **Request:**
 ```json
@@ -263,14 +263,12 @@ export async function POST(request: Request) {
 }
 ```
 
-**Implementation:**
+**Implementation (Railway Backend Integration - Story 5.3):**
 ```typescript
 // app/api/run/route.ts
-import { exec } from 'child_process'
-import { randomUUID } from 'crypto'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { writeFile } from 'fs/promises'
+import { runPipeline } from '@/lib/backend-client'
 
 export async function POST(request: Request) {
   const { blob_url } = await request.json()
@@ -285,40 +283,57 @@ export async function POST(request: Request) {
     )
   }
 
-  // Use UUID for security (prevents run_id guessing)
-  const run_id = `run-${randomUUID()}`
+  try {
+    // Call Railway backend to execute pipeline
+    const result = await runPipeline(blob_url, brand_id)
 
-  // Download PDF from Blob to /tmp
-  const response = await fetch(blob_url)
-  const buffer = await response.arrayBuffer()
-  const tmpPath = `/tmp/${run_id}.pdf`
-  await writeFile(tmpPath, Buffer.from(buffer))
-
-  // Execute pipeline in background (non-blocking)
-  // IMPORTANT: Use nohup to prevent process termination when API route returns
-  exec(
-    `nohup python scripts/run_pipeline.py --input-file ${tmpPath} --brand ${brand_id} --run-id ${run_id} &`,
-    { cwd: process.cwd() },
-    (error, stdout, stderr) => {
-      if (error) {
-        console.error(`Pipeline execution error for ${run_id}:`, error)
-      }
-    }
-  )
-
-  return NextResponse.json({
-    run_id,
-    status: 'running',
-    brand_id,
-    created_at: new Date().toISOString(),
-  })
+    return NextResponse.json({
+      run_id: result.run_id,
+      status: result.status,
+      brand_id,
+      created_at: new Date().toISOString(),
+    })
+  } catch (error) {
+    console.error('Pipeline execution error:', error)
+    return NextResponse.json(
+      { error: 'Failed to start pipeline execution' },
+      { status: 500 }
+    )
+  }
 }
+```
+
+**Railway Backend Endpoint (`POST /run`):**
+```python
+# backend/app/routes.py
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+import uuid
+
+router = APIRouter()
+
+class RunRequest(BaseModel):
+    blob_url: str
+    brand_id: str
+
+@router.post("/run")
+async def run_pipeline(request: RunRequest):
+    run_id = f"run-{uuid.uuid4()}"
+
+    # Download PDF from Vercel Blob
+    # Execute pipeline stages 1-5
+    # Write outputs to /tmp/{run_id}/
+
+    return {
+        "run_id": run_id,
+        "status": "running"
+    }
 ```
 
 ---
 
 ### `GET /api/status/:runId`
-**Purpose:** Get current pipeline status by parsing log files
+**Purpose:** Proxy pipeline status request to Railway backend
 
 **Response:**
 ```json
@@ -348,76 +363,60 @@ export async function POST(request: Request) {
 }
 ```
 
-**Implementation:**
+**Implementation (Railway Backend Integration - Story 5.3):**
 ```typescript
 // app/api/status/[runId]/route.ts
-import { readFile, stat } from 'fs/promises'
 import { NextResponse } from 'next/server'
+import { getStatus } from '@/lib/backend-client'
 
 export async function GET(
   request: Request,
   { params }: { params: { runId: string } }
 ) {
   const runId = params.runId
-  const logPath = `data/test-outputs/${runId}/logs/pipeline.log`
 
   try {
-    // Read log file
-    const logContent = await readFile(logPath, 'utf-8')
+    // Call Railway backend for status
+    const status = await getStatus(runId)
 
-    // Check for pipeline timeout (no log updates in 10 minutes)
-    const logStats = await stat(logPath)
-    const timeSinceLastUpdate = Date.now() - logStats.mtime.getTime()
-    const TEN_MINUTES = 10 * 60 * 1000
-
-    if (timeSinceLastUpdate > TEN_MINUTES) {
-      const currentStage = detectStageFromLog(logContent)
-      // Only timeout if not complete
-      if (currentStage < 5) {
-        return NextResponse.json({
-          run_id: runId,
-          status: 'error',
-          error: 'Pipeline timeout - no activity in 10 minutes',
-          current_stage: currentStage,
-        })
-      }
-    }
-
-    // Parse logs to detect current stage
-    const currentStage = detectStageFromLog(logContent)
-    const stages = parseStageOutputs(runId)
-
-    return NextResponse.json({
-      run_id: runId,
-      status: currentStage === 5 ? 'complete' : 'running',
-      current_stage: currentStage,
-      stages,
-    })
+    return NextResponse.json(status)
   } catch (error) {
+    console.error('Status fetch error:', error)
     return NextResponse.json(
       {
         run_id: runId,
         status: 'error',
-        error: 'Run not found or not started'
+        error: 'Run not found or backend unavailable'
       },
       { status: 404 }
     )
   }
 }
+```
 
-function detectStageFromLog(logContent: string): number {
-  if (logContent.includes('Stage 5 execution completed')) return 5
-  if (logContent.includes('Starting Stage 5')) return 5
-  if (logContent.includes('Stage 4 execution completed')) return 4
-  if (logContent.includes('Starting Stage 4')) return 4
-  if (logContent.includes('Stage 3 execution completed')) return 3
-  if (logContent.includes('Starting Stage 3')) return 3
-  if (logContent.includes('Stage 2 execution completed')) return 2
-  if (logContent.includes('Starting Stage 2')) return 2
-  if (logContent.includes('Stage 1 execution completed')) return 1
-  if (logContent.includes('Starting Stage 1')) return 1
-  return 0
-}
+**Railway Backend Endpoint (`GET /status/{run_id}`):**
+```python
+# backend/app/routes.py
+@router.get("/status/{run_id}")
+async def get_status(run_id: str):
+    log_path = f"/tmp/{run_id}/pipeline.log"
+
+    try:
+        # Read log file and detect current stage
+        with open(log_path, 'r') as f:
+            log_content = f.read()
+
+        current_stage = detect_stage_from_log(log_content)
+        stages = parse_stage_outputs(run_id)
+
+        return {
+            "run_id": run_id,
+            "status": "complete" if current_stage == 5 else "running",
+            "current_stage": current_stage,
+            "stages": stages
+        }
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Run not found")
 ```
 
 ---

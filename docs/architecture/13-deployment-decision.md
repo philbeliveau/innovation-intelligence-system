@@ -240,4 +240,69 @@ while True:
 | Date | Decision | Rationale |
 |------|----------|-----------|
 | 2025-10-19 | Documented options | QA gate identified blocker |
-| TBD | Final decision needed | Awaiting stakeholder input |
+| 2025-10-21 | **FINAL: Railway Backend** | Stories 5.1-5.3 implement Option 1 separation |
+
+---
+
+## ✅ FINAL DECISION: Railway Backend Separation (Epic 5)
+
+**Decision Made:** 2025-10-21
+**Implementation:** Stories 5.1, 5.2, 5.3
+
+### Architecture Selected
+
+**Frontend (Vercel):**
+- **Vercel Project:** `innovation-web`
+- Next.js 15 application
+- API routes proxy requests to Railway backend
+- Environment: `NEXT_PUBLIC_BACKEND_URL`
+
+**Backend (Railway):**
+- **Railway Project:** `My-board-of-ideators`
+- FastAPI application with endpoints: `/run`, `/status/{run_id}`, `/health`
+- Python pipeline execution (15-30 min without timeout issues)
+- Docker deployment with uvicorn server
+- Environment: `OPENROUTER_API_KEY`, `VERCEL_BLOB_READ_WRITE_TOKEN`
+
+### Implementation Summary
+
+**Story 5.1: FastAPI Backend Directory Structure**
+- Created `/backend` directory with minimal FastAPI application
+- Copied pipeline code from `/pipeline` to `/backend/pipeline`
+- Created `requirements.txt` with FastAPI + existing pipeline dependencies
+- Local development works: `uvicorn app.main:app --reload`
+
+**Story 5.2: Railway Deployment Configuration**
+- Created `Dockerfile` for Python 3.11 + FastAPI
+- Created `railway.json` with build/deploy config
+- Configured health checks and auto-restart
+- Deployed to Railway with public URL
+
+**Story 5.3: Frontend Migration to Railway Backend**
+- Created `lib/backend-client.ts` for Railway API calls
+- Refactored `/api/run` to proxy to Railway `POST /run`
+- Refactored `/api/status/[runId]` to proxy to Railway `GET /status/{runId}`
+- Removed `execFile()` local Python execution
+- Added `NEXT_PUBLIC_BACKEND_URL` environment variable
+
+### Benefits Realized
+
+✅ **No Vercel Serverless Timeout:** Pipeline executes on Railway without 300s limit
+✅ **Independent Scaling:** Backend scales separately from frontend
+✅ **Simplified Development:** Docker backend + Vercel frontend
+✅ **Cost Effective:** ~$5/month Railway + free Vercel tier
+✅ **Clear Separation:** Frontend handles UI, backend handles processing
+✅ **Production Ready:** Deployed and tested with real PDFs
+
+### Deployment Configuration
+
+**Railway Project:** `My-board-of-ideators`
+**Vercel Project:** `innovation-web`
+**Integration:** Frontend proxies API calls to Railway backend via environment variable `NEXT_PUBLIC_BACKEND_URL`
+
+### Architecture Documentation Updated
+
+- **2-architecture-overview.md:** Updated system diagram with Railway backend
+- **3-tech-stack.md:** Added FastAPI, Railway, Docker to tech matrix
+- **6-api-design.md:** Updated API endpoints to show proxy pattern
+- **8-deployment.md:** Added Railway deployment workflow and configuration
