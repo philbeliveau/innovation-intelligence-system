@@ -81,7 +81,7 @@ export default function CompanyInput() {
   }
 
   return (
-    <div className="w-full max-w-sm">
+    <div className="w-full max-w-md">
       <div className="relative">
         <Input
           type="text"
@@ -92,17 +92,17 @@ export default function CompanyInput() {
           placeholder="Put your company name..."
           aria-label="Company name"
           disabled={isLoading}
-          className="w-full h-12 px-6 text-center text-sm bg-white border-2 border-gray-200 rounded-lg focus:border-teal-600 focus:outline-none focus:ring-0 disabled:opacity-50"
+          className="w-full h-14 px-8 text-center text-base bg-white border border-gray-300 rounded-xl shadow-md placeholder:text-gray-400 focus:border-[#5B9A99] focus:outline-none focus:ring-2 focus:ring-[#5B9A99]/20 disabled:opacity-50 transition-all"
         />
         {isLoading && (
-          <div className="absolute right-4 top-1/2 -translate-y-1/2">
-            <div className="w-5 h-5 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+          <div className="absolute right-5 top-1/2 -translate-y-1/2">
+            <div className="w-5 h-5 border-2 border-[#5B9A99] border-t-transparent rounded-full animate-spin" />
           </div>
         )}
       </div>
 
       {error && (
-        <p className="mt-2 text-sm text-red-600 text-center" role="alert">
+        <p className="mt-3 text-sm text-red-600 text-center" role="alert">
           {error}
         </p>
       )}
