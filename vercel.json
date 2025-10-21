@@ -1,0 +1,6 @@
+{
+  "buildCommand": "cd innovation-web && npm run build",
+  "outputDirectory": "innovation-web/.next",
+  "installCommand": "cd innovation-web && npm install",
+  "framework": null
+}
