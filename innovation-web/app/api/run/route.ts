@@ -3,9 +3,20 @@ import { cookies } from 'next/headers'
 import { execFile } from 'child_process'
 import { writeFileSync } from 'fs'
 import { join } from 'path'
+import { auth } from '@clerk/nextjs/server'
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication
+    const { userId } = await auth()
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Please sign in to continue' },
+        { status: 401 }
+      )
+    }
+
     // Parse request body
     const body = await request.json()
     const { blob_url, upload_id } = body

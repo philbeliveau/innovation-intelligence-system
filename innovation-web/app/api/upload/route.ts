@@ -1,5 +1,6 @@
 import { put, type PutBlobResult } from '@vercel/blob';
 import { NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 
 const ALLOWED_TYPES = ['application/pdf', 'text/plain', 'text/markdown'];
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB in bytes
@@ -56,6 +57,16 @@ async function uploadWithRetry(path: string, file: File): Promise<PutBlobResult>
 
 export async function POST(request: Request): Promise<NextResponse> {
   try {
+    // Check authentication
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Please sign in to continue' },
+        { status: 401 }
+      );
+    }
+
     // Extract file from form data
     const formData = await request.formData();
     const fileEntry = formData.get('file');

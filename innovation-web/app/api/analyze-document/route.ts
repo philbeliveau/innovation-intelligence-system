@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ChatOpenAI } from '@langchain/openai'
 import pdf from 'pdf-parse-fork'
+import { auth } from '@clerk/nextjs/server'
 
 // Add Node.js runtime configuration for Vercel
 export const runtime = 'nodejs'
@@ -29,6 +30,16 @@ interface AnalyzeDocumentResponse {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication
+    const { userId } = await auth()
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Please sign in to continue' },
+        { status: 401 }
+      )
+    }
+
     // Task 1: Parse and validate request body
     const body = await request.json()
     const { blob_url } = body
