@@ -256,12 +256,16 @@ def execute_pipeline_background(
         # Extract stage4 output text for Stage 5
         stage4_output_text = stage4_result.get("stage4_output", "")
 
+        # Extract brand name and input source for Stage 5
+        brand_name = brand_profile.get("company_name", "Unknown Brand")
+        input_source = Path(pdf_path).stem  # Get filename without extension
+
         # Stage 5: Opportunity Generation
         logger.info(f"[{run_id}] Starting Stage 5: Opportunity Generation")
         update_stage_status(run_id, 5, "running")
 
         stage5 = Stage5Chain()
-        stage5_result = stage5.run(stage4_output_text, brand_profile)
+        stage5_result = stage5.run(stage4_output_text, brand_name, input_source)
 
         save_stage_output(run_id, 5, stage5_result)
         update_stage_status(run_id, 5, "complete")
