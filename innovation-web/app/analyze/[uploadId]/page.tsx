@@ -3,12 +3,12 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2 } from 'lucide-react'
 import DocumentCard from '@/components/DocumentCard'
 import { FileViewerPanel } from '@/components/FileViewerPanel'
 import PipelineViewer from '@/components/pipeline/PipelineViewer'
+import LoadingDocument from '@/components/LoadingDocument'
 
 interface AnalysisData {
   upload_id: string
@@ -157,24 +157,9 @@ export default function AnalyzePage() {
   // Loading state
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 p-8">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-8 text-center">
-            <Skeleton className="mx-auto mb-4 h-8 w-64" />
-            <p className="text-gray-600">Analyzing document...</p>
-          </div>
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-            <div className="space-y-4">
-              <Skeleton className="h-48 w-full" />
-              <Skeleton className="h-6 w-3/4" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Skeleton className="h-64 w-full" />
-              <Skeleton className="h-64 w-full" />
-            </div>
-          </div>
+      <main className="min-h-screen bg-[#F5F5F5] flex items-center justify-center">
+        <div className="w-full max-w-4xl h-[600px]">
+          <LoadingDocument />
         </div>
       </main>
     )
