@@ -1,0 +1,194 @@
+# Quality Gate Decision - Story 5.3
+# Frontend Migration to Railway Backend
+
+schema: 1
+story: "5.3"
+story_title: "Frontend Migration to Railway Backend"
+gate: CONCERNS
+status_reason: "Excellent code quality and security, but critical test coverage gap for high-risk network operations. Code is production-ready except for missing unit tests."
+reviewer: "Quinn (Test Architect)"
+updated: "2025-10-21T00:00:00Z"
+
+# Waiver status
+waiver:
+  active: false
+  # Set to true if team decides to merge without tests (Option C)
+  # reason: ""
+  # approved_by: ""
+
+# Top issues identified during review
+top_issues:
+  - id: "TEST-001"
+    severity: high
+    finding: "Zero unit tests for backend-client.ts retry/timeout logic"
+    suggested_action: "Add unit tests for fetchWithRetry, runPipeline, getStatus functions"
+    estimated_effort: "2-3 hours"
+    refs: ["innovation-web/lib/backend-client.ts"]
+    suggested_owner: dev
+
+  - id: "TEST-002"
+    severity: high
+    finding: "No integration tests for API routes with Railway backend"
+    suggested_action: "Add integration tests for /api/run and /api/status/[runId]"
+    estimated_effort: "3-4 hours"
+    refs: ["innovation-web/app/api/run/route.ts", "innovation-web/app/api/status/[runId]/route.ts"]
+    suggested_owner: dev
+
+  - id: "DEP-001"
+    severity: medium
+    finding: "AC8-9 blocked by Story 5.4 (Railway backend /run and /status endpoints not implemented)"
+    suggested_action: "Complete Story 5.4 to enable CORS verification and E2E testing"
+    estimated_effort: "Story 5.4 scope"
+    refs: []
+    suggested_owner: dev
+
+# Risk summary
+risk_summary:
+  totals:
+    critical: 0
+    high: 2  # TEST-001, TEST-002
+    medium: 1  # DEP-001
+    low: 0
+  highest: "high"
+  recommendations:
+    must_fix:
+      - "Add unit tests for backend-client.ts before production deployment"
+      - "Add integration tests for API routes to prevent regressions"
+    monitor:
+      - "Complete Story 5.4 to unblock AC8-9"
+      - "Consider circuit breaker pattern for production scale (Story 5.5+)"
+
+# Quality scoring
+quality_score: 75
+# Calculation: 100 - (20 × 0 FAILs) - (10 × 2 high severity CONCERNS) - (5 × 1 medium) = 75
+
+expires: "2025-11-04T00:00:00Z"  # 2 weeks from review
+
+# Evidence from review
+evidence:
+  tests_reviewed: 0  # No automated tests exist
+  risks_identified: 3  # TEST-001, TEST-002, DEP-001
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 10]  # 8/10 ACs implemented
+    ac_gaps: [8, 9]  # CORS verification and E2E testing blocked by Story 5.4
+
+# NFR validation results
+nfr_validation:
+  security:
+    status: PASS
+    notes: "Input sanitization robust. Error message leakage fixed by QA. Authentication present. No hardcoded secrets. Score: 95/100"
+  performance:
+    status: PASS
+    notes: "Retry logic with exponential backoff. 30s timeout appropriate. Hardcoded constants acceptable for MVP. Score: 90/100"
+  reliability:
+    status: PASS
+    notes: "Graceful error handling. Timeout protection. Backward compatibility maintained. No circuit breaker (acceptable for MVP). Score: 85/100"
+  maintainability:
+    status: PASS
+    notes: "Excellent code organization. Comprehensive JSDoc. TypeScript strict mode. Clean separation of concerns. Score: 95/100"
+
+# Recommendations by priority
+recommendations:
+  immediate:
+    - action: "Create lib/backend-client.test.ts with unit tests for retry/timeout/error handling"
+      refs: ["innovation-web/lib/backend-client.ts"]
+      priority: "P0"
+      estimated_effort: "2-3 hours"
+
+    - action: "Create integration tests for /api/run and /api/status/[runId] routes"
+      refs: ["innovation-web/app/api/run/route.ts", "innovation-web/app/api/status/[runId]/route.ts"]
+      priority: "P0"
+      estimated_effort: "3-4 hours"
+
+  future:
+    - action: "Make timeout/retry constants configurable via environment variables"
+      refs: ["innovation-web/lib/backend-client.ts"]
+      priority: "P2"
+      story: "5.5+"
+
+    - action: "Implement circuit breaker pattern for Railway backend failures"
+      refs: ["innovation-web/lib/backend-client.ts"]
+      priority: "P2"
+      story: "5.5+"
+
+    - action: "Add request deduplication to prevent duplicate pipeline runs"
+      refs: ["innovation-web/app/api/run/route.ts"]
+      priority: "P3"
+      story: "5.6+"
+
+    - action: "Add metrics/telemetry for backend client error tracking"
+      refs: ["innovation-web/lib/backend-client.ts"]
+      priority: "P3"
+      story: "5.6+"
+
+# QA refactoring performed
+qa_modifications:
+  - file: "innovation-web/lib/backend-client.ts"
+    lines_changed: "+8 lines (2 functions refactored)"
+    changes:
+      - "Added error message sanitization in runPipeline (lines 120-124)"
+      - "Added error message sanitization in getStatus (lines 160-163)"
+    reason: "Security: Prevent internal implementation leakage via error messages"
+    impact: "Generic messages for 5xx errors, specific messages for 4xx errors"
+
+# Test coverage analysis
+test_coverage:
+  unit_tests: 0
+  integration_tests: 0
+  e2e_tests: 0
+  manual_verification: "100% (all ACs manually testable)"
+  critical_gaps:
+    - "Backend client retry logic (HIGH)"
+    - "Backend client timeout handling (HIGH)"
+    - "API route error scenarios (HIGH)"
+    - "Input sanitization validation (MEDIUM)"
+
+# Compliance checklist
+compliance:
+  coding_standards: PASS
+  project_structure: PASS
+  testing_strategy: FAIL  # Zero automated tests
+  all_acs_met: PARTIAL  # 8/10 (AC8-9 blocked by Story 5.4)
+
+# Recommended path forward
+decision_options:
+  option_a:
+    name: "Add tests before merge (RECOMMENDED)"
+    risk: "LOW"
+    effort: "5-7 hours"
+    steps:
+      - "Dev creates lib/backend-client.test.ts"
+      - "Dev creates integration tests for API routes"
+      - "Run npm test to verify"
+      - "Re-run QA review (fast pass)"
+      - "Mark story as Done"
+
+  option_b:
+    name: "Document as tech debt (ACCEPTABLE)"
+    risk: "MEDIUM"
+    effort: "1 hour (create follow-up story)"
+    steps:
+      - "Create Story 5.3.1: Add Backend Client Tests"
+      - "Prioritize in next sprint"
+      - "Mark current story as Done with Tech Debt"
+      - "Update this gate file with waiver"
+
+  option_c:
+    name: "Ship without tests (NOT RECOMMENDED)"
+    risk: "HIGH"
+    effort: "0 hours"
+    steps:
+      - "Merge to main without tests"
+      - "Accept increased regression risk"
+      - "Violates testing strategy standards"
+
+  recommended: "option_b"
+  rationale: "Given external dependency on Story 5.4, Option B (tech debt story) is pragmatic for MVP timeline. Tests MUST be added before production launch."
+
+# Audit history
+history:
+  - at: "2025-10-21T00:00:00Z"
+    gate: CONCERNS
+    note: "Initial review - excellent code quality but zero test coverage for high-risk network operations"
+    quality_score: 75
+    reviewer: "Quinn (Test Architect)"
