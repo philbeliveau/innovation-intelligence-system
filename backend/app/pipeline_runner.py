@@ -171,6 +171,83 @@ def transform_stage1_output(stage1_result: Dict[str, Any]) -> Dict[str, str]:
     return result
 
 
+def convert_opportunities_to_markdown(opportunities: list) -> list:
+    """Convert opportunity dictionaries to include markdown content.
+
+    Args:
+        opportunities: List of opportunity dictionaries with structured fields
+
+    Returns:
+        List of opportunities with added 'markdown' field containing full content
+    """
+    opportunities_with_markdown = []
+
+    for idx, opp in enumerate(opportunities, start=1):
+        # Extract fields
+        title = opp.get('title', f'Opportunity {idx}')
+        description = opp.get('description', '')
+        actionability_items = opp.get('actionability_items', [])
+        visual_description = opp.get('visual_description', '')
+        follow_up_prompts = opp.get('follow_up_prompts', [])
+        innovation_type = opp.get('innovation_type', 'innovation')
+
+        # Build markdown content
+        markdown_parts = []
+
+        # Frontmatter
+        markdown_parts.append('---')
+        markdown_parts.append(f'opportunity_id: opp-{idx:02d}')
+        markdown_parts.append(f'tags: {innovation_type}')
+        markdown_parts.append('---')
+        markdown_parts.append('')
+
+        # Title
+        markdown_parts.append(f'# {title}')
+        markdown_parts.append('')
+
+        # Description
+        if description:
+            markdown_parts.append('## Description')
+            markdown_parts.append('')
+            markdown_parts.append(description)
+            markdown_parts.append('')
+
+        # Actionability
+        if actionability_items:
+            markdown_parts.append('## Actionability')
+            markdown_parts.append('')
+            for item in actionability_items:
+                markdown_parts.append(f'- {item}')
+            markdown_parts.append('')
+
+        # Visual
+        if visual_description:
+            markdown_parts.append('## Visual')
+            markdown_parts.append('')
+            markdown_parts.append(f'*{visual_description}*')
+            markdown_parts.append('')
+
+        # Follow-up Prompts
+        if follow_up_prompts:
+            markdown_parts.append('## Follow-up Prompts')
+            markdown_parts.append('')
+            for i, prompt in enumerate(follow_up_prompts, start=1):
+                markdown_parts.append(f'{i}. {prompt}')
+            markdown_parts.append('')
+
+        markdown_content = '\n'.join(markdown_parts)
+
+        # Create new opportunity dict with markdown
+        opp_with_markdown = {
+            **opp,  # Keep all original fields
+            'markdown': markdown_content
+        }
+
+        opportunities_with_markdown.append(opp_with_markdown)
+
+    return opportunities_with_markdown
+
+
 def execute_pipeline_background(
     run_id: str,
     pdf_path: str,
@@ -269,8 +346,10 @@ def execute_pipeline_background(
 
         save_stage_output(run_id, 5, stage5_result)
 
-        # Extract opportunities for status response
-        opportunities_output = {"opportunities": stage5_result.get("opportunities", [])}
+        # Extract opportunities and convert to markdown format for frontend
+        raw_opportunities = stage5_result.get("opportunities", [])
+        opportunities_with_markdown = convert_opportunities_to_markdown(raw_opportunities)
+        opportunities_output = {"opportunities": opportunities_with_markdown}
         update_stage_status(run_id, 5, "complete", output=opportunities_output)
 
         logger.info(f"Pipeline execution completed successfully for run {run_id}")
