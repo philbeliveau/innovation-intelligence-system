@@ -22,22 +22,28 @@ export default function DetailPanel({ currentStage, status, runId, brandName }: 
 
   if (status === 'complete') {
     return (
-      <Card className="mt-6" data-testid="detail-panel-complete">
-        <CardContent className="flex flex-col items-center justify-center p-8">
-          <div className="text-center mb-4">
-            <h3 className="text-2xl font-bold text-green-600 mb-2">Pipeline Complete! 🎉</h3>
-            <p className="text-gray-600">Your innovation opportunities are ready to view.</p>
+      <div
+        className="mt-6 bg-gradient-to-r from-amber-200 to-amber-400 border-[5px] border-black shadow-[8px_8px_0_#000]"
+        data-testid="detail-panel-complete"
+      >
+        <div className="flex flex-col items-center justify-center p-8">
+          <div className="text-center mb-6">
+            <h3 className="text-3xl font-black uppercase text-black mb-3">
+              Pipeline Complete! 🎉
+            </h3>
+            <p className="text-lg font-bold text-black">
+              Your innovation opportunities are ready to view.
+            </p>
           </div>
-          <Button
+          <button
             onClick={() => router.push(`/results/${runId}`)}
-            size="lg"
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-orange-500 text-white px-8 py-4 font-black uppercase text-lg border-4 border-black shadow-[6px_6px_0_#000] hover:shadow-[8px_8px_0_#000] hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all"
             data-testid="view-opportunities-button"
           >
             View Opportunities →
-          </Button>
-        </CardContent>
-      </Card>
+          </button>
+        </div>
+      </div>
     )
   }
 

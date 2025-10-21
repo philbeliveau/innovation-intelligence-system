@@ -1,0 +1,93 @@
+.main-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+  }
+  
+  .loader {
+    width: 100%;
+    height: 100%;
+  }
+  
+  #browser {
+    overflow: hidden;
+  }
+  
+  .grid-line {
+    stroke: #E5E5E5;
+    stroke-width: 0.5;
+  }
+  
+  .browser-frame {
+    fill: #FFFFFF;
+    stroke: #CCCCCC;
+    stroke-width: 1;
+    filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.08));
+  }
+  
+  .browser-top {
+    fill: #F5F5F5;
+  }
+  
+  .loading-text {
+    font-family: Haettenschweiler, sans-serif;
+    font-size: 14px;
+    fill: #333333;
+  }
+  
+  .skeleton {
+    fill: #E0E0E0;
+    rx: 4;
+    ry: 4;
+    animation: pulse 1.8s ease-in-out infinite;
+    filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.03));
+  }
+  
+  @keyframes pulse {
+    0% {
+      fill: #E0E0E0;
+    }
+    50% {
+      fill: #F5F5F5;
+    }
+    100% {
+      fill: #E0E0E0;
+    }
+  }
+  
+  .trace-flow {
+    stroke-width: 1;
+    fill: none;
+    stroke-dasharray: 120 600;
+    stroke-dashoffset: 720;
+    animation: flow 5s linear infinite;
+    opacity: 0.95;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 0 8px currentColor) blur(0.5px);
+    color: #00ccff;
+  }
+  .trace-flow:nth-child(1) {
+    stroke: url(#traceGradient1);
+  }
+  .trace-flow:nth-child(2) {
+    stroke: url(#traceGradient2);
+  }
+  .trace-flow:nth-child(3) {
+    stroke: url(#traceGradient3);
+  }
+  .trace-flow:nth-child(4) {
+    stroke: url(#traceGradient4);
+  }
+  
+  @keyframes flow {
+    from {
+      stroke-dashoffset: 720;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  

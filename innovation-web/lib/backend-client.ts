@@ -107,9 +107,6 @@ export async function runPipeline(
   blobUrl: string,
   brandId: string
 ): Promise<RunPipelineResponse> {
-  // Generate unique run ID on frontend (UUID v4)
-  const runId = crypto.randomUUID()
-
   try {
     const response = await fetchWithRetry(
       `${BACKEND_URL}/run`,

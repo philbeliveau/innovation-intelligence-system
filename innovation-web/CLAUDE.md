@@ -36,17 +36,38 @@ vercel --prod --yes
 
 ## Deployment Commands for AI Agents
 
-### To Deploy via CLI:
+### ⚠️ CRITICAL: ALWAYS Use CLI Deployment
+**GitHub auto-deploy is DISABLED for this project due to Root Directory conflicts.**
+
+**The ONLY supported deployment method:**
 ```bash
 cd innovation-web
 vercel --prod --yes
 ```
 
-### To Trigger GitHub Auto-Deploy:
+**Why GitHub auto-deploy doesn't work:**
+- GitHub deploys start from repo root (no local context)
+- Would require Root Directory = `innovation-web` in dashboard
+- But setting Root Directory breaks CLI deploys (double nesting issue)
+- **Solution:** Disable GitHub auto-deploy, use CLI only
+
+### DO NOT Use GitHub Auto-Deploy:
+~~GitHub auto-deploy is not configured for this project~~
 ```bash
+# This will trigger a webhook, but deployment will FAIL
+git push origin hackaton  # ❌ Don't rely on this for deployment
+```
+
+### Correct Deployment Workflow:
+```bash
+# 1. Commit your changes
 git add .
 git commit -m "feat: your description"
 git push origin hackaton
+
+# 2. Deploy manually via CLI (REQUIRED)
+cd innovation-web
+vercel --prod --yes
 ```
 
 ### To Monitor Deployment Status:
