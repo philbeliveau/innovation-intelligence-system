@@ -13,7 +13,7 @@ export default function Home() {
     // Incomplete circle - 270° arc starting from top, leaving gap on right side
     // Distribute 8 circles across 270° (not full 360°)
     const arcSpan = 270 // degrees of arc coverage
-    const angle = 30 + (index * arcSpan / (baseSizes.length - 1)) // Start at 30°, spread across 270°
+    const angle = 45 + (index * arcSpan / (baseSizes.length - 1)) // Start at 45° to bring bottom circle closer
     const x = radius * Math.cos(angle * Math.PI / 180)
     const y = radius * Math.sin(angle * Math.PI / 180)
 

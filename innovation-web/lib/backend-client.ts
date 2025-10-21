@@ -120,8 +120,7 @@ export async function runPipeline(
         },
         body: JSON.stringify({
           blob_url: blobUrl,
-          brand: brandId,  // Backend expects "brand", not "brand_id"
-          run_id: runId,   // Backend expects run_id from frontend
+          brand_id: brandId,
         }),
       }
     )
