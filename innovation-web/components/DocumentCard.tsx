@@ -28,7 +28,7 @@ export default function DocumentCard({
   return (
     <div
       className={cn(
-        'group relative w-full max-w-[280px] bg-white p-4 transition-all',
+        'group relative w-full max-w-[480px] bg-white p-6 transition-all',
         'border-[5px] border-black shadow-[8px_8px_0_#000]',
         onClick && 'cursor-pointer hover:translate-x-[-3px] hover:translate-y-[-3px] hover:shadow-[11px_11px_0_#000]'
       )}

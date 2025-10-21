@@ -7,16 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2 } from 'lucide-react'
 import DocumentCard from '@/components/DocumentCard'
-import TrackCard from '@/components/TrackCard'
 import { FileViewerPanel } from '@/components/FileViewerPanel'
 import PipelineViewer from '@/components/pipeline/PipelineViewer'
-import AnimatedTrackSidebar from '@/components/AnimatedTrackSidebar'
-
-interface Track {
-  title: string
-  summary: string
-  icon_url?: string
-}
 
 interface AnalysisData {
   upload_id: string
@@ -26,7 +18,6 @@ interface AnalysisData {
     industry: string
     theme: string
     sources: string[]
-    tracks: Track[]
   }
   blob_url: string
   analyzed_at: string
@@ -44,11 +35,9 @@ export default function AnalyzePage() {
   const [error, setError] = useState<string | null>(null)
   const [launching, setLaunching] = useState(false)
   const [launchError, setLaunchError] = useState<string>('')
-  const [selectedTrack, setSelectedTrack] = useState(1)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [isPipelineRunning, setIsPipelineRunning] = useState(false)
   const [runId, setRunId] = useState<string | null>(null)
-  const [showSidebar, setShowSidebar] = useState(false)
 
   useEffect(() => {
     // Fetch upload data from sessionStorage (Story 2.2.1 enhanced format)
@@ -132,7 +121,7 @@ export default function AnalyzePage() {
         body: JSON.stringify({
           blob_url: blobUrl,
           upload_id: uploadId,
-          selected_tracks: [selectedTrack],
+          selected_tracks: [1],
         }),
       })
 
@@ -147,17 +136,9 @@ export default function AnalyzePage() {
 
       const data = await response.json()
 
-      // Store selected track in sessionStorage for pipeline viewer
-      sessionStorage.setItem('selected_track', selectedTrack.toString())
-
-      // Store non-selected track data for sidebar display
-      const nonSelectedTrack = analysis.analysis.tracks[selectedTrack === 1 ? 1 : 0]
-      sessionStorage.setItem('non_selected_track', JSON.stringify(nonSelectedTrack))
-
       // Update state to show pipeline inline (NO NAVIGATION)
       setRunId(data.run_id)
       setIsPipelineRunning(true)
-      setShowSidebar(true)
       setLaunching(false)
     } catch (err) {
       const errorMessage =
@@ -217,10 +198,6 @@ export default function AnalyzePage() {
     )
   }
 
-  // Get track data for conditional rendering
-  const nonSelectedTrack = analysis ? analysis.analysis.tracks[selectedTrack === 1 ? 1 : 0] : null
-  const selectedTrackData = analysis ? analysis.analysis.tracks[selectedTrack - 1] : null
-
   // Success state
   return (
     <main className="min-h-screen bg-gray-50 p-6">
@@ -231,43 +208,21 @@ export default function AnalyzePage() {
         </h1>
 
         {!isPipelineRunning ? (
-          /* BEFORE LAUNCH: Original 2-column layout */
+          /* BEFORE LAUNCH: Document card and launch button */
           <>
-            <div className="grid grid-cols-1 gap-8 lg:grid-cols-[280px_1fr]">
-              {/* Left: Document Summary Card */}
-              <div className="flex justify-center lg:justify-start">
-                {analysis && blobUrl && (
-                  <DocumentCard
-                    title={analysis.analysis.title}
-                    summary={analysis.analysis.summary}
-                    industry={analysis.analysis.industry}
-                    theme={analysis.analysis.theme}
-                    sources={analysis.analysis.sources}
-                    onClick={() => setIsPanelOpen(true)}
-                    blobUrl={blobUrl}
-                    fileName={fileName}
-                  />
-                )}
-              </div>
-
-              {/* Right: Ideation Tracks */}
-              <div>
-                <h2 className="mb-4 text-xl font-semibold text-gray-500">
-                  Ideation Tracks
-                </h2>
-                <div className="space-y-3">
-                  {analysis?.analysis.tracks.map((track, index) => (
-                    <TrackCard
-                      key={index}
-                      trackNumber={index + 1}
-                      title={track.title}
-                      summary={track.summary}
-                      selected={selectedTrack === index + 1}
-                      onSelect={() => setSelectedTrack(index + 1)}
-                    />
-                  ))}
-                </div>
-              </div>
+            <div className="flex justify-center">
+              {analysis && blobUrl && (
+                <DocumentCard
+                  title={analysis.analysis.title}
+                  summary={analysis.analysis.summary}
+                  industry={analysis.analysis.industry}
+                  theme={analysis.analysis.theme}
+                  sources={analysis.analysis.sources}
+                  onClick={() => setIsPanelOpen(true)}
+                  blobUrl={blobUrl}
+                  fileName={fileName}
+                />
+              )}
             </div>
 
             {/* Launch Button */}
@@ -301,12 +256,9 @@ export default function AnalyzePage() {
             </div>
           </>
         ) : (
-          /* AFTER LAUNCH: 3-column layout with sidebar + pipeline */
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[200px_280px_1fr]">
-            {/* Left: Non-selected track sidebar */}
-            <AnimatedTrackSidebar track={nonSelectedTrack} show={showSidebar} />
-
-            {/* Center: Document card (unchanged) */}
+          /* AFTER LAUNCH: 2-column layout with document + pipeline */
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[480px_1fr]">
+            {/* Left: Document card */}
             <div className="flex justify-center lg:justify-start">
               {analysis && blobUrl && (
                 <DocumentCard
@@ -322,17 +274,8 @@ export default function AnalyzePage() {
               )}
             </div>
 
-            {/* Right: Selected track + Pipeline viewer */}
+            {/* Right: Pipeline viewer */}
             <div className="space-y-6">
-              {selectedTrackData && (
-                <TrackCard
-                  trackNumber={selectedTrack}
-                  title={selectedTrackData.title}
-                  summary={selectedTrackData.summary}
-                  selected={true}
-                  onSelect={() => {}}
-                />
-              )}
               {runId && (
                 <PipelineViewer
                   runId={runId}
@@ -341,12 +284,11 @@ export default function AnalyzePage() {
                   onError={(err) => {
                     setLaunchError(err)
                     setIsPipelineRunning(false)
-                    setShowSidebar(false)
                   }}
                 />
               )}
 
-              {/* FIX UX-001: Error Recovery UI (AC 7) */}
+              {/* Error Recovery UI */}
               {launchError && !launching && (
                 <Alert variant="destructive" className="max-w-md">
                   <AlertDescription>
@@ -357,7 +299,6 @@ export default function AnalyzePage() {
                         onClick={() => {
                           setLaunchError('')
                           setIsPipelineRunning(false)
-                          setShowSidebar(false)
                           setRunId(null)
                         }}
                       >

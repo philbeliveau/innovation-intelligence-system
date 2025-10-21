@@ -14,11 +14,6 @@ interface AnalysisResult {
   industry: string
   theme: string
   sources: string[]
-  tracks: Array<{
-    title: string
-    summary: string
-    icon_url?: string
-  }>
 }
 
 interface AnalyzeDocumentResponse {
@@ -180,25 +175,13 @@ IMPORTANT REQUIREMENTS:
         parsed.sources = []
       }
 
-      // Build analysis with LLM-generated metadata and placeholder tracks
+      // Build analysis with LLM-generated metadata
       analysis = {
         title: parsed.title,
         summary: parsed.summary,
         industry: parsed.industry,
         theme: parsed.theme,
-        sources: parsed.sources,
-        tracks: [
-          {
-            title: 'Track 1',
-            summary: 'Full track analysis will be available after pipeline execution.',
-            icon_url: ''
-          },
-          {
-            title: 'Track 2',
-            summary: 'Full track analysis will be available after pipeline execution.',
-            icon_url: ''
-          }
-        ]
+        sources: parsed.sources
       }
 
       console.log('[analyze-document] Analysis completed successfully')
@@ -218,19 +201,7 @@ IMPORTANT REQUIREMENTS:
         summary: `${preview}${documentText.length > 200 ? '...' : ''}`,
         industry: 'general',
         theme: 'innovation',
-        sources: [],
-        tracks: [
-          {
-            title: 'Track 1',
-            summary: 'Track analysis will be available after pipeline execution.',
-            icon_url: ''
-          },
-          {
-            title: 'Track 2',
-            summary: 'Track analysis will be available after pipeline execution.',
-            icon_url: ''
-          }
-        ]
+        sources: []
       }
     }
 
