@@ -1,4 +1,3 @@
-import { readFile } from 'fs/promises'
 import { cookies } from 'next/headers'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -18,27 +17,39 @@ interface Opportunity {
 }
 
 async function loadOpportunities(runId: string): Promise<Opportunity[]> {
-  const outputDir = `../data/test-outputs/${runId}/stage5`
-  const opportunities: Opportunity[] = []
+  try {
+    // Fetch status from backend API to get opportunities
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
+    const response = await fetch(`${BACKEND_URL}/status/${runId}`, {
+      cache: 'no-store'
+    })
 
-  // Try to read all 5 opportunity files
-  for (let num = 1; num <= 5; num++) {
-    try {
-      const filePath = `${outputDir}/opportunity-${num}.md`
-      const markdown = await readFile(filePath, 'utf-8')
-
-      // Extract title from first heading (# Title)
-      const titleMatch = markdown.match(/^#\s+(.+)$/m)
-      const title = titleMatch ? titleMatch[1] : `Opportunity ${num}`
-
-      opportunities.push({ number: num, title, markdown })
-    } catch (error) {
-      // File doesn't exist or can't be read - skip it
-      console.warn(`Could not read opportunity file ${num}:`, error)
+    if (!response.ok) {
+      console.error(`Failed to fetch status for ${runId}: ${response.status}`)
+      return []
     }
-  }
 
-  return opportunities
+    const status = await response.json()
+
+    // Extract opportunities from Stage 5 output
+    const stage5 = status.stages?.['5']
+    if (!stage5 || stage5.status !== 'complete') {
+      console.warn('Stage 5 not completed yet')
+      return []
+    }
+
+    const opportunitiesData = stage5.output?.opportunities || []
+
+    // Transform backend format to frontend format
+    return opportunitiesData.map((opp: any, index: number) => ({
+      number: index + 1,
+      title: opp.title || `Opportunity ${index + 1}`,
+      markdown: opp.markdown || opp.content || ''
+    }))
+  } catch (error) {
+    console.error('Error loading opportunities:', error)
+    return []
+  }
 }
 
 async function getCompanyName(): Promise<string | null> {

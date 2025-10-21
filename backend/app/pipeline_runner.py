@@ -268,7 +268,10 @@ def execute_pipeline_background(
         stage5_result = stage5.run(stage4_output_text, brand_name, input_source)
 
         save_stage_output(run_id, 5, stage5_result)
-        update_stage_status(run_id, 5, "complete")
+
+        # Extract opportunities for status response
+        opportunities_output = {"opportunities": stage5_result.get("opportunities", [])}
+        update_stage_status(run_id, 5, "complete", output=opportunities_output)
 
         logger.info(f"Pipeline execution completed successfully for run {run_id}")
 
