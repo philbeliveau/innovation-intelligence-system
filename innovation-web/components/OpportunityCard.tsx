@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import OpportunityModal from './OpportunityModal'
-import './OpportunityCard.css'
+import { cn } from '@/lib/utils'
+import { Sparkles } from 'lucide-react'
 
 interface OpportunityCardProps {
   number: number
@@ -40,53 +41,57 @@ export default function OpportunityCard({ number, title, markdown }: Opportunity
   // Get innovation type from tags
   const innovationType = tags.split(',')[0]?.trim() || 'innovation'
 
+  // Color scheme based on opportunity number (similar to TrackCard)
+  const getColorClasses = (num: number) => {
+    const colors = [
+      'from-teal-400 to-teal-600',
+      'from-blue-400 to-blue-600',
+      'from-purple-400 to-purple-600',
+      'from-orange-400 to-orange-600',
+      'from-pink-400 to-pink-600',
+    ]
+    return colors[(num - 1) % colors.length]
+  }
+
   return (
     <>
-      <div className="card" onClick={() => setIsModalOpen(true)}>
-        <div className="card__wrapper">
-          <div className="card__title">#{number}</div>
-          <div className="card__icon">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <g strokeWidth="0" id="SVGRepo_bgCarrier"></g>
-              <g strokeLinejoin="round" strokeLinecap="round" id="SVGRepo_tracerCarrier"></g>
-              <g id="SVGRepo_iconCarrier">
-                <path
-                  fill="currentColor"
-                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"
-                ></path>
-              </g>
-            </svg>
+      <div
+        className={cn(
+          'flex cursor-pointer items-start gap-4 rounded-xl bg-white p-4 shadow-sm transition-all',
+          'border-2 border-gray-200 hover:shadow-md hover:border-teal-300'
+        )}
+        onClick={() => setIsModalOpen(true)}
+      >
+        {/* Opportunity Icon with Colored Background */}
+        <div className="flex-shrink-0">
+          <div
+            className={cn(
+              'flex h-16 w-16 items-center justify-center rounded-lg bg-gradient-to-br',
+              getColorClasses(number)
+            )}
+          >
+            <div className="text-center">
+              <Sparkles className="h-6 w-6 text-white mb-1 mx-auto" />
+              <div className="text-white text-xs font-bold">#{number}</div>
+            </div>
           </div>
         </div>
 
-        <div className="card__title" style={{ fontSize: '18px', marginTop: '10px' }}>
-          {title}
-        </div>
+        {/* Opportunity Content */}
+        <div className="flex-1 space-y-2">
+          {/* Title - Bold and prominent */}
+          <h3 className="text-base font-bold text-gray-900 line-clamp-2">{title}</h3>
 
-        <div className="card__subtitle" style={{ fontSize: '14px', lineHeight: '1.4' }}>
-          {subtitle}
-        </div>
+          {/* Summary - Clear and readable */}
+          <p className="text-sm leading-snug text-gray-600 line-clamp-2">{subtitle}</p>
 
-        {/* Innovation Type Badge */}
-        <div style={{ marginTop: '10px' }}>
-          <span
-            style={{
-              padding: '4px 12px',
-              backgroundColor: 'var(--accent-color)',
-              color: 'var(--bg-color)',
-              fontSize: '12px',
-              fontWeight: '600',
-              borderRadius: '12px',
-              textTransform: 'capitalize',
-            }}
-          >
-            {innovationType}
-          </span>
-        </div>
-
-        {/* Click to view hint */}
-        <div style={{ marginTop: '15px', textAlign: 'center', color: 'var(--sub-color)', fontSize: '12px' }}>
-          Click to view details
+          {/* Innovation Type Badge */}
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700 capitalize">
+              {innovationType}
+            </span>
+            <span className="text-xs text-gray-400">Click to view details</span>
+          </div>
         </div>
       </div>
 
