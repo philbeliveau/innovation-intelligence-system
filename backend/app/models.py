@@ -1,29 +1,35 @@
 """Pydantic Models for Request/Response Schemas"""
-from typing import Optional, Literal
+from typing import Optional, Literal, Dict, Any
 from pydantic import BaseModel, Field
 
 
 class RunPipelineRequest(BaseModel):
     """Request model for POST /run endpoint"""
     blob_url: str = Field(..., description="Vercel Blob URL of uploaded PDF")
-    brand: str = Field(..., description="Brand identifier (e.g., 'lactalis-canada')")
-    run_id: str = Field(..., description="Unique run identifier (UUID)")
+    brand_id: str = Field(..., description="Brand identifier (e.g., 'lactalis-canada')")
 
 
 class RunPipelineResponse(BaseModel):
     """Response model for POST /run endpoint"""
-    status: Literal["started", "error"]
     run_id: str
-    message: Optional[str] = None
+    status: Literal["running"]
+
+
+class StageInfo(BaseModel):
+    """Information about a single pipeline stage"""
+    status: Literal["pending", "running", "complete", "failed"]
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    output: Optional[Dict[str, Any]] = None
 
 
 class PipelineStatus(BaseModel):
-    """Pipeline execution status"""
+    """Pipeline execution status - matches 6-api-design.md schema"""
     run_id: str
-    status: Literal["running", "completed", "error"]
-    current_stage: Optional[int] = Field(None, description="Current stage (1-5)")
-    progress: Optional[float] = Field(None, description="Progress percentage (0-100)")
-    error_message: Optional[str] = None
+    status: Literal["running", "complete", "failed"]
+    current_stage: int
+    stages: Dict[str, StageInfo]  # Object keyed by stage number ("1", "2", etc.)
+    error: Optional[str] = None
 
 
 class HealthResponse(BaseModel):
