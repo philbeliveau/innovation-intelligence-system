@@ -63,14 +63,14 @@ export default function Home() {
             <span className="font-[family-name:var(--font-dancing-script)] text-[#5B9A99]">My</span> Board of Ideators
           </h1>
 
-          {/* Subtitle - "Signals to Sparks" */}
-          <p className="text-base md:text-lg italic text-[#5B9A99]">
+          {/* Subtitle - "Signals to Sparks" - offset to the right */}
+          <p className="text-base md:text-lg italic text-[#5B9A99] self-end pr-8">
             Signals to Sparks
           </p>
 
           {/* Authentication UI - Shows before company input */}
           <SignedOut>
-            <div className="mt-2 text-center">
+            <div className="mt-2 text-center self-end pr-8">
               <p className="text-gray-600 mb-3 text-sm">Please sign in to continue</p>
               <SignInButton mode="modal">
                 <button className="bg-[#5B9A99] hover:bg-[#4A7F7E] text-white font-semibold py-2 px-6 rounded-xl shadow-lg transition-all hover:shadow-xl text-sm">
@@ -83,7 +83,7 @@ export default function Home() {
           {/* Company Input - Only shows when signed in */}
           <SignedIn>
             {/* Company Input Component */}
-            <div className="w-64">
+            <div className="w-64 self-end pr-8">
               <CompanyInput />
             </div>
           </SignedIn>

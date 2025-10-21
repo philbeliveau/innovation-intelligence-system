@@ -89,7 +89,7 @@ export default function CompanyInput() {
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
-          placeholder="Lactalis Canada"
+          placeholder="your company URL"
           aria-label="Company name"
           disabled={isLoading}
           className="w-full h-10 px-4 text-center text-sm bg-white border border-gray-300 rounded-lg shadow-md placeholder:text-gray-400 focus:border-[#5B9A99] focus:outline-none focus:ring-2 focus:ring-[#5B9A99]/20 disabled:opacity-50 transition-all"
