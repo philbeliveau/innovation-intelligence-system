@@ -46,35 +46,39 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main Content - positioned to avoid circles */}
       <div className="flex flex-col items-center justify-center min-h-screen relative z-10 px-4">
-        {/* Title - Exact match to landing page */}
-        <h1 className="text-5xl md:text-6xl font-bold mb-4 text-center text-gray-900">
-          <span className="font-[family-name:var(--font-dancing-script)] text-[#5B9A99]">My</span> Board of Ideators
-        </h1>
+        <div className="flex flex-col items-start gap-3 ml-32">
+          {/* Title - Exact match to landing page */}
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
+            <span className="font-[family-name:var(--font-dancing-script)] text-[#5B9A99]">My</span> Board of Ideators
+          </h1>
 
-        {/* Subtitle - "Signals to Sparks" */}
-        <p className="text-xl md:text-2xl italic text-[#5B9A99] mb-8">
-          Signals to Sparks
-        </p>
+          {/* Subtitle - "Signals to Sparks" */}
+          <p className="text-base md:text-lg italic text-[#5B9A99]">
+            Signals to Sparks
+          </p>
 
-        {/* Authentication UI - Shows before company input */}
-        <SignedOut>
-          <div className="mb-8 text-center">
-            <p className="text-gray-600 mb-4">Please sign in to continue</p>
-            <SignInButton mode="modal">
-              <button className="bg-[#5B9A99] hover:bg-[#4A7F7E] text-white font-semibold py-3 px-8 rounded-xl shadow-lg transition-all hover:shadow-xl">
-                Sign In
-              </button>
-            </SignInButton>
-          </div>
-        </SignedOut>
+          {/* Authentication UI - Shows before company input */}
+          <SignedOut>
+            <div className="mt-2 text-center">
+              <p className="text-gray-600 mb-3 text-sm">Please sign in to continue</p>
+              <SignInButton mode="modal">
+                <button className="bg-[#5B9A99] hover:bg-[#4A7F7E] text-white font-semibold py-2 px-6 rounded-xl shadow-lg transition-all hover:shadow-xl text-sm">
+                  Sign In
+                </button>
+              </SignInButton>
+            </div>
+          </SignedOut>
 
-        {/* Company Input - Only shows when signed in */}
-        <SignedIn>
-          {/* Company Input Component */}
-          <CompanyInput />
-        </SignedIn>
+          {/* Company Input - Only shows when signed in */}
+          <SignedIn>
+            {/* Company Input Component */}
+            <div className="w-64">
+              <CompanyInput />
+            </div>
+          </SignedIn>
+        </div>
       </div>
     </div>
   )

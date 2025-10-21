@@ -81,7 +81,7 @@ export default function CompanyInput() {
   }
 
   return (
-    <div className="w-full max-w-md">
+    <div className="w-full">
       <div className="relative">
         <Input
           type="text"
@@ -89,10 +89,10 @@ export default function CompanyInput() {
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
-          placeholder="Put your company name..."
+          placeholder="Lactalis Canada"
           aria-label="Company name"
           disabled={isLoading}
-          className="w-full h-14 px-8 text-center text-base bg-white border border-gray-300 rounded-xl shadow-md placeholder:text-gray-400 focus:border-[#5B9A99] focus:outline-none focus:ring-2 focus:ring-[#5B9A99]/20 disabled:opacity-50 transition-all"
+          className="w-full h-10 px-4 text-center text-sm bg-white border border-gray-300 rounded-lg shadow-md placeholder:text-gray-400 focus:border-[#5B9A99] focus:outline-none focus:ring-2 focus:ring-[#5B9A99]/20 disabled:opacity-50 transition-all"
         />
         {isLoading && (
           <div className="absolute right-5 top-1/2 -translate-y-1/2">
