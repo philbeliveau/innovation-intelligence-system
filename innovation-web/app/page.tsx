@@ -10,8 +10,10 @@ export default function Home() {
   const colors = ['#7DB5AA', '#5B9A99', '#4A7F7E']
 
   const circles = baseSizes.map((size, index) => {
-    // Start from 60° and go clockwise, distribute evenly (45° apart)
-    const angle = 60 + (index * 360 / 8)
+    // Incomplete circle - 270° arc starting from top, leaving gap on right side
+    // Distribute 8 circles across 270° (not full 360°)
+    const arcSpan = 270 // degrees of arc coverage
+    const angle = 30 + (index * arcSpan / (baseSizes.length - 1)) // Start at 30°, spread across 270°
     const x = radius * Math.cos(angle * Math.PI / 180)
     const y = radius * Math.sin(angle * Math.PI / 180)
 
@@ -20,16 +22,16 @@ export default function Home() {
       y,
       size,
       color: colors[index % 3],
-      opacity: 0.7 + (index * 0.02) // Gradually increase opacity
+      opacity: 0.4 + (index * 0.075) // Gradually increase opacity: smallest = 0.4, largest = 0.925
     }
   })
 
   return (
     <div className="min-h-screen bg-[#F5F5F5] relative overflow-hidden">
-      {/* Decorative Teal Circles - Shifted left-up to match target design */}
+      {/* Decorative Teal Circles - Centered to match target design */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-        {/* Container shifted left (42%) and slightly up (46%) */}
-        <div className="absolute left-[42%] top-[46%]">
+        {/* Container centered */}
+        <div className="absolute left-[50%] top-[50%]">
           <div className="relative">
             {circles.map((circle, index) => (
               <div
@@ -50,11 +52,14 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Main Content - positioned left-center to match circle arrangement */}
+      {/* Main Content - centered */}
       <div className="flex flex-col items-center justify-center min-h-screen relative z-10 px-4">
-        <div className="flex flex-col items-start gap-3 -ml-12">
+        <div className="flex flex-col items-center gap-3">
+          {/* Light gray circle behind title */}
+          <div className="absolute w-[400px] h-[400px] bg-white/60 rounded-full -z-10 left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2" aria-hidden="true"></div>
+
           {/* Title - Exact match to landing page */}
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 relative">
             <span className="font-[family-name:var(--font-dancing-script)] text-[#5B9A99]">My</span> Board of Ideators
           </h1>
 

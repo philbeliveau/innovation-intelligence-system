@@ -338,10 +338,163 @@ Stories 3.1 and 3.2 can run in parallel if multiple developers available.
 
 ---
 
+---
+
+## Epic 5: Backend Migration to Railway ⚙️ Ready for Implementation
+
+**Status:** Ready for Development
+**Priority:** P1 (Infrastructure Improvement)
+**Estimated Time:** 9-12 hours
+**Dependencies:** Stories 1.2 (Blob API), 3.1 (API routes), Railway account
+
+**Goal:** Migrate Python pipeline execution from Vercel serverless functions to dedicated Railway backend, enabling scalable processing and decoupling frontend from backend infrastructure.
+
+**Document:** [Epic 5 Overview](#epic-5-overview)
+
+---
+
+### **Story 5.1: FastAPI Backend Directory Structure**
+
+**Priority:** P1
+**Estimated Time:** 2-3 hours
+**Dependencies:** None
+**Status:** Ready for Implementation
+
+**Summary:** Create minimal FastAPI backend at root level (`/backend`) with pipeline code copied from `/pipeline`, basic API endpoints, and local development setup.
+
+**Key Deliverables:**
+- `/backend` directory structure
+- FastAPI app with `/run`, `/status`, `/health` endpoints
+- Copy pipeline stages and prompts
+- Requirements.txt with dependencies
+- Local development with uvicorn
+
+**Document:** [Story 5.1 Details](./5.1.fastapi-backend-structure.md)
+
+---
+
+### **Story 5.2: Railway Deployment Configuration**
+
+**Priority:** P1
+**Estimated Time:** 2-3 hours
+**Dependencies:** Story 5.1 (backend structure)
+**Status:** Ready for Implementation
+
+**Summary:** Create Dockerfile and railway.json for Railway deployment, configure environment variables, deploy to Railway, and verify health checks work.
+
+**Key Deliverables:**
+- Dockerfile with single-stage build
+- railway.json deployment config
+- Railway project setup
+- CORS configuration for Vercel
+- Public URL endpoint
+
+**Document:** [Story 5.2 Details](./5.2.railway-deployment-configuration.md)
+
+---
+
+### **Story 5.3: Frontend Migration to Railway Backend**
+
+**Priority:** P1
+**Estimated Time:** 2 hours
+**Dependencies:** Story 5.2 (Railway deployment), Story 3.1 (API routes)
+**Status:** Ready for Implementation
+
+**Summary:** Refactor Next.js API routes to call Railway backend instead of local `execFile()`, create backend client utility, and test end-to-end flow.
+
+**Key Deliverables:**
+- Backend API client utility (`lib/backend-client.ts`)
+- Refactored `/api/run` route (fetch instead of execFile)
+- Refactored `/api/status` route (proxy to Railway)
+- Environment variable configuration
+- E2E testing
+
+**Document:** [Story 5.3 Details](./5.3.frontend-railway-migration.md)
+
+---
+
+### **Story 5.4: Pipeline Execution Endpoints Implementation**
+
+**Priority:** P0
+**Estimated Time:** 3-4 hours
+**Dependencies:** Story 5.1 (backend structure), Story 5.2 (Railway deployed), Story 5.3 (frontend connected)
+**Status:** Ready for Implementation
+
+**Summary:** Implement actual pipeline execution logic in FastAPI `/run` and `/status/{run_id}` endpoints, including PDF download from Vercel Blob, background pipeline execution with threading, and real-time status tracking.
+
+**Key Deliverables:**
+- POST `/run` endpoint with blob download and pipeline execution
+- GET `/status/{run_id}` endpoint with live stage tracking
+- Background threading for non-blocking execution
+- Copy brand profiles to `/backend/data/brand-profiles/`
+- Status file tracking (`/tmp/runs/{run_id}/status.json`)
+- Stage 1 track data in status response
+
+**Document:** [Story 5.4 Details](./5.4.pipeline-execution-endpoints.md)
+
+---
+
+## Implementation Order (Epic 5)
+
+**Recommended sequence:**
+
+1. **Story 5.1** (2-3 hours) - Create backend structure and test locally
+2. **Story 5.2** (2-3 hours) - Deploy to Railway and verify health
+3. **Story 5.3** (2 hours) - Connect frontend to Railway backend
+4. **Story 5.4** (3-4 hours) - Implement pipeline execution logic
+
+**Critical Path:** Stories must be completed sequentially (5.1 → 5.2 → 5.3 → 5.4)
+
+**Total Epic Time:** 9-12 hours
+
+---
+
+---
+
+## Epic 6: User Authentication & Session Management ✅ Complete
+
+**Status:** Complete
+**Priority:** P1 (Security & Foundation)
+**Estimated Time:** 2 hours
+**Dependencies:** Epic 1 (Upload flow), Epic 3 (Pipeline execution)
+
+**Goal:** Integrate Clerk authentication to enable user sign-in, protected routes, and user identity tracking for future multi-user features.
+
+---
+
+### **Story 6.1: Clerk Authentication Integration**
+
+**Priority:** P1
+**Estimated Time:** 2 hours
+**Dependencies:** None
+**Status:** ✅ Complete
+
+**Summary:** Integrate Clerk authentication with modal sign-in, protected routes for pipeline/results pages, and user profile UI in left sidebar. Public routes (landing, upload) remain accessible without authentication.
+
+**Key Deliverables:**
+- Clerk SDK installed and configured
+- Middleware with route protection
+- ClerkProvider in app layout
+- Sign-in/UserButton in left sidebar
+- Protected routes: `/pipeline/*`, `/results/*`, `/analyze/*`, `/api/run`, `/api/status/*`
+- Public routes: `/`, `/upload`, `/api/upload`, `/api/onboarding/*`
+
+**Document:** [Story 6.1 Details](./epic-6-story-6.1-clerk-authentication.md)
+
+**Integration Impact:**
+- ✅ **No breaking changes** to existing features
+- ✅ Upload flow remains unauthenticated (public)
+- ✅ Pipeline execution requires sign-in (protected)
+- ✅ Foundation for Epic 7+ (user dashboards, saved runs, team collaboration)
+
+---
+
 ## Future Epics (Coming Soon)
 
 - **Epic 2:** Document Analysis & Intermediary Card
 - **Epic 4:** Pipeline Viewer & Results Display
+- **Epic 7:** User Dashboard & Saved Runs (links pipeline runs to Clerk user ID)
+- **Epic 8:** Team Collaboration (share runs, comments, workspaces)
 
 ---
 
@@ -358,5 +511,28 @@ Epic 3 is complete when:
 - [x] Manual E2E test passes: upload → analyze → launch → monitor → results
 - [x] No memory leaks (polling cleanup verified)
 - [x] Python subprocess execution verified on Vercel deployment
+
+---
+
+## Definition of Done (Epic 5)
+
+Epic 5 is complete when:
+
+- [ ] All 4 stories (5.1-5.4) meet their acceptance criteria
+- [ ] Backend deployed to Railway with public URL
+- [ ] Frontend successfully calls Railway backend (no local execFile)
+- [ ] Pipeline executes all 5 stages on Railway infrastructure
+- [ ] Health check endpoint returns 200 on Railway
+- [ ] E2E flow works: Upload → Railway backend → Pipeline execution → Status polling → Results
+- [ ] CORS configured correctly (Vercel can call Railway)
+- [ ] Environment variables set in both Vercel and Railway
+- [ ] Local development works with Dockerized backend
+- [ ] Status tracking updates in real-time (5-second polling)
+- [ ] Stage 1 tracks display correctly in frontend
+- [ ] All 4 brand profiles tested (lactalis, kind, hidden-valley, mccormick)
+- [ ] Error handling tested (invalid blob, corrupted PDF, LLM failures)
+- [ ] No regression: Existing features still work (upload, status, results)
+- [ ] Documentation updated (README, DEPLOYMENT.md)
+- [ ] Background execution doesn't block API (concurrent runs work)
 
 ---
