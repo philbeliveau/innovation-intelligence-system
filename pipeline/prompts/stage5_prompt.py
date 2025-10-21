@@ -1,9 +1,8 @@
 """
-Stage 5: Opportunity Generation Chain
+Stage 5: Opportunity Synthesis (Actionable Cards)
 
-This module defines the prompt template and structured output parser for Stage 5
-of the Innovation Intelligence Pipeline. Stage 5 generates exactly 5 distinct,
-actionable innovation opportunities from brand-specific insights.
+Enhanced prompt focused on generating retail-ready CPG opportunities
+with clear mechanisms and speed-to-market focus.
 """
 
 from langchain.prompts import PromptTemplate
@@ -15,11 +14,6 @@ def get_output_parser() -> StructuredOutputParser:
 
     Returns:
         StructuredOutputParser configured to extract 5 opportunities
-
-    Example:
-        >>> parser = get_output_parser()
-        >>> opportunities = parser.parse(llm_output)
-        >>> print(len(opportunities['opportunities']))  # Should be 5
     """
 
     response_schemas = [
@@ -35,105 +29,95 @@ def get_output_parser() -> StructuredOutputParser:
 
 
 def get_prompt_template() -> PromptTemplate:
-    """Get Stage 5 prompt template for opportunity generation.
+    """Get enhanced Stage 5 prompt for CPG opportunity generation.
 
     Returns:
         PromptTemplate configured for Stage 5 processing
-
-    Example:
-        >>> template = get_prompt_template()
-        >>> chain = LLMChain(llm=llm, prompt=template)
     """
 
     parser = get_output_parser()
     format_instructions = parser.get_format_instructions()
 
-    template = """You are an innovation strategist who generates actionable, brand-specific innovation opportunities from strategic insights.
+    template = """You are a CPG innovation strategist generating retail-ready opportunities for immediate execution.
 
-BRAND-SPECIFIC INSIGHTS (FROM STAGE 4):
+BRAND-SPECIFIC CPG OPPORTUNITIES (FROM STAGE 4):
 {stage4_output}
 
 BRAND: {brand_name}
 INPUT SOURCE: {input_source}
 
 TASK:
-Generate exactly 5 distinct, actionable innovation opportunities based on the brand-specific insights from Stage 4. Each opportunity should be ready for immediate consideration by the innovation team.
+Generate exactly 5 distinct, retail-ready innovation opportunities that can be pitched to buyers within 90 days.
 
-OPPORTUNITY GENERATION METHODOLOGY:
-1. Review all brand-specific strategic insights from Stage 4
-2. Identify the most compelling innovation directions for this brand
-3. Generate exactly 5 opportunities that span different innovation types
-4. Ensure each opportunity is distinct (not variations of the same idea)
-5. Make each opportunity immediately actionable with concrete next steps
-6. Provide customer value and business impact for each opportunity
+CPG INNOVATION REALITY CHECK:
+- Innovation teams have 2-5 people, not 50
+- Quarterly pipeline reviews demand concepts NOW
+- Retail buyers need to see it, understand it, and want it in 30 seconds
+- Budget is $50K for research, not $500K
+- Success = on shelf in 12 months at Target/Walmart
 
-INNOVATION TYPE DIVERSITY REQUIREMENT:
-Your 5 opportunities MUST span these different innovation types:
-- Product innovation (new or enhanced products)
-- Service innovation (new or enhanced services/experiences)
-- Marketing innovation (new marketing approaches, campaigns, positioning)
-- Experience innovation (customer touchpoints, retail, digital experiences)
-- Partnership innovation (collaborations, co-branding, ecosystem plays)
-
-CRITICAL OPPORTUNITY REQUIREMENTS:
-Each opportunity MUST:
-✓ Address specific brand needs identified in Stage 4 insights
-✓ Leverage insights from the original input source
-✓ Be implementable (not science fiction or distant future speculation)
-✓ Provide clear customer value proposition
-✓ Include concrete, actionable next steps (3-5 specific actions)
-✓ Be distinct from other opportunities (not just variations)
+THE 5 OPPORTUNITIES MUST SPAN THESE PATTERNS:
+1. **Better-For-You** - Protein+, sugar-, clean label
+2. **Premium** - 2x price, craft story, better ingredients
+3. **Convenience** - RTD, portable, no-prep
+4. **Format** - New form factor for consumption
+5. **Occasion** - New when/where to consume
 
 OUTPUT STRUCTURE FOR EACH OPPORTUNITY:
-For each of the 5 opportunities, provide:
 
-**title**: [Compelling, specific title for this innovation opportunity - max 10 words]
+**title**: [8 words max - must be specific and compelling]
 
-**innovation_type**: [One of: Product, Service, Marketing, Experience, Partnership]
+**innovation_type**: [Choose ONE: Better-For-You, Premium, Convenience, Format, Occasion]
 
-**description**: [2-3 paragraph description covering:
-  - Paragraph 1: What is the opportunity? What specific innovation is being proposed?
-  - Paragraph 2: Why does this matter for this brand and their customers? What problem does it solve or value does it create?
-  - Paragraph 3: How does this leverage the insights from Stage 4? What makes this feasible and compelling now?]
+**description**: [3 paragraphs:
+  - Para 1: WHAT - The specific product/innovation. Be concrete about form, flavor, package.
+  - Para 2: WHO & WHY - Target consumer and the problem you're solving. Include price point.
+  - Para 3: HOW - The mechanism from insights that makes this work. Why NOW is the time.]
 
-**actionability_items**: [Array of 3-5 concrete next steps, each as a bullet point. Must be specific actions like:
-  - "Conduct customer research with [specific segment] to validate [specific hypothesis]"
-  - "Partner with [type of company] to develop [specific capability]"
-  - "Prototype [specific feature/product] using [specific approach]"
+**actionability_items**: [Exactly 3 next steps, each ultra-specific:
+  - "Schedule co-packer visit with [specific type] facility by [date]"
+  - "Conduct pricing study with [specific retailer] buyers on [specific claim]"
+  - "Source [specific ingredient] samples from [type of supplier]"
   NOT vague like "Do research" or "Find partners"]
 
-**visual_description**: [1-2 sentence description of a suggested visual/image that would represent this opportunity. Be specific about what the image should show to bring the opportunity to life.]
+**visual_description**: [1 sentence describing the product on shelf. What does the package look like? Where in store is it?]
 
-**follow_up_prompts**: [Array of 2-3 thought-provoking questions that help the innovation team explore this opportunity deeper. Questions should prompt strategic thinking like:
-  - "How might we adapt this for [specific customer segment or use case]?"
-  - "What would success look like in 6 months vs 18 months?"
-  - "Which partners could accelerate this and what value would we exchange?"]
+**follow_up_prompts**: [Exactly 2 questions that retail buyers would ask:
+  - "How does this compare to [specific competitor product] on shelf?"
+  - "What's your velocity projection vs [category benchmark]?"
+  - "Why wouldn't [bigger competitor] just copy this?"]
 
-DIVERSITY AND DISTINCTNESS REQUIREMENTS:
-- Each opportunity must be fundamentally different (not "mobile app version" vs "web version" of same idea)
-- Opportunities should span different innovation types (see list above)
-- Opportunities should vary in timeframe (some quick wins, some longer-term bets)
-- Opportunities should address different customer needs or business objectives
-- Avoid creating multiple opportunities that are just different flavors of the same concept
+**retail_metrics**: [Key data points for buyers:
+  - Price point: $X.XX
+  - Target velocity: X units/store/week
+  - Gross margin: XX%
+  - Launch timeline: X months]
 
-QUALITY CRITERIA:
-- **Specific**: References specific brand products, customer segments, or strategic priorities
-- **Actionable**: Has concrete next steps that can be initiated within 30 days
-- **Valuable**: Clear customer value proposition and business impact
-- **Feasible**: Can be implemented with reasonable resources (not requiring impossible technology or partnerships)
-- **Distinct**: Each opportunity is fundamentally different from the others
-- **Creative**: Demonstrates innovative thinking beyond obvious extensions of current offerings
+CPG OPPORTUNITY QUALITY CRITERIA:
+✓ Can explain to Walmart buyer in 30 seconds
+✓ Uses existing co-packer capabilities (no new lines)
+✓ <$500K total investment to launch
+✓ Fits current shelf sets (no new category creation)
+✓ Clear advantage vs. specific competitor on shelf
+✓ Leverages mechanism from original insights
+✓ Achievable in 12 months or less
+
+FORBIDDEN:
+✗ Science fiction ingredients that don't exist
+✗ Categories that require refrigeration if brand doesn't do cold chain
+✗ Subscription models for brands without DTC
+✗ Premium plays for value brands (or vice versa)
+✗ Complex education required for consumer understanding
 
 {format_instructions}
 
 IMPORTANT:
-- Generate EXACTLY 5 opportunities (no more, no less)
-- Ensure innovation type diversity across the 5 opportunities
-- Each opportunity must be distinct and not a variation of another
-- Each opportunity must have 3-5 actionability items
-- Each opportunity must have 2-3 follow-up prompts
-- Use the exact JSON structure specified in the format instructions
-- This is the core value delivery of the pipeline - quality is paramount
+- Generate EXACTLY 5 opportunities spanning different CPG patterns
+- Each must be explainable to a retail buyer in 30 seconds
+- Each must be launchable with <$500K in <12 months
+- Each must include specific retail metrics
+- Focus on SPEED and SIMPLICITY over perfection
+- This is about getting on shelf at Target, not winning innovation awards
 """
 
     return PromptTemplate(

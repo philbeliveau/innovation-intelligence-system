@@ -6,6 +6,8 @@ interface TrackCardProps {
   summary: string
   selected: boolean
   onSelect: () => void
+  compactMode?: boolean
+  disabled?: boolean
 }
 
 export default function TrackCard({
@@ -14,14 +16,18 @@ export default function TrackCard({
   summary,
   selected,
   onSelect,
+  compactMode = false,
+  disabled = false,
 }: TrackCardProps) {
   return (
     <div
       className={cn(
-        'flex cursor-pointer items-center gap-4 rounded-xl bg-white p-4 shadow-sm transition-all',
+        'flex cursor-pointer items-center gap-4 rounded-xl bg-white shadow-sm transition-all',
+        compactMode ? 'p-2 text-sm scale-90' : 'p-4',
         selected
           ? 'border-3 border-teal-500 shadow-md ring-2 ring-teal-200'
-          : 'border-2 border-gray-200 opacity-60 hover:opacity-85 hover:shadow-md'
+          : 'border-2 border-gray-200 opacity-60 hover:opacity-85 hover:shadow-md',
+        disabled && 'pointer-events-none opacity-70'
       )}
       onClick={onSelect}
     >

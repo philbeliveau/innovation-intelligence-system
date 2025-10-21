@@ -1,105 +1,127 @@
 """
-Stage 2: Signal Amplification and Trend Extraction
+Stage 2: Innovation Anatomy (Type Classification)
 
-This module defines the prompt template for Stage 2 of the Innovation
-Intelligence Pipeline. Stage 2 extracts underlying trends and patterns
-from Stage 1 inspiration elements.
+Enhanced prompt that diagnoses innovation types using Doblin's 10 Types
+framework and maps innovation patterns.
 """
 
 from langchain.prompts import PromptTemplate
 
 
 def get_prompt_template() -> PromptTemplate:
-    """Get Stage 2 prompt template for trend extraction.
+    """Get enhanced Stage 2 prompt for innovation type classification.
 
     Returns:
-        PromptTemplate configured for Stage 2 processing
-
-    Example:
-        >>> template = get_prompt_template()
-        >>> chain = LLMChain(llm=llm, prompt=template)
+        PromptTemplate configured for innovation anatomy analysis
     """
 
-    template = """You are an innovation analyst analyzing inspiration elements to identify underlying trends and patterns.
+    template = """You are an innovation analyst specializing in systematic innovation classification using Doblin's 10 Types framework.
 
-STAGE 1 INSPIRATIONS (INPUT):
+STAGE 1 MECHANISMS (INPUT):
 {stage1_output}
 
 TASK:
-Analyze the inspirations from Stage 1 to extract deeper trend patterns. Your goal is to identify 3-5 underlying trends that explain WHY these inspirations are emerging or succeeding.
+Analyze the mechanisms from Stage 1 to diagnose WHICH dimensions of innovation were activated and HOW they work together.
 
-CRITICAL CONSTRAINTS:
-- Work ONLY with information present in the Stage 1 inspirations above
-- DO NOT introduce trends from your general knowledge
-- Extract trends that are explicitly mentioned or clearly implied in the document content
-- If industry context or broader trends are mentioned in the inspirations, extract them
-- Be conservative: only identify trends you can directly trace back to the input
+DOBLIN'S 10 TYPES OF INNOVATION FRAMEWORK:
+
+CONFIGURATION (How the business operates internally):
+1. **Profit Model** - How you make money
+2. **Network** - How you connect with others to create value
+3. **Structure** - How you organize and align your talent and assets
+4. **Process** - Signature or superior methods for doing your work
+
+OFFERING (What you deliver):
+5. **Product Performance** - Distinguishing features and functionality
+6. **Product System** - Complementary products and services
+
+EXPERIENCE (How customers interact):
+7. **Service** - Support and enhancements that surround your offerings
+8. **Channel** - How your offerings are delivered to customers
+9. **Brand** - Representation of your offerings and business
+10. **Customer Engagement** - Distinctive interactions you foster
 
 ANALYSIS METHODOLOGY:
-1. Review all Stage 1 inspirations for recurring themes and patterns
-2. Identify underlying drivers: What consumer behavior shifts, industry movements, or emerging needs explain these inspirations?
-3. Extract any broader context mentioned in the inspirations (industry trends, market shifts, cultural changes)
-4. Categorize each trend into one of these types:
-   - BEHAVIORAL: Changes in consumer behavior, preferences, or decision-making
-   - TECHNOLOGICAL: New technologies, digital tools, or technical capabilities
-   - CULTURAL: Shifts in values, social norms, or cultural expectations
-   - ECONOMIC: Business model changes, pricing strategies, or economic factors
+
+1. MAP MECHANISMS TO INNOVATION TYPES
+   For each mechanism from Stage 1:
+   - Which of the 10 types does it primarily activate?
+   - Are there secondary types involved?
+   - What's the evidence from the mechanism description?
+
+2. IDENTIFY INNOVATION PATTERNS
+   - Is this a single-type innovation (risky)?
+   - Is this a multi-type innovation (more defensible)?
+   - Which configuration creates the most value?
+
+3. ASSESS CPG APPLICABILITY
+   For consumer packaged goods specifically:
+   - Which innovation types are most relevant?
+   - What adaptations would be needed?
 
 OUTPUT FORMAT:
-Structure your analysis as markdown with the following sections:
 
-# Identified Trends
+## Innovation Type Analysis
 
-## Trend 1: [Trend Name] (Category: [BEHAVIORAL/TECHNOLOGICAL/CULTURAL/ECONOMIC])
-**Description:** [Clear explanation of the trend - what is changing and why it matters]
-**Evidence from Inspirations:** [Specific references to which Stage 1 inspirations demonstrate this trend]
-**Signal Strength:** [HIGH/MEDIUM/LOW]
-**Rationale for Signal Strength:** [Explain why you rated it this way based on the evidence]
+### Primary Innovation Types Activated
 
-## Trend 2: [Trend Name] (Category: [BEHAVIORAL/TECHNOLOGICAL/CULTURAL/ECONOMIC])
-**Description:** [Clear explanation of the trend]
-**Evidence from Inspirations:** [Specific references to Stage 1 inspirations]
-**Signal Strength:** [HIGH/MEDIUM/LOW]
-**Rationale for Signal Strength:** [Explain rating]
+**[Innovation Type Name] - [Category: Configuration/Offering/Experience]**
+- **Mechanism:** Which mechanism from Stage 1 demonstrates this type
+- **Evidence:** Specific evidence that this type was activated
+- **How It Works:** Explanation of how this innovation type creates value
+- **CPG Translation:** How this type could work in consumer packaged goods
 
-[Continue for 3-5 trends total]
+[Repeat for each PRIMARY innovation type - usually 2-3]
 
-# Trend Context
+### Secondary Innovation Types
 
-**Pattern Summary:** [What overarching patterns emerge across these trends? How do they relate to each other?]
+**[Innovation Type Name] - [Category]**
+- **Role:** Brief explanation of supporting role
+- **Connection:** How it reinforces primary types
 
-**Strategic Implications:** [What do these trends collectively suggest about market direction, consumer needs, or innovation opportunities?]
+[List any SECONDARY types briefly]
 
-**Confidence Assessment:** [How confident are you that these trends are derived from the document content versus general knowledge? Note any concerns about potential hallucination.]
+### Innovation Architecture
 
-SIGNAL STRENGTH GUIDELINES:
-- HIGH: Trend is explicitly mentioned multiple times across inspirations, with clear supporting evidence
-- MEDIUM: Trend is clearly implied by 2+ inspirations or explicitly mentioned once with strong context
-- LOW: Trend is implied by a single inspiration or mentioned peripherally
+**Type Configuration:** [Single-type / Adjacent types / Multiple types across categories]
 
-QUALITY OVER QUANTITY:
-- Aim for 3-4 trends with MEDIUM or HIGH signal strength
-- Each trend should be supported by:
-  * Multiple inspirations (preferred), OR
-  * Multiple pieces of evidence from a single inspiration, OR
-  * Clear pattern visible across different inspiration aspects
-- Do NOT force a 4th or 5th trend if evidence is thin
-- Better to have 3 strong, well-supported trends than 5 weak ones
-- Only include LOW signal strength trends if they represent particularly significant patterns
+**Value Creation Pattern:** [Explain how the types work together to create value]
 
-EVIDENCE REQUIREMENTS BY SIGNAL STRENGTH:
-- HIGH: 2+ explicit inspirations OR extensive evidence from 1 inspiration
-- MEDIUM: 1 strong inspiration with multiple supporting details
-- LOW: 1 inspiration with limited supporting context (use sparingly - only if highly significant)
+**Defensibility Assessment:**
+- Single type: LOW defensibility (easy to copy)
+- 2-3 adjacent types: MEDIUM defensibility
+- 4+ types across categories: HIGH defensibility
+
+### CPG-Specific Innovation Mapping
+
+Based on this innovation anatomy, the most relevant patterns for CPG are:
+
+1. **[CPG Pattern]:** How these innovation types translate to CPG context
+2. **[CPG Pattern]:** Specific application opportunity
+3. **[CPG Pattern]:** Potential barrier or adaptation needed
+
+### Strategic Implications
+
+**Core Innovation Insight:** [What's the key learning about HOW innovation was achieved, not what was done]
+
+**Replication Difficulty:** [What makes this hard/easy to copy?]
+
+**Critical Success Factors:** [What capabilities or conditions are required?]
+
+QUALITY CRITERIA:
+- Map EVERY mechanism to specific innovation types
+- Identify both primary and secondary types
+- Explain the value creation pattern
+- Assess defensibility based on type configuration
+- Provide CPG-specific interpretation
+- Focus on HOW innovation types work together
 
 IMPORTANT:
-- Identify 3-4 high-quality trends (prefer quality over hitting a specific count)
-- Each trend MUST be traceable to specific content in Stage 1 inspirations
-- Be explicit about which inspirations support each trend
-- Categorize every trend (BEHAVIORAL, TECHNOLOGICAL, CULTURAL, or ECONOMIC)
-- Assign signal strength (HIGH, MEDIUM, LOW) with clear rationale
-- Avoid LOW signal strength trends unless absolutely necessary
-- In Confidence Assessment, be honest about derivation from document vs. general knowledge
+- Use Doblin's exact 10 types (don't invent new categories)
+- Be specific about which mechanisms activate which types
+- Explain the innovation architecture (how types reinforce each other)
+- Always include CPG translation
+- Rate defensibility based on number and spread of types
 """
 
     return PromptTemplate(

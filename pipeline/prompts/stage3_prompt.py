@@ -1,111 +1,167 @@
 """
-Stage 3: General Translation to Universal Lessons
+Stage 3: Job Architecture (Universal Context Mapping)
 
-This module defines the prompt template for Stage 3 of the Innovation
-Intelligence Pipeline. Stage 3 synthesizes Stage 1 inspirations and Stage 2
-trends into universal, brand-agnostic lessons.
+Enhanced prompt that maps Jobs-to-be-Done, quantifies constraints eliminated,
+and identifies cross-industry transfer opportunities.
 """
 
 from langchain.prompts import PromptTemplate
 
 
 def get_prompt_template() -> PromptTemplate:
-    """Get Stage 3 prompt template for universal lesson generation.
+    """Get enhanced Stage 3 prompt for JTBD and cross-industry mapping.
 
     Returns:
-        PromptTemplate configured for Stage 3 processing
-
-    Example:
-        >>> template = get_prompt_template()
-        >>> chain = LLMChain(llm=llm, prompt=template)
+        PromptTemplate configured for job architecture analysis
     """
 
-    template = """You are an innovation strategist synthesizing insights into universal principles that can be applied across industries.
+    template = """You are an innovation strategist specializing in Jobs-to-be-Done framework and cross-industry pattern transfer.
 
-STAGE 1 INSPIRATIONS (INPUT):
+STAGE 1 MECHANISMS (INPUT):
 {stage1_output}
 
-STAGE 2 TRENDS (INPUT):
+STAGE 2 INNOVATION TYPES (INPUT):
 {stage2_output}
 
 TASK:
-Synthesize the Stage 1 inspirations and Stage 2 trends into 5-7 universal lessons that are completely brand-agnostic and applicable across industries.
+Map the complete job architecture and identify cross-industry transfer opportunities based on the mechanisms and innovation types identified.
 
-CRITICAL DE-CONTEXTUALIZATION REQUIREMENT:
-- REMOVE all specific brand names, company names, and industry references
-- REMOVE specific product names, sports references, or contextual details
-- EXTRACT the underlying principle that makes the approach work
-- TRANSLATE to universal language applicable to any industry (CPG, retail, services, B2B, etc.)
+JOBS-TO-BE-DONE ANALYSIS FRAMEWORK:
 
-SYNTHESIS METHODOLOGY:
-1. Review both Stage 1 inspirations and Stage 2 trends to identify core principles
-2. Ask: "What underlying human need, business principle, or strategic pattern explains this?"
-3. Strip away all context: if it mentions baseball → what's the universal principle?
-4. Frame each lesson as a timeless principle, not a trend observation
-5. Optional: Reference innovation frameworks (TRIZ, SIT, biomimicry) if they help explain the principle
+THE THREE-DIMENSIONAL JOB:
+1. **Functional Job** - The practical task to accomplish
+2. **Emotional Job** - How they want to feel
+3. **Social Job** - How they want to be perceived
 
-INNOVATION FRAMEWORK REFERENCES (Optional):
-- **TRIZ Principles**: Systematic innovation patterns (segmentation, asymmetry, universality, nested dolls, counterweight, preliminary action, etc.)
-- **SIT (Structured Inventive Thinking)**: Subtraction, multiplication, division, task unification, attribute dependency
-- **Biomimicry**: Nature-inspired solutions (adaptation, resilience, optimization, ecosystem thinking)
+CONTEXTUAL FACTORS:
+- **Situation/Circumstance** - When does this job arise?
+- **Current Solutions** - What are they using now?
+- **Constraints** - What prevents better solutions?
 
-Use these frameworks ONLY if they genuinely illuminate the universal principle. Do not force-fit frameworks.
+CROSS-INDUSTRY PATTERN RECOGNITION:
+- **Structural Similarities** - Same underlying problem pattern
+- **Analogical Industries** - Where similar dynamics exist
+- **Transfer Mechanisms** - How patterns move between industries
 
-OUTPUT FORMAT:
-Structure your analysis as markdown with the following sections:
+ANALYSIS METHODOLOGY:
 
-# Universal Lessons
+## Job Architecture Mapping
 
-## 1. [Lesson Title - Universal Principle Name]
+### Core Jobs Being Served
 
-**The Principle:** [Clear, concise statement of the universal principle - should be applicable to any industry]
+**Functional Job:**
+Format: "I need to [verb] + [object] + so that [outcome]"
+[Be specific about the TASK, not the product]
 
-**Why It Works:** [Psychological, strategic, or business explanation for why this principle is effective. What human need or market dynamic does it address?]
+**Emotional Job:**
+Format: "I want to feel [specific emotion]"
+[Avoid generic emotions like "happy" - be specific like "confident I'm not overpaying" or "smart about my choices"]
 
-**Where It Could Apply:** [3-5 concrete examples of how this principle could be applied in different industries - be specific about the application, not just industry names]
+**Social Job:**
+Format: "I want others to perceive me as [identity]"
+[Focus on identity signaling and social positioning]
 
-**Innovation Framework Connection:** [Optional - only if TRIZ, SIT, or biomimicry genuinely relates to this principle]
+### Customer Circumstance Analysis
 
----
+**Triggering Situation:**
+[In what specific situation does the customer realize they need this? Be concrete.]
 
-## 2. [Lesson Title - Universal Principle Name]
+**Current Struggle:**
+[What specific struggle with existing solutions creates the opportunity?]
 
-**The Principle:** [Clear, concise statement]
+**Critical Context:**
+[What has to be TRUE about their context for this to be valuable?]
 
-**Why It Works:** [Explanation of effectiveness]
+### Constraint Elimination Mapping
 
-**Where It Could Apply:** [3-5 concrete application examples across industries]
+Identify and QUANTIFY each constraint removed:
 
-**Innovation Framework Connection:** [Optional framework reference]
+□ **Time Constraint**
+   - Previous: [X minutes/hours/days]
+   - New: [Y minutes/hours/days]
+   - Reduction: [Z% improvement]
 
----
+□ **Cost Constraint**
+   - Previous: [$X or X% of income]
+   - New: [$Y or Y% of income]
+   - Reduction: [Z% savings]
 
-[Continue for 5-7 lessons total]
+□ **Knowledge Constraint**
+   - Previous expertise required: [Specific skills/knowledge]
+   - New requirement: [What's needed now]
+   - Barrier removed: [What expertise is no longer needed]
 
-# Synthesis Notes
+□ **Access Constraint**
+   - Previous availability: [Where/when it was available]
+   - New availability: [Where/when it's now available]
+   - Access improvement: [Specific expansion]
 
-**Core Themes:** [What overarching patterns emerge across these universal lessons? How do they relate to each other?]
+□ **Effort/Complexity Constraint**
+   - Previous steps: [Number and nature of steps]
+   - New steps: [Simplified process]
+   - Reduction: [X steps eliminated]
 
-**Strategic Value:** [Why are these lessons valuable for innovation work? What makes them actionable rather than generic advice?]
+[Check all that apply and provide specific quantification]
 
-**De-contextualization Quality Check:** [Confirm that all brand/industry/product-specific references have been removed. Note any remaining context that should be eliminated.]
+### Cross-Industry Transfer Analysis
 
-UNIVERSAL LESSON QUALITY CRITERIA:
-- **Truly Universal**: Could apply to CPG, retail, healthcare, financial services, B2B software, manufacturing, etc.
-- **Actionable**: Specific enough to guide action, not generic platitudes like "focus on the customer"
-- **Principle-Based**: Explains WHY something works, not just WHAT was done
-- **De-contextualized**: Zero mentions of specific brands, industries, products, or contextual details from the input
-- **Strategic**: Provides insight that innovation teams can build upon
+**Structural Analogies:**
+Identify 3 industries with the SAME underlying problem structure:
 
-IMPORTANT:
-- Generate exactly 5-7 universal lessons (no more, no less)
-- Each lesson MUST be completely brand-agnostic (no brand/industry/product mentions)
-- Each lesson MUST be actionable and specific (not generic advice)
-- Each lesson MUST explain WHY it works (psychological/strategic rationale)
-- Each lesson MUST show WHERE it applies with concrete examples across industries
-- Use innovation frameworks (TRIZ/SIT/biomimicry) ONLY when genuinely relevant
-- Ensure output follows the exact markdown structure above
-- In De-contextualization Quality Check, verify zero brand/industry-specific language remains
+1. **[Industry Name]:** [Why the problem structure is similar - be specific about the parallel]
+2. **[Industry Name]:** [Why the problem structure is similar]
+3. **[Industry Name]:** [Why the problem structure is similar]
+
+**Transfer Pattern:**
+Abstract formula: "Industries where [condition] creates [constraint] for customers trying to [job]"
+
+**CPG-Specific Transfer Opportunity:**
+
+**Can this work in consumer packaged goods?**
+□ YES - Strong fit because: [Specific reasons]
+□ MAYBE - Could work if: [Required adaptations]
+□ NO - Barriers include: [Specific blockers]
+
+**Required Adaptations for CPG:**
+1. [Specific change needed for CPG context]
+2. [Specific change needed for CPG context]
+3. [Specific change needed for CPG context]
+
+### Universal Pattern Extraction
+
+**The Transferable Insight:**
+"When customers need to [functional job] while feeling [emotional job] and being seen as [social job], but face [specific constraint], then [mechanism type] can eliminate [constraint] by [specific approach]."
+
+**Cross-Industry Applications:**
+
+1. **Healthcare:** [How this pattern could apply]
+2. **Financial Services:** [How this pattern could apply]
+3. **Retail:** [How this pattern could apply]
+4. **B2B Software:** [How this pattern could apply]
+5. **Consumer Goods:** [How this pattern could apply]
+
+### Implementation Requirements
+
+**Capabilities Needed:**
+- [Specific capability 1]
+- [Specific capability 2]
+- [Specific capability 3]
+
+**Market Conditions Required:**
+- [Condition 1 that must exist]
+- [Condition 2 that must exist]
+
+**Success Metrics:**
+- [How to measure if this is working]
+- [Key performance indicator]
+- [Customer satisfaction metric]
+
+QUALITY CRITERIA:
+- Jobs must be specific and measurable
+- Constraints must be quantified where possible
+- Cross-industry analogies must share structural similarities
+- CPG applicability must be honestly assessed
+- Universal patterns must be truly transferable
 """
 
     return PromptTemplate(

@@ -1,26 +1,21 @@
 """
-Stage 4: Brand Contextualization with Research Data
+Stage 4: Brand Translation (CPG-Specific Application)
 
-This module defines the prompt template for Stage 4 of the Innovation
-Intelligence Pipeline. Stage 4 customizes universal lessons from Stage 3
-for a specific brand using brand profile and comprehensive research data.
+Enhanced prompt that applies extracted mechanisms to brand's specific CPG context
+using the 5 core CPG innovation patterns and retail viability assessment.
 """
 
 from langchain.prompts import PromptTemplate
 
 
 def get_prompt_template() -> PromptTemplate:
-    """Get Stage 4 prompt template for brand contextualization.
+    """Get enhanced Stage 4 prompt for CPG-specific brand translation.
 
     Returns:
-        PromptTemplate configured for Stage 4 processing
-
-    Example:
-        >>> template = get_prompt_template()
-        >>> chain = LLMChain(llm=llm, prompt=template)
+        PromptTemplate configured for CPG brand application
     """
 
-    template = """You are a brand innovation strategist specializing in translating universal innovation principles into brand-specific strategic insights.
+    template = """You are a CPG innovation strategist specializing in translating innovation mechanisms into retail-ready brand opportunities.
 
 BRAND PROFILE:
 {brand_profile}
@@ -28,111 +23,147 @@ BRAND PROFILE:
 BRAND RESEARCH DATA:
 {research_data}
 
-STAGE 3 UNIVERSAL LESSONS (INPUT):
+STAGE 3 JOB ARCHITECTURE (INPUT):
 {stage3_output}
 
+THE 5 CORE CPG INNOVATION PATTERNS:
+1. **Better-For-You-ification** - Add protein, remove sugar, clean label, functional benefits
+2. **Premiumization** - Better ingredients, craft story, artisan positioning, 2x price
+3. **Convenience Shift** - RTD, single-serve, portable, grab-and-go, no prep required
+4. **Format Migration** - Bar→bite, powder→shot, bottle→pouch, new consumption format
+5. **Occasion Expansion** - Breakfast→snack, dinner→lunch, adult→kid, new usage moments
+
 TASK:
-Transform the universal lessons from Stage 3 into brand-specific strategic insights for this particular brand. Use the brand profile and comprehensive research data to deeply customize each lesson for this brand's unique context.
+Translate the universal mechanisms into specific opportunities for THIS brand in the CPG context, focusing on retail viability and speed to market.
 
-BRAND CONTEXTUALIZATION METHODOLOGY:
-1. Review the brand profile to understand: positioning, products, target customers, strategic priorities
-2. Review the comprehensive research data (8 sections covering innovations, strategy, market context, news)
-3. For each universal lesson from Stage 3, ask:
-   - How does this principle specifically apply to THIS brand's products and services?
-   - How does this align with or challenge THIS brand's current strategic priorities?
-   - What makes this relevant to THIS brand's target customers and market position?
-   - How could THIS brand implement this given their capabilities and constraints?
-4. Generate 5-7 brand-specific strategic insights that are actionable for THIS brand
+## Brand-Specific CPG Translation
 
-CRITICAL BRAND-SPECIFICITY REQUIREMENT:
-- INCLUDE specific references to this brand's products (from profile and research data)
-- INCLUDE specific references to this brand's customers and market positioning
-- INCLUDE specific references to this brand's strategic priorities and recent initiatives
-- MAKE each insight actionable with concrete next steps for THIS brand
-- CONNECT insights to this brand's competitive context and market trends
-- REFERENCE recent innovations, news, or market signals specific to this brand
+### Brand Context Assessment
 
-OUTPUT FORMAT:
-Structure your analysis as markdown with the following sections:
+**Current Portfolio Fit:**
+- Core products: [List relevant products from brand profile]
+- Portfolio gaps: [Where mechanisms could fill white space]
+- Cannibalization risk: [Will this eat into existing sales?]
 
-# Brand-Specific Innovation Strategy
+**Competitive Position:**
+- Direct competitors: [Who are they competing with?]
+- Differentiation opportunity: [How mechanisms create advantage]
+- Category dynamics: [Is the category growing/declining?]
 
-## Brand Context Summary
+### Mechanism-to-CPG Pattern Mapping
 
-**Brand Overview:** [Synthesize brand profile and research data - what defines this brand's current position?]
+For each mechanism from previous stages, identify which CPG pattern(s) apply:
 
-**Strategic Priorities:** [What are this brand's key strategic priorities based on profile and research data?]
+**Mechanism 1 → CPG Pattern Translation:**
+- Primary Pattern: [Which of the 5 patterns?]
+- How it applies: [Specific application to this brand]
+- Example execution: [Concrete product concept]
 
-**Innovation Context:** [What recent innovations, market trends, or competitive dynamics are most relevant for this brand?]
+**Mechanism 2 → CPG Pattern Translation:**
+- Primary Pattern: [Which of the 5 patterns?]
+- How it applies: [Specific application to this brand]
+- Example execution: [Concrete product concept]
 
-**Target Customer Insights:** [Who are this brand's customers and what unique needs/preferences do they have?]
+[Continue for all mechanisms]
 
----
+### Retail Viability Assessment
 
-## Brand-Specific Strategic Insights
+For each opportunity, evaluate retail acceptance:
 
-### 1. [Insight Title - Specific to This Brand]
+**Opportunity 1: [Specific Product/Innovation Concept]**
 
-**The Opportunity:** [Clear statement of the brand-specific opportunity derived from the universal lesson. Reference specific brand products, customers, or strategic priorities.]
+**Retail Readiness Scorecard:**
+- Category fit: Does this fit existing shelf sets? [YES/NO/MAYBE]
+- Buyer appeal: Clear story for category buyers? [YES/NO/MAYBE]
+- Velocity potential: Can it turn 2+ units/store/week? [YES/NO/MAYBE]
+- Margin structure: >35% gross margin achievable? [YES/NO/MAYBE]
+- Shelf presence: Does packaging pop at 6 feet? [YES/NO/MAYBE]
 
-**Why It Fits This Brand:** [Explain why this insight is particularly relevant for THIS brand given their positioning, products, customers, and strategic context. Reference research data.]
+**Target Retailers:** [Walmart/Target/Kroger/Whole Foods/etc.]
 
-**Concrete Application:** [Specific, actionable next steps for THIS brand to implement this insight. Be concrete about products, channels, customer segments, etc.]
+**Placement Strategy:** [Which aisle/section/endcap]
 
-**Expected Impact:** [What business outcomes could THIS brand expect? Reference their strategic priorities and competitive context.]
+[Repeat for 2-3 top opportunities]
 
-**Relevant Context:** [Optional - cite specific recent innovations, news, or market signals from research data that support this insight]
+### Brand Permission & Credibility Check
 
----
+**Can THIS brand credibly execute these opportunities?**
 
-### 2. [Insight Title - Specific to This Brand]
+**Brand Stretch Analysis:**
+- Current permission: [What consumers expect from this brand]
+- Required stretch: [What new permissions needed]
+- Credibility builders: [What gives them right to play]
+- Credibility gaps: [What might consumers question]
 
-**The Opportunity:** [Brand-specific opportunity statement]
+**Endorsement Strategy:**
+- Claims we can make: [Based on brand equity]
+- Claims we can't make: [Outside brand permission]
+- Proof points needed: [To establish credibility]
 
-**Why It Fits This Brand:** [Relevance explanation with research references]
+### Speed-to-Market Execution Plan
 
-**Concrete Application:** [Actionable next steps for THIS brand]
+**Fast Track Opportunity: [Highest speed/impact ratio]**
 
-**Expected Impact:** [Business outcomes for THIS brand]
+**Launch Timeline:**
+- Month 1-2: [Specific actions]
+- Month 3-4: [Specific actions]
+- Month 5-6: [Specific actions]
+- Month 7-8: Launch ready
 
-**Relevant Context:** [Optional research data citations]
+**Resource Requirements:**
+- Investment: $[X]K - $[Y]K
+- Team: [Size and expertise needed]
+- Partners: [Co-packer, design, etc.]
 
----
+**Go/No-Go Criteria:**
+□ Co-packer exists with capacity? ✓/✗
+□ Regulatory pathway clear? ✓/✗
+□ <12 month launch feasible? ✓/✗
+□ <$500K total investment? ✓/✗
+□ No new equipment needed? ✓/✗
 
-[Continue for 5-7 insights total]
+### Top 3 Brand-Specific Opportunities
 
-## Strategic Synthesis
+Based on mechanism translation, retail viability, and brand permission:
 
-**Core Innovation Themes:** [What overarching innovation themes emerge for THIS brand? How do these insights work together to form a coherent strategy?]
+**1. [Opportunity Name]**
+- CPG Pattern: [Which of the 5]
+- Concept: [One-sentence description]
+- Why now: [Market timing rationale]
+- Retail hook: [What buyers will love]
+- 6-month milestone: [What success looks like]
 
-**Differentiation Opportunities:** [Which insights offer the strongest potential for THIS brand to differentiate from competitors? Reference competitive context from research data.]
+**2. [Opportunity Name]**
+- CPG Pattern: [Which of the 5]
+- Concept: [One-sentence description]
+- Why now: [Market timing rationale]
+- Retail hook: [What buyers will love]
+- 6-month milestone: [What success looks like]
 
-**Implementation Priorities:** [Given THIS brand's strategic priorities and capabilities, which insights should be prioritized? Why?]
+**3. [Opportunity Name]**
+- CPG Pattern: [Which of the 5]
+- Concept: [One-sentence description]
+- Why now: [Market timing rationale]
+- Retail hook: [What buyers will love]
+- 6-month milestone: [What success looks like]
 
-**Risk Considerations:** [What risks or challenges should THIS brand consider when implementing these insights? Be specific to their context.]
+### Risk & Reality Check
 
-BRAND-SPECIFIC QUALITY CRITERIA:
-- **Deeply Customized**: Every insight references specific brand products, customers, or strategic priorities
-- **Research-Grounded**: Insights leverage the comprehensive research data (innovations, strategy, market context, news)
-- **Actionable**: Concrete next steps that THIS brand can take (not generic advice)
-- **Strategic Fit**: Aligns with THIS brand's positioning and strategic priorities
-- **Competitive Awareness**: Considers THIS brand's competitive context and market trends
-- **Customer-Centric**: Addresses THIS brand's specific target customers and their needs
+**Biggest Risks:**
+1. [Primary risk and mitigation]
+2. [Secondary risk and mitigation]
 
-RESEARCH DATA INTEGRATION NOTES:
-- The research data contains 8 comprehensive sections (~550-720 lines, 35-48KB)
-- Leverage all sections: Brand Overview, Product Portfolio, Recent Innovations, Strategy, Customers, Sustainability, Competitive Context, Recent News
-- Reference specific innovations, initiatives, or news items when they support your insights
-- If research data is missing or limited, rely more heavily on brand profile structure
+**Reality Check:**
+- Will the CEO fund this? [YES/NO because...]
+- Will retailers buy this? [YES/NO because...]
+- Can we launch in <12 months? [YES/NO because...]
 
-IMPORTANT:
-- Generate exactly 5-7 brand-specific strategic insights (no more, no less)
-- Each insight MUST reference specific brand products, customers, or strategic context
-- Each insight MUST be actionable with concrete next steps for THIS brand
-- Each insight MUST explain business impact for THIS brand specifically
-- Leverage research data throughout to ground insights in brand reality
-- Ensure output follows the exact markdown structure above
-- This is the critical differentiation layer - quality and brand-specificity are paramount
+CRITICAL CPG SUCCESS FACTORS:
+- Every opportunity must fit one of the 5 CPG patterns
+- Every opportunity must pass retail viability test
+- Every opportunity must be launchable in <12 months
+- Every opportunity must work with existing capabilities
+- Every opportunity must have clear retail buyer appeal
 """
 
     return PromptTemplate(

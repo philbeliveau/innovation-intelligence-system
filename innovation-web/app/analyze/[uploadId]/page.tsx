@@ -9,6 +9,8 @@ import { Loader2 } from 'lucide-react'
 import DocumentCard from '@/components/DocumentCard'
 import TrackCard from '@/components/TrackCard'
 import { FileViewerPanel } from '@/components/FileViewerPanel'
+import PipelineViewer from '@/components/pipeline/PipelineViewer'
+import AnimatedTrackSidebar from '@/components/AnimatedTrackSidebar'
 
 interface Track {
   title: string
@@ -44,6 +46,9 @@ export default function AnalyzePage() {
   const [launchError, setLaunchError] = useState<string>('')
   const [selectedTrack, setSelectedTrack] = useState(1)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
+  const [isPipelineRunning, setIsPipelineRunning] = useState(false)
+  const [runId, setRunId] = useState<string | null>(null)
+  const [showSidebar, setShowSidebar] = useState(false)
 
   useEffect(() => {
     // Fetch upload data from sessionStorage (Story 2.2.1 enhanced format)
@@ -141,7 +146,6 @@ export default function AnalyzePage() {
       }
 
       const data = await response.json()
-      const runId = data.run_id
 
       // Store selected track in sessionStorage for pipeline viewer
       sessionStorage.setItem('selected_track', selectedTrack.toString())
@@ -150,11 +154,11 @@ export default function AnalyzePage() {
       const nonSelectedTrack = analysis.analysis.tracks[selectedTrack === 1 ? 1 : 0]
       sessionStorage.setItem('non_selected_track', JSON.stringify(nonSelectedTrack))
 
-      // Brief success state (500ms)
-      await new Promise((resolve) => setTimeout(resolve, 500))
-
-      // Navigate to pipeline viewer
-      router.push(`/pipeline/${runId}`)
+      // Update state to show pipeline inline (NO NAVIGATION)
+      setRunId(data.run_id)
+      setIsPipelineRunning(true)
+      setShowSidebar(true)
+      setLaunching(false)
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to connect. Please check your connection.'
@@ -213,6 +217,10 @@ export default function AnalyzePage() {
     )
   }
 
+  // Get track data for conditional rendering
+  const nonSelectedTrack = analysis ? analysis.analysis.tracks[selectedTrack === 1 ? 1 : 0] : null
+  const selectedTrackData = analysis ? analysis.analysis.tracks[selectedTrack - 1] : null
+
   // Success state
   return (
     <main className="min-h-screen bg-gray-50 p-6">
@@ -222,72 +230,153 @@ export default function AnalyzePage() {
           <span className="italic text-[#4A9B8E]">My</span> Board of Ideators
         </h1>
 
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[280px_1fr]">
-          {/* Left: Document Summary Card */}
-          <div className="flex justify-center lg:justify-start">
-            {analysis && blobUrl && (
-              <DocumentCard
-                title={analysis.analysis.title}
-                summary={analysis.analysis.summary}
-                industry={analysis.analysis.industry}
-                theme={analysis.analysis.theme}
-                sources={analysis.analysis.sources}
-                onClick={() => setIsPanelOpen(true)}
-                blobUrl={blobUrl}
-                fileName={fileName}
-              />
-            )}
-          </div>
+        {!isPipelineRunning ? (
+          /* BEFORE LAUNCH: Original 2-column layout */
+          <>
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-[280px_1fr]">
+              {/* Left: Document Summary Card */}
+              <div className="flex justify-center lg:justify-start">
+                {analysis && blobUrl && (
+                  <DocumentCard
+                    title={analysis.analysis.title}
+                    summary={analysis.analysis.summary}
+                    industry={analysis.analysis.industry}
+                    theme={analysis.analysis.theme}
+                    sources={analysis.analysis.sources}
+                    onClick={() => setIsPanelOpen(true)}
+                    blobUrl={blobUrl}
+                    fileName={fileName}
+                  />
+                )}
+              </div>
 
-          {/* Right: Ideation Tracks */}
-          <div>
-            <h2 className="mb-4 text-xl font-semibold text-gray-500">
-              Ideation Tracks
-            </h2>
-            <div className="space-y-3">
-              {analysis?.analysis.tracks.map((track, index) => (
-                <TrackCard
-                  key={index}
-                  trackNumber={index + 1}
-                  title={track.title}
-                  summary={track.summary}
-                  selected={selectedTrack === index + 1}
-                  onSelect={() => setSelectedTrack(index + 1)}
+              {/* Right: Ideation Tracks */}
+              <div>
+                <h2 className="mb-4 text-xl font-semibold text-gray-500">
+                  Ideation Tracks
+                </h2>
+                <div className="space-y-3">
+                  {analysis?.analysis.tracks.map((track, index) => (
+                    <TrackCard
+                      key={index}
+                      trackNumber={index + 1}
+                      title={track.title}
+                      summary={track.summary}
+                      selected={selectedTrack === index + 1}
+                      onSelect={() => setSelectedTrack(index + 1)}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Launch Button */}
+            <div className="mt-8 flex flex-col items-center gap-4">
+              <Button
+                size="lg"
+                onClick={handleLaunch}
+                disabled={launching}
+                className="min-w-[200px]"
+              >
+                {launching && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {launching ? 'Launching Pipeline...' : 'Launch'}
+              </Button>
+
+              {/* Error Display */}
+              {launchError && (
+                <Alert variant="destructive" className="max-w-md">
+                  <AlertDescription className="flex items-center justify-between">
+                    <span>{launchError}</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setLaunchError('')}
+                      className="ml-4"
+                    >
+                      Try Again
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          </>
+        ) : (
+          /* AFTER LAUNCH: 3-column layout with sidebar + pipeline */
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[200px_280px_1fr]">
+            {/* Left: Non-selected track sidebar */}
+            <AnimatedTrackSidebar track={nonSelectedTrack} show={showSidebar} />
+
+            {/* Center: Document card (unchanged) */}
+            <div className="flex justify-center lg:justify-start">
+              {analysis && blobUrl && (
+                <DocumentCard
+                  title={analysis.analysis.title}
+                  summary={analysis.analysis.summary}
+                  industry={analysis.analysis.industry}
+                  theme={analysis.analysis.theme}
+                  sources={analysis.analysis.sources}
+                  onClick={() => setIsPanelOpen(true)}
+                  blobUrl={blobUrl}
+                  fileName={fileName}
                 />
-              ))}
+              )}
+            </div>
+
+            {/* Right: Selected track + Pipeline viewer */}
+            <div className="space-y-6">
+              {selectedTrackData && (
+                <TrackCard
+                  trackNumber={selectedTrack}
+                  title={selectedTrackData.title}
+                  summary={selectedTrackData.summary}
+                  selected={true}
+                  onSelect={() => {}}
+                />
+              )}
+              {runId && (
+                <PipelineViewer
+                  runId={runId}
+                  inlineMode={true}
+                  onComplete={(id) => router.push(`/results/${id}`)}
+                  onError={(err) => {
+                    setLaunchError(err)
+                    setIsPipelineRunning(false)
+                    setShowSidebar(false)
+                  }}
+                />
+              )}
+
+              {/* FIX UX-001: Error Recovery UI (AC 7) */}
+              {launchError && !launching && (
+                <Alert variant="destructive" className="max-w-md">
+                  <AlertDescription>
+                    <p className="mb-3">{launchError}</p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setLaunchError('')
+                          setIsPipelineRunning(false)
+                          setShowSidebar(false)
+                          setRunId(null)
+                        }}
+                      >
+                        Retry Pipeline
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => router.push('/upload')}
+                      >
+                        Return to Upload
+                      </Button>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           </div>
-        </div>
-
-        {/* Launch Button */}
-        <div className="mt-8 flex flex-col items-center gap-4">
-          <Button
-            size="lg"
-            onClick={handleLaunch}
-            disabled={launching}
-            className="min-w-[200px]"
-          >
-            {launching && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {launching ? 'Launching Pipeline...' : 'Launch'}
-          </Button>
-
-          {/* Error Display */}
-          {launchError && (
-            <Alert variant="destructive" className="max-w-md">
-              <AlertDescription className="flex items-center justify-between">
-                <span>{launchError}</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setLaunchError('')}
-                  className="ml-4"
-                >
-                  Try Again
-                </Button>
-              </AlertDescription>
-            </Alert>
-          )}
-        </div>
+        )}
       </div>
 
       {/* File Viewer Panel (Story 2.2.1) */}
