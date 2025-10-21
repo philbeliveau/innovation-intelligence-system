@@ -175,10 +175,15 @@ class Stage5Chain:
                         f"opportunities generated"
                     )
 
-                    # Return both raw output and parsed opportunities
+                    # Render each opportunity to markdown for frontend display
+                    opportunities_with_markdown = self._add_markdown_to_opportunities(
+                        opportunities, brand_name, input_source
+                    )
+
+                    # Return both raw output and parsed opportunities with markdown
                     return {
                         "stage5_output": raw_output,
-                        "opportunities": opportunities
+                        "opportunities": opportunities_with_markdown
                     }
 
                 except Exception as parse_error:
@@ -310,6 +315,66 @@ class Stage5Chain:
         except Exception as e:
             logging.error(f"Unexpected error during JSON repair: {e}")
             return None
+
+    def _add_markdown_to_opportunities(
+        self,
+        opportunities: List[Dict[str, Any]],
+        brand_name: str,
+        input_source: str
+    ) -> List[Dict[str, Any]]:
+        """Add rendered markdown content to each opportunity.
+
+        Args:
+            opportunities: List of opportunity dictionaries
+            brand_name: Name of the brand
+            input_source: Original input source
+
+        Returns:
+            List of opportunities with 'markdown' field added
+        """
+        # Load opportunity card template
+        template = self.jinja_env.get_template('opportunity-card.md.j2')
+        timestamp = datetime.now().isoformat()
+
+        opportunities_with_markdown = []
+
+        for idx, opportunity in enumerate(opportunities, start=1):
+            # Generate opportunity metadata
+            opportunity_id = f"opp-{idx:02d}"
+
+            # Extract innovation type for tags
+            innovation_type = opportunity.get('innovation_type', 'Unknown')
+            tags_list = [
+                innovation_type.lower(),
+                brand_name.lower().replace(' ', '-'),
+                input_source.lower().replace(' ', '-')
+            ]
+            tags = ', '.join(tags_list)
+
+            # Prepare template context
+            context = {
+                'opportunity_id': opportunity_id,
+                'brand': brand_name,
+                'input_source': input_source,
+                'timestamp': timestamp,
+                'tags': tags,
+                'title': opportunity.get('title', f'Opportunity {idx}'),
+                'description': opportunity.get('description', ''),
+                'actionability_items': opportunity.get('actionability_items', []),
+                'visual_description': opportunity.get('visual_description', ''),
+                'follow_up_prompts': opportunity.get('follow_up_prompts', []),
+                'retail_metrics': opportunity.get('retail_metrics', '')
+            }
+
+            # Render template to markdown
+            rendered_markdown = template.render(**context)
+
+            # Add markdown to opportunity dict
+            opportunity_with_markdown = opportunity.copy()
+            opportunity_with_markdown['markdown'] = rendered_markdown
+            opportunities_with_markdown.append(opportunity_with_markdown)
+
+        return opportunities_with_markdown
 
     def render_opportunity_cards(
         self,
