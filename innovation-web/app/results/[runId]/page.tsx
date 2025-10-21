@@ -104,36 +104,36 @@ export default async function ResultsPage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-amber-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b-[5px] border-black">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href="/upload">
-                <Button variant="outline" className="flex items-center gap-2">
+                <button className="bg-black text-white px-4 py-2 font-bold uppercase text-sm border-2 border-black shadow-[4px_4px_0_#000] hover:shadow-[6px_6px_0_#000] hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all">
                   ← Back
-                </Button>
+                </button>
               </Link>
-              <h1 className="text-2xl font-bold text-gray-900">Innovation Opportunities</h1>
+              <h1 className="text-2xl font-black uppercase text-black">Innovation Opportunities</h1>
             </div>
             {companyName && (
-              <Badge variant="secondary" className="text-sm">
+              <span className="bg-gray-700 text-white px-3 py-1 font-bold uppercase text-xs border-2 border-black">
                 {companyName}
-              </Badge>
+              </span>
             )}
           </div>
         </div>
       </div>
 
       {/* Success Banner */}
-      <div className="bg-green-600 text-white">
+      <div className="bg-white border-b-[5px] border-black">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center gap-3">
-            <div className="text-3xl">✓</div>
+          <div className="flex items-center gap-4 bg-gradient-to-r from-green-200 to-green-400 p-4 border-4 border-black shadow-[6px_6px_0_#000]">
+            <div className="text-4xl font-black">✓</div>
             <div>
-              <h2 className="text-xl font-bold">Pipeline Complete</h2>
-              <p className="text-green-100">
+              <h2 className="text-xl font-black uppercase text-black">Pipeline Complete</h2>
+              <p className="text-black font-bold">
                 {opportunities.length} {opportunities.length === 1 ? 'Opportunity' : 'Opportunities'} Generated Successfully
               </p>
             </div>
@@ -144,11 +144,11 @@ export default async function ResultsPage({ params }: PageProps) {
       {/* Warning Banner (if some files are missing) */}
       {opportunities.length < 5 && (
         <div className="container mx-auto px-4 pt-6">
-          <Alert className="bg-yellow-50 border-yellow-200">
-            <AlertDescription className="text-yellow-800">
+          <div className="bg-yellow-200 border-4 border-black p-4 shadow-[4px_4px_0_#000]">
+            <p className="text-black font-bold">
               ⚠️ Warning: Only {opportunities.length} of 5 opportunities are available. Some files may be missing.
-            </AlertDescription>
-          </Alert>
+            </p>
+          </div>
         </div>
       )}
 
@@ -157,19 +157,17 @@ export default async function ResultsPage({ params }: PageProps) {
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-4 mb-8">
           <Link href="/upload">
-            <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
+            <button className="bg-orange-500 text-white px-6 py-3 font-black uppercase text-lg border-4 border-black shadow-[6px_6px_0_#000] hover:shadow-[8px_8px_0_#000] hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all">
               🚀 New Pipeline
-            </Button>
+            </button>
           </Link>
-          <Button
-            size="lg"
-            variant="outline"
+          <button
             disabled
             title="PDF export coming in Phase 2"
-            className="cursor-not-allowed opacity-50"
+            className="bg-gray-300 text-gray-600 px-6 py-3 font-black uppercase text-lg border-4 border-black shadow-[6px_6px_0_#000] cursor-not-allowed opacity-50"
           >
             📄 Download PDF
-          </Button>
+          </button>
         </div>
 
         {/* Opportunity Cards */}
