@@ -126,21 +126,6 @@ export default async function ResultsPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Success Banner */}
-      <div className="bg-white border-b-[5px] border-black">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center gap-4 bg-gradient-to-r from-green-200 to-green-400 p-4 border-4 border-black shadow-[6px_6px_0_#000]">
-            <div className="text-4xl font-black">✓</div>
-            <div>
-              <h2 className="text-xl font-black uppercase text-black">Pipeline Complete</h2>
-              <p className="text-black font-bold">
-                {opportunities.length} {opportunities.length === 1 ? 'Opportunity' : 'Opportunities'} Generated Successfully
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Warning Banner (if some files are missing) */}
       {opportunities.length < 5 && (
         <div className="container mx-auto px-4 pt-6">
@@ -180,15 +165,6 @@ export default async function ResultsPage({ params }: PageProps) {
               markdown={opp.markdown}
             />
           ))}
-        </div>
-
-        {/* Footer Action Buttons */}
-        <div className="max-w-4xl mx-auto mt-8 flex flex-wrap gap-4 justify-center">
-          <Link href="/upload">
-            <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
-              🚀 Start New Pipeline
-            </Button>
-          </Link>
         </div>
       </div>
     </div>
