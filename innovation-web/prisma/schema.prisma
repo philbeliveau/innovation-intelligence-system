@@ -7,58 +7,53 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Document model - User uploaded files
 model Document {
   id         String   @id @default(uuid())
   userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   fileName   String
-  fileSize   Int      // bytes
-  blobUrl    String   // Vercel Blob storage URL
+  fileSize   Int
+  blobUrl    String
   uploadedAt DateTime
   createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
 }
 
-// InspirationReport model - Full pipeline report
 model InspirationReport {
   id               String      @id @default(uuid())
   runId            String      @unique
-  run              PipelineRun @relation(fields: [runId], references: [id], onDelete: Cascade)
-  selectedTrack    String      @db.Text
-  nonSelectedTrack String      @db.Text
-  stage1Output     String      @db.Text
-  stage2Output     String      @db.Text
-  stage3Output     String      @db.Text
-  stage4Output     String      @db.Text
-  stage5Output     String      @db.Text
+  selectedTrack    String
+  nonSelectedTrack String
+  stage1Output     String
+  stage2Output     String
+  stage3Output     String
+  stage4Output     String
+  stage5Output     String
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
+  run              PipelineRun @relation(fields: [runId], references: [id], onDelete: Cascade)
 }
 
-// OpportunityCard model - Generated opportunity cards
 model OpportunityCard {
   id        String      @id @default(uuid())
   runId     String
-  run       PipelineRun @relation(fields: [runId], references: [id], onDelete: Cascade)
   number    Int
   title     String
-  content   String      @db.Text
+  content   String
   isStarred Boolean     @default(false)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
+  run       PipelineRun @relation(fields: [runId], references: [id], onDelete: Cascade)
 
   @@unique([runId, number])
   @@index([runId, number])
   @@index([isStarred])
 }
 
-// PipelineRun model - Core run data
 model PipelineRun {
   id                String             @id @default(uuid())
   userId            String
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   documentName      String
   documentUrl       String?
   companyName       String
@@ -67,40 +62,39 @@ model PipelineRun {
   createdAt         DateTime           @default(now())
   completedAt       DateTime?
   duration          Int?
-  opportunityCards  OpportunityCard[]
   inspirationReport InspirationReport?
+  opportunityCards  OpportunityCard[]
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   stageOutputs      StageOutput[]
 
   @@index([userId, createdAt])
   @@index([status])
 }
 
-// StageOutput model - Individual stage results
 model StageOutput {
   id          String      @id @default(uuid())
   runId       String
-  run         PipelineRun @relation(fields: [runId], references: [id], onDelete: Cascade)
   stageNumber Int
   stageName   String
   status      RunStatus
-  output      String      @db.Text
+  output      String
   completedAt DateTime?
   createdAt   DateTime    @default(now())
+  run         PipelineRun @relation(fields: [runId], references: [id], onDelete: Cascade)
 
   @@unique([runId, stageNumber])
   @@index([runId, stageNumber])
 }
 
-// User model - Clerk authentication integration
 model User {
   id           String        @id @default(uuid())
   clerkId      String        @unique
   email        String        @unique
   name         String?
-  pipelineRuns PipelineRun[]
-  documents    Document[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+  documents    Document[]
+  pipelineRuns PipelineRun[]
 
   @@index([clerkId])
 }

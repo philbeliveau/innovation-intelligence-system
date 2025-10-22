@@ -62,14 +62,14 @@ graph TB
     subgraph "Frontend - Next.js 15"
         A0[Onboarding<br/>Company Selection]
         A[Homepage<br/>Drag & Drop Only]
-        A1[Intermediary Card<br/>Document Summary + Industry]
+        A1[Intermediary Card<br/>Document Summary + Latent Factors]
         B[Pipeline Viewer<br/>Real-time Stage Visualization]
         C[Left Sidebar<br/>Collapsible Home Menu]
     end
 
     subgraph "API Layer - Next.js Route Handlers"
         D[POST /api/upload<br/>Save to Vercel Blob]
-        D1[POST /api/analyze-document<br/>LLM Extract Summary + Industry]
+        D1[POST /api/analyze-document<br/>LLM Extract Summary + Latent Factors]
         E[POST /api/run<br/>Execute Pipeline Stages]
         F[GET /api/status/:runId<br/>Poll Stage Progress]
     end
@@ -376,6 +376,7 @@ data/
    - **Industry:** Primary industry/sector identified (e.g. "fashion", "food & beverage", "sports")
    - **Source:** Document source if identifiable (e.g. "trendwatching.com")
    - **Theme:** Main topic or category (e.g. "marketing strategies", "sustainability")
+   - **Latent Factors:** 1-3 innovation mechanisms (mechanism type, title, constraint eliminated)
 3. Display extracted information in card format matching `docs/image/intermediary-card.png`:
    - Hero image placeholder
    - Title (generated from summary)
@@ -383,6 +384,7 @@ data/
    - Industry badge (orange pill)
    - Theme badge (red pill)
    - Summary text
+   - **Innovation Mechanisms section** (💡 icon, mechanism type badges, titles, constraints)
 4. Show "Launch" button at bottom
 5. Click "Launch" → POST to `/api/run` → redirect to `/pipeline/[runId]`
 
@@ -854,7 +856,7 @@ export async function GET() {
 ---
 
 #### `POST /api/analyze-document`
-**Purpose:** Use LLM to extract summary and metadata from uploaded document
+**Purpose:** Use LLM to extract summary, metadata, and innovation mechanisms (latent factors) from uploaded document
 
 **Request:**
 ```json
@@ -872,7 +874,19 @@ export async function GET() {
     "summary": "Most people only wear a fraction of the clothes they own. To keep their products in use, the Danish fashion brand Samsøe Samsøe is adding smart labels that simplify future resales. Sewn into garments...",
     "industry": "fashion",
     "theme": "marketing strategies",
-    "sources": ["trendwatching.com", "8 others"]
+    "sources": ["trendwatching.com", "8 others"],
+    "latentFactors": [
+      {
+        "mechanismTitle": "QR codes eliminate resale friction",
+        "mechanismType": "REMOVED FRICTION",
+        "constraintEliminated": "Time: 30 min listing → 10 sec QR scan"
+      },
+      {
+        "mechanismTitle": "Smart labels enable circular fashion",
+        "mechanismType": "DIGITIZED ANALOG",
+        "constraintEliminated": "Knowledge: Unknown provenance → Full garment history"
+      }
+    ]
   },
   "blob_url": "https://blob.vercel-storage.com/uploads/abc123.pdf",
   "analyzed_at": "2025-01-15T14:20:35Z"

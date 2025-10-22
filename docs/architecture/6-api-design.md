@@ -332,6 +332,173 @@ async def run_pipeline(request: RunRequest):
 
 ---
 
+### `POST /api/runs/:runId/complete` ⭐ **NEW - Story 7.8**
+**Purpose:** Webhook called by Railway backend when pipeline completes successfully
+
+**Authentication:** Requires `X-Webhook-Secret` header matching environment variable
+
+**Request:**
+```json
+{
+  "status": "COMPLETED",
+  "completedAt": "2025-01-15T14:45:30Z",
+  "duration": 180000,
+  "opportunities": [
+    {
+      "number": 1,
+      "title": "Plant-Based Dairy Theater",
+      "content": "...",
+      "markdown": "# Opportunity #1\n\n..."
+    }
+  ],
+  "stageOutputs": {
+    "stage1": { "inspirations": [...] },
+    "stage2": { "stage2_output": "..." },
+    "stage3": { "stage3_output": "..." },
+    "stage4": { "stage4_output": "..." },
+    "stage5": { "opportunities": [...] }
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "success": true
+}
+```
+
+**Implementation:**
+```typescript
+// app/api/runs/[runId]/complete/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ runId: string }> }
+) {
+  try {
+    // 1. Authenticate webhook
+    const secret = request.headers.get('X-Webhook-Secret')
+    const expectedSecret = process.env.WEBHOOK_SECRET
+
+    if (secret !== expectedSecret) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // 2. Get runId and body
+    const { runId } = await params
+    const body = await request.json()
+
+    // 3. Update PipelineRun status
+    await prisma.pipelineRun.update({
+      where: { id: runId },
+      data: {
+        status: 'COMPLETED',
+        completedAt: new Date(body.completedAt),
+        duration: body.duration
+      }
+    })
+
+    // 4. Create OpportunityCards
+    for (const opp of body.opportunities) {
+      await prisma.opportunityCard.create({
+        data: {
+          runId,
+          number: opp.number,
+          title: opp.title,
+          content: opp.markdown || opp.content,
+          isStarred: false
+        }
+      })
+    }
+
+    // 5. Create InspirationReport
+    await prisma.inspirationReport.create({
+      data: {
+        runId,
+        selectedTrack: "",
+        nonSelectedTrack: "",
+        stage1Output: JSON.stringify(body.stageOutputs.stage1),
+        stage2Output: JSON.stringify(body.stageOutputs.stage2),
+        stage3Output: JSON.stringify(body.stageOutputs.stage3),
+        stage4Output: JSON.stringify(body.stageOutputs.stage4),
+        stage5Output: JSON.stringify(body.stageOutputs.stage5)
+      }
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('[Webhook] Error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+```
+
+**Railway Backend Integration:**
+
+After Stage 5 completes in `backend/app/pipeline_runner.py`, backend calls this webhook:
+
+```python
+# backend/app/pipeline_runner.py (after line 355)
+import requests
+from datetime import datetime
+
+frontend_url = os.getenv("FRONTEND_WEBHOOK_URL")
+webhook_secret = os.getenv("WEBHOOK_SECRET")
+
+try:
+    completion_data = {
+        "status": "COMPLETED",
+        "completedAt": datetime.utcnow().isoformat() + "Z",
+        "duration": int((time.time() - start_time) * 1000),
+        "opportunities": opportunities_with_markdown,
+        "stageOutputs": {
+            "stage1": stage1_result,
+            "stage2": stage2_result,
+            "stage3": stage3_result,
+            "stage4": stage4_result,
+            "stage5": stage5_result
+        }
+    }
+
+    response = requests.post(
+        f"{frontend_url}/api/runs/{run_id}/complete",
+        json=completion_data,
+        headers={"X-Webhook-Secret": webhook_secret},
+        timeout=30
+    )
+
+    if response.ok:
+        logger.info(f"Successfully notified frontend of completion for {run_id}")
+    else:
+        logger.error(f"Webhook failed: {response.status_code}")
+except Exception as e:
+    logger.error(f"Failed to call completion webhook: {e}")
+    # Don't fail the pipeline if webhook fails
+```
+
+**Environment Variables Required:**
+- Railway Backend: `FRONTEND_WEBHOOK_URL`, `WEBHOOK_SECRET`
+- Vercel Frontend: `WEBHOOK_SECRET`
+
+**Database Updates:**
+1. PipelineRun: `status` → `'COMPLETED'`, `completedAt`, `duration`
+2. OpportunityCard: Creates N records (one per opportunity)
+3. InspirationReport: Creates 1 record with all stage outputs
+
+**Error Handling:**
+- 401: Invalid webhook secret
+- 404: Run not found
+- 500: Database error during processing
+- Idempotent: If run already COMPLETED, returns success
+
+---
+
 ### `GET /api/status/:runId`
 **Purpose:** Proxy pipeline status request to Railway backend
 

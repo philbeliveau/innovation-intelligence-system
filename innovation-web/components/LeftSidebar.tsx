@@ -22,12 +22,11 @@ export function LeftSidebar() {
   const [nonSelectedTrack, setNonSelectedTrack] = useState<Track | null>(null)
   const [isMobile, setIsMobile] = useState(false)
 
-  // Enable polling only when on pipeline viewer page
-  const shouldPoll = pathname.includes('/pipeline/')
+  // Enable polling on all pages to show runs in sidebar
   const { runs, loading, error } = useRuns({
     pageSize: 5,
     pollingInterval: 10000,
-    enabled: shouldPoll,
+    enabled: true, // Always fetch runs
   })
 
   // Detect mobile on mount

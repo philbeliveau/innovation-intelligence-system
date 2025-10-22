@@ -46,9 +46,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Set HTTP-only cookie
+    // Set HTTP-only cookies for both company_id and company_name
     const cookieStore = await cookies()
+    const companyName = profile.brand_name || company_id
+
     cookieStore.set('company_id', company_id, {
+      httpOnly: true,
+      maxAge: 604800, // 7 days in seconds
+      sameSite: 'lax',
+      path: '/',
+    })
+
+    cookieStore.set('company_name', companyName, {
       httpOnly: true,
       maxAge: 604800, // 7 days in seconds
       sameSite: 'lax',
@@ -57,7 +66,7 @@ export async function POST(request: NextRequest) {
 
     // Return success response
     return NextResponse.json({
-      company_name: profile.brand_name || company_id,
+      company_name: companyName,
       company_id,
     })
   } catch (error) {
