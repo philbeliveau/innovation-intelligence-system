@@ -23,12 +23,14 @@ export default clerkMiddleware(async (auth, req) => {
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.clerk.accounts.dev https://*.clerk.com", // Allow Clerk scripts
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com", // Clerk scripts
+      "worker-src 'self' blob:", // Allow Clerk Web Workers for token polling
+      "child-src 'self' blob:", // Fallback for older browsers
       "style-src 'self' 'unsafe-inline' https://*.clerk.accounts.dev https://*.clerk.com", // Allow Clerk styles
       "img-src 'self' data: https: blob:", // Allow images from Clerk, Vercel Blob, etc.
       "font-src 'self' data: https://*.clerk.accounts.dev https://*.clerk.com https://r2cdn.perplexity.ai", // Allow Clerk and external fonts
-      "connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://*.vercel-storage.com https://*.railway.app",
-      "frame-src 'self' https://*.clerk.accounts.dev https://*.clerk.com", // Allow Clerk iframes
+      "connect-src 'self' blob: https://*.clerk.accounts.dev https://*.clerk.com https://*.clerk.dev https://*.vercel-storage.com https://*.railway.app",
+      "frame-src 'self' blob: https://*.blob.vercel-storage.com https://*.clerk.accounts.dev https://*.clerk.com", // Allow Clerk iframes + Vercel Blob PDFs
       "frame-ancestors 'none'", // Prevent clickjacking
       "base-uri 'self'",
       "form-action 'self'"

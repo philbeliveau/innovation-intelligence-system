@@ -27,13 +27,14 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com", // Clerk scripts + blob for Workers
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com", // Clerk scripts
               "worker-src 'self' blob:", // Allow Clerk Web Workers for token polling
+              "child-src 'self' blob:", // Fallback for older browsers
               "style-src 'self' 'unsafe-inline'", // unsafe-inline needed for Tailwind/shadcn
               "img-src 'self' data: blob: https://*.clerk.com https://*.clerk.accounts.dev", // Clerk images
               "font-src 'self' data:", // System fonts + data URIs
               "connect-src 'self' blob: https://*.clerk.accounts.dev https://*.clerk.com https://*.clerk.dev", // Clerk API
-              "frame-src 'self' blob: https://*.blob.vercel-storage.com https://*.clerk.accounts.dev https://*.clerk.com", // Clerk iframes
+              "frame-src 'self' blob: https://*.blob.vercel-storage.com https://fdt3gmiqrtfo2acz.public.blob.vercel-storage.com https://*.clerk.accounts.dev https://*.clerk.com", // Clerk iframes + Vercel Blob PDFs
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",
