@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { list } from '@vercel/blob'
+import { prisma } from '@/lib/prisma'
+import { RunStatus } from '@prisma/client'
 
-export type RunStatus = 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED'
+export type { RunStatus }
 
 export interface SidebarRun {
   id: string
@@ -63,65 +64,39 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Fetch blobs from Vercel Blob storage with user ID prefix
-    const { blobs } = await list({
-      prefix: `${userId}/`,
-      limit: 1000, // Fetch all user blobs (adjust if needed)
+    // Get or create user in database
+    let user = await prisma.user.findUnique({
+      where: { clerkId: userId },
     })
 
-    // Parse metadata from blob names and filter for valid runs
-    // Expected format: {userId}/{uploadId}_{filename}
-    let runs = blobs
-      .map(blob => {
-        try {
-          // Extract upload ID and filename from pathname
-          const pathParts = blob.pathname.split('/')
-          if (pathParts.length < 2) return null
-
-          const fileName = pathParts[pathParts.length - 1]
-          const uploadId = fileName.split('_')[0]
-
-          // Extract metadata from blob (stored during upload)
-          // For now, we'll derive status and cardCount from naming conventions
-          // In production, this should come from a database
-
-          // Determine status based on blob metadata or naming
-          // This is a placeholder - real implementation needs database
-          const status: RunStatus = 'COMPLETED'
-          const cardCount = 5 // Placeholder
-
-          // Extract document name (remove upload ID prefix)
-          const documentName = fileName.substring(fileName.indexOf('_') + 1)
-
-          // Get company name from metadata if available
-          const companyName = blob.downloadUrl.includes('lactalis') ? 'Lactalis Canada' : 'Unknown Company'
-
-          return {
-            id: uploadId,
-            documentName,
-            companyName,
-            createdAt: blob.uploadedAt.toISOString(),
-            status,
-            cardCount,
-          }
-        } catch (error) {
-          console.error('[API /runs] Failed to parse blob metadata:', error)
-          return null
-        }
+    if (!user) {
+      // Auto-create user on first API call
+      const authSession = await auth()
+      user = await prisma.user.create({
+        data: {
+          clerkId: userId,
+          email: (authSession as { emailAddresses?: Array<{ emailAddress: string }> })?.emailAddresses?.[0]?.emailAddress || `user-${userId}@temp.com`,
+          name: null,
+        },
       })
-      .filter((run) => run !== null) as SidebarRun[]
+    }
 
-    // Apply filters
+    // Build Prisma where clause for filters
+    const where: Record<string, unknown> = { userId: user.id }
+
     if (companyFilter) {
-      runs = runs.filter(run => run.companyName === companyFilter)
+      where.companyName = companyFilter
     }
 
     if (statusFilter) {
-      runs = runs.filter(run => run.status === statusFilter)
+      where.status = statusFilter
     }
 
     if (searchQuery) {
-      runs = runs.filter(run => run.documentName.toLowerCase().includes(searchQuery))
+      where.documentName = {
+        contains: searchQuery,
+        mode: 'insensitive',
+      }
     }
 
     // Apply date range filter
@@ -143,36 +118,64 @@ export async function GET(request: NextRequest) {
           cutoffDate = startOfMonth
           break
         default:
-          cutoffDate = new Date(0) // Beginning of time
+          cutoffDate = new Date(0)
       }
 
-      runs = runs.filter(run => new Date(run.createdAt) >= cutoffDate)
+      where.createdAt = { gte: cutoffDate }
     }
 
-    // Apply sorting
-    runs.sort((a, b) => {
-      switch (sortOption) {
-        case 'oldest':
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        case 'company-az':
-          return a.companyName.localeCompare(b.companyName)
-        case 'newest':
-        default:
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      }
+    // Determine sort order for Prisma
+    let orderBy: Record<string, string> = { createdAt: 'desc' }
+    switch (sortOption) {
+      case 'oldest':
+        orderBy = { createdAt: 'asc' }
+        break
+      case 'company-az':
+        orderBy = { companyName: 'asc' }
+        break
+      case 'newest':
+      default:
+        orderBy = { createdAt: 'desc' }
+    }
+
+    // Fetch runs from database with card count
+    const dbRuns = await prisma.pipelineRun.findMany({
+      where,
+      orderBy,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      include: {
+        _count: {
+          select: { opportunityCards: true },
+        },
+      },
     })
 
-    // Get unique companies for filter dropdown
-    const uniqueCompanies = Array.from(new Set(runs.map(run => run.companyName))).sort()
+    // Get total count for pagination
+    const total = await prisma.pipelineRun.count({ where })
 
-    // Apply pagination
-    const startIndex = (page - 1) * pageSize
-    const endIndex = startIndex + pageSize
-    const paginatedRuns = runs.slice(startIndex, endIndex)
+    // Transform to API response format
+    const runs: SidebarRun[] = dbRuns.map((run) => ({
+      id: run.id,
+      documentName: run.documentName,
+      companyName: run.companyName,
+      createdAt: run.createdAt.toISOString(),
+      status: run.status,
+      cardCount: run._count.opportunityCards,
+    }))
+
+    // Get unique companies for filter dropdown (query all companies for this user)
+    const allCompanies = await prisma.pipelineRun.findMany({
+      where: { userId: user.id },
+      select: { companyName: true },
+      distinct: ['companyName'],
+      orderBy: { companyName: 'asc' },
+    })
+    const uniqueCompanies = allCompanies.map((r) => r.companyName)
 
     const response: RunsResponse = {
-      runs: paginatedRuns,
-      total: runs.length,
+      runs,
+      total,
       page,
       pageSize,
       uniqueCompanies,

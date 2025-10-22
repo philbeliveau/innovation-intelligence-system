@@ -27,6 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { toast } from 'sonner'
 
 interface OpportunityCard {
   id: string
@@ -167,10 +168,11 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
         throw new Error('Failed to delete run')
       }
 
+      toast.success('Run deleted successfully')
       router.push('/runs')
     } catch (error) {
       console.error('Error deleting run:', error)
-      alert('Failed to delete run. Please try again.')
+      toast.error('Failed to delete run. Please try again.')
     } finally {
       setIsDeleting(false)
     }
@@ -190,10 +192,11 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
       }
 
       const data = await response.json()
+      toast.success('Rerun started successfully')
       router.push(`/pipeline/${data.newRunId}`)
     } catch (error) {
       console.error('Error rerunning pipeline:', error)
-      alert('Failed to rerun pipeline. Please try again.')
+      toast.error('Failed to rerun pipeline. Please try again.')
     }
   }
 
@@ -236,9 +239,10 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
       })
 
       doc.save(`${run.documentName}-opportunities.pdf`)
+      toast.success('PDF downloaded successfully')
     } catch (error) {
       console.error('Error generating PDF:', error)
-      alert('Failed to generate PDF. Please try again.')
+      toast.error('Failed to generate PDF. Please try again.')
     } finally {
       setIsDownloading(false)
     }
@@ -254,16 +258,11 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
 
   // Handle star toggle
   const handleStarToggle = async (cardId: string) => {
+    // Store original state for rollback
+    const originalCards = run?.opportunityCards || []
+
     try {
-      const response = await fetch(`/api/cards/${cardId}/star`, {
-        method: 'POST',
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to toggle star')
-      }
-
-      // Optimistic update
+      // Optimistic update BEFORE API call
       setRun((prev) => {
         if (!prev) return prev
         return {
@@ -273,9 +272,40 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
           ),
         }
       })
+
+      const response = await fetch(`/api/cards/${cardId}/star`, {
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle star')
+      }
+
+      // Verify server returned correct state
+      const data = await response.json()
+
+      // Update with actual server state (in case of race condition)
+      setRun((prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          opportunityCards: prev.opportunityCards.map((card) =>
+            card.id === cardId ? { ...card, isStarred: data.isStarred } : card
+          ),
+        }
+      })
+
+      toast.success('Favorite updated')
     } catch (error) {
       console.error('Error toggling star:', error)
-      alert('Failed to update favorite status. Please try again.')
+
+      // ROLLBACK: Restore original state on failure
+      setRun((prev) => {
+        if (!prev) return prev
+        return { ...prev, opportunityCards: originalCards }
+      })
+
+      toast.error('Failed to update favorite status. Please try again.')
     }
   }
 

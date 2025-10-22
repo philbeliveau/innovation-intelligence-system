@@ -105,12 +105,22 @@ innovation-web/
 │   ├── analyze/             # Page routes
 │   ├── pipeline/            # Page routes
 │   ├── results/             # Page routes
+│   ├── runs/                # Run history & detail pages
 │   ├── layout.tsx           # Root layout
-│   └── page.tsx             # Homepage (/)
+│   └── page.tsx             # Homepage (onboarding)
 ├── components/              # React components
 │   ├── ui/                  # shadcn/ui primitives (DO NOT EDIT)
 │   └── ...                  # Custom components
 ├── lib/                     # Utilities and helpers
+│   ├── prisma.ts            # ⭐ Prisma Client singleton
+│   └── utils.ts             # Utility functions
+├── prisma/                  # ⭐ Database schema and migrations
+│   ├── schema.prisma        # Complete database schema
+│   ├── migrations/          # Version-controlled SQL migrations
+│   │   ├── 20250121000000_init/
+│   │   │   └── migration.sql
+│   │   └── migration_lock.toml
+│   └── seed.ts              # Seed data for development
 ├── public/                  # Static assets
 ├── .env.local               # Environment variables (NOT IN GIT)
 ├── .env.example             # Environment template
@@ -179,18 +189,39 @@ export default function AboutPage() {
 app/api/
 ├── analyze-document/
 │   └── route.ts            # POST /api/analyze-document
+├── cards/
+│   └── [cardId]/
+│       └── star/
+│           └── route.ts    # POST /api/cards/:id/star (toggle favorite)
 ├── onboarding/
 │   ├── current-company/
 │   │   └── route.ts        # GET /api/onboarding/current-company
 │   └── set-company/
 │       └── route.ts        # POST /api/onboarding/set-company
-├── run/
-│   └── route.ts            # POST /api/run
+├── runs/
+│   ├── route.ts            # GET /api/runs (list), POST /api/runs (create)
+│   └── [runId]/
+│       ├── route.ts        # GET /api/runs/:id (detail), DELETE /api/runs/:id
+│       └── rerun/
+│           └── route.ts    # POST /api/runs/:id/rerun
 ├── status/
 │   └── [runId]/
-│       └── route.ts        # GET /api/status/{runId}
+│       └── route.ts        # GET /api/status/{runId} (proxy to Railway)
 └── upload/
-    └── route.ts            # POST /api/upload
+    └── route.ts            # POST /api/upload (Vercel Blob)
+```
+
+**Prisma-Powered Routes:**
+- ✅ `GET /api/runs` - List user's runs with pagination
+- ✅ `GET /api/runs/:id` - Get run details with cards, report, stages
+- ✅ `POST /api/runs` - Create new run & trigger pipeline
+- ✅ `POST /api/runs/:id/rerun` - Duplicate and rerun pipeline
+- ✅ `DELETE /api/runs/:id` - Delete run (cascade deletes)
+- ✅ `POST /api/cards/:id/star` - Toggle favorite card
+
+**Backend Proxy Routes:**
+- ⚡ `GET /api/status/:runId` - Proxies to Railway FastAPI
+- ⚡ `POST /api/run` - Proxies to Railway (deprecated, use `/api/runs`)
 ```
 
 **API Route File Pattern:**
@@ -278,11 +309,36 @@ export default function OpportunityCard({ opportunity }) {
 
 ```
 lib/
+├── prisma.ts                # ⭐ Prisma Client singleton (CRITICAL)
 ├── utils.ts                 # General utilities (cn, formatters)
 ├── blob-client.ts           # Vercel Blob upload/download
 ├── pipeline-client.ts       # Python pipeline execution wrapper
 └── brand-loader.ts          # Load brand YAML profiles
 ```
+
+**Critical File: `lib/prisma.ts`**
+
+```typescript
+// lib/prisma.ts - Prisma Client Singleton Pattern
+import { PrismaClient } from '@prisma/client'
+
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined
+}
+
+export const prisma = globalForPrisma.prisma ?? new PrismaClient({
+  log: process.env.NODE_ENV === 'development'
+    ? ['query', 'error', 'warn']
+    : ['error'],
+})
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+```
+
+**Why Singleton Pattern?**
+- Prevents "too many connections" error in serverless environments
+- Reuses single Prisma Client instance across hot reloads
+- Essential for Vercel Edge/Serverless functions
 
 **When to Add Files to `lib/`:**
 - Shared utility functions
@@ -300,6 +356,199 @@ export function isValidPDF(file: File): boolean {
 // Usage in components:
 import { isValidPDF } from '@/lib/pdf-validator'
 ```
+
+---
+
+## Prisma & Database (prisma/)
+
+### Schema and Migrations
+
+```
+prisma/
+├── schema.prisma            # ⭐ Complete database schema
+├── migrations/              # Version-controlled SQL migrations
+│   ├── 20250121000000_init/
+│   │   └── migration.sql    # Initial schema (5 models)
+│   ├── 20250121120000_add_user_run_management/
+│   │   └── migration.sql    # User run management schema
+│   └── migration_lock.toml  # Lock file for migration tracking
+└── seed.ts                  # Seed data for development testing
+```
+
+**Database Schema Overview (5 Models):**
+
+1. **User** - Authenticated users via Clerk
+2. **Run** - Pipeline execution records
+3. **OpportunityCard** - 5 cards from Stage 5
+4. **InspirationReport** - Stage 1 inspiration tracks
+5. **StageOutput** - Raw outputs from all 5 stages
+
+**Entity Relationships:**
+```
+User (1) → (Many) Runs
+User (1) → (Many) OpportunityCards
+Run (1) → (Many) OpportunityCards
+Run (1) → (1) InspirationReport
+Run (1) → (Many) StageOutputs (stages 1-5)
+```
+
+### Common Prisma Commands
+
+```bash
+# Generate Prisma Client (after schema changes)
+npx prisma generate
+
+# Create new migration (development)
+npx prisma migrate dev --name add_starred_field
+
+# Apply migrations (production)
+npx prisma migrate deploy
+
+# Open Prisma Studio (visual database browser)
+npx prisma studio
+
+# Reset database (WARNING: deletes all data)
+npx prisma migrate reset
+
+# View migration status
+npx prisma migrate status
+
+# Seed database with test data
+npx prisma db seed
+```
+
+### Prisma Usage in API Routes
+
+```typescript
+// app/api/runs/route.ts
+import { prisma } from '@/lib/prisma'
+import { auth } from '@clerk/nextjs/server'
+
+export async function GET() {
+  const { userId } = await auth()
+
+  // Type-safe query with autocomplete
+  const runs = await prisma.run.findMany({
+    where: {
+      user: { clerkId: userId }  // User isolation
+    },
+    include: {
+      opportunityCards: true,     // Load relations
+      inspirationReport: true
+    },
+    orderBy: { createdAt: 'desc' }
+  })
+
+  return NextResponse.json({ runs })
+}
+```
+
+**Key Principles:**
+- ✅ Always filter by authenticated user (`user.clerkId`)
+- ✅ Use `include` for relations, not separate queries (prevents N+1)
+- ✅ Use transactions for operations that must succeed/fail together
+- ✅ Handle Prisma error codes (`P2025`, `P2002`, etc.)
+
+---
+
+## Backend (Railway FastAPI)
+
+### Backend Structure
+
+```
+backend/
+├── app/
+│   ├── main.py              # FastAPI application entry point
+│   ├── routers/
+│   │   └── pipeline.py      # Pipeline execution endpoints
+│   ├── services/
+│   │   ├── database_service.py   # ⭐ asyncpg PostgreSQL service
+│   │   └── pipeline_service.py   # Python pipeline wrapper
+│   └── models/
+│       └── schemas.py       # Pydantic models
+├── Dockerfile               # Railway deployment container
+├── railway.json             # Railway configuration
+├── requirements.txt         # Python dependencies
+└── .env.example             # Environment variable template
+```
+
+### Database Service (asyncpg)
+
+**File: `backend/app/services/database_service.py`**
+
+```python
+import asyncpg
+import os
+from typing import Dict, Optional, List
+
+class DatabaseService:
+    """Async PostgreSQL service for pipeline writes."""
+
+    def __init__(self):
+        self.database_url = os.getenv("DATABASE_URL")
+        self._pool: Optional[asyncpg.Pool] = None
+
+    async def get_pool(self) -> asyncpg.Pool:
+        """Get or create connection pool."""
+        if not self._pool:
+            self._pool = await asyncpg.create_pool(
+                self.database_url,
+                min_size=5,
+                max_size=20,
+                command_timeout=60
+            )
+        return self._pool
+
+    async def update_run_stage(self, run_id: str, stage: int):
+        """Update currentStage during pipeline execution."""
+        pool = await self.get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                'UPDATE "Run" SET "currentStage" = $1 WHERE id = $2',
+                stage, run_id
+            )
+
+    async def save_opportunity_cards(self, run_id: str, user_id: str, cards: List[Dict]):
+        """Save 5 opportunity cards from Stage 5."""
+        pool = await self.get_pool()
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                for card in cards:
+                    await conn.execute(
+                        '''INSERT INTO "OpportunityCard" (...)
+                           VALUES (...)''',
+                        run_id, user_id, card['number'], ...
+                    )
+```
+
+### Pipeline Integration Flow
+
+```
+1. Next.js API (/api/runs) → Creates Run record in PostgreSQL via Prisma
+2. Next.js triggers Railway backend → POST /run
+3. Railway FastAPI receives request
+4. For each stage (1-5):
+   a. Database Service updates currentStage
+   b. Python Pipeline executes stage
+   c. Database Service saves StageOutput
+5. After Stage 5:
+   a. Database Service parses opportunity cards
+   b. Database Service saves 5 OpportunityCard records
+   c. Database Service marks Run as COMPLETED
+6. Next.js polls /api/status/:runId → Reads from PostgreSQL via Prisma
+```
+
+### Why Two Database Clients?
+
+| Client | Language | Use Case | Location |
+|--------|----------|----------|----------|
+| **Prisma** | TypeScript | Type-safe reads, user queries | Next.js (Vercel) |
+| **asyncpg** | Python | High-performance writes during pipeline | FastAPI (Railway) |
+
+**Rationale:**
+- Prisma is TypeScript-only (can't use in Python backend)
+- asyncpg provides async high-performance writes for long-running pipeline
+- Separation of concerns: Frontend reads, backend writes
 
 ---
 

@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { SidebarRun } from '@/app/api/runs/route'
 import { Eye, Play, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface RunCardProps {
   run: SidebarRun
@@ -78,11 +79,12 @@ export default function RunCard({ run, onDelete, onRerun }: RunCardProps) {
         throw new Error('Failed to delete run')
       }
 
+      toast.success('Run deleted successfully')
       onDelete(run.id)
       setShowDeleteDialog(false)
     } catch (error) {
       console.error('Error deleting run:', error)
-      alert('Failed to delete run. Please try again.')
+      toast.error('Failed to delete run. Please try again.')
     } finally {
       setIsDeleting(false)
     }
@@ -100,12 +102,13 @@ export default function RunCard({ run, onDelete, onRerun }: RunCardProps) {
       }
 
       const data = await response.json()
+      toast.success('Rerun started successfully')
       onRerun(data.newRunId)
       setShowRerunDialog(false)
       router.push(`/pipeline/${data.newRunId}`)
     } catch (error) {
       console.error('Error rerunning pipeline:', error)
-      alert('Failed to rerun pipeline. Please try again.')
+      toast.error('Failed to rerun pipeline. Please try again.')
     } finally {
       setIsRerunning(false)
     }

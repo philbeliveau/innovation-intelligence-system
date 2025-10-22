@@ -9,6 +9,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import rehypeSanitize from 'rehype-sanitize'
 
 interface InspirationReport {
   id: string
@@ -72,7 +73,10 @@ export default function RunDetailFullReport({ report }: RunDetailFullReportProps
           </CardHeader>
           <CardContent className="p-6">
             <div className="prose prose-sm max-w-none">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeSanitize]}
+              >
                 {report.selectedTrack}
               </ReactMarkdown>
             </div>
@@ -88,7 +92,10 @@ export default function RunDetailFullReport({ report }: RunDetailFullReportProps
           </CardHeader>
           <CardContent className="p-6">
             <div className="prose prose-sm max-w-none">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeSanitize]}
+              >
                 {report.nonSelectedTrack}
               </ReactMarkdown>
             </div>
@@ -122,7 +129,10 @@ export default function RunDetailFullReport({ report }: RunDetailFullReportProps
                 </AccordionTrigger>
                 <AccordionContent className="px-6 py-6 bg-gray-50">
                   <div className="prose prose-sm max-w-none">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeSanitize]}
+                    >
                       {stage.output || '*No output available for this stage*'}
                     </ReactMarkdown>
                   </div>

@@ -12,6 +12,7 @@ import {
 import { Star } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import rehypeSanitize from 'rehype-sanitize'
 
 interface OpportunityCard {
   id: string
@@ -70,7 +71,12 @@ export default function RunDetailOpportunityCards({
 
               {/* Content Preview */}
               <div className="text-sm text-gray-700 line-clamp-4 prose prose-sm">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{card.content}</ReactMarkdown>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeSanitize]}
+                >
+                  {card.content}
+                </ReactMarkdown>
               </div>
 
               {/* Read More Hint */}
@@ -122,7 +128,10 @@ export default function RunDetailOpportunityCards({
 
           {/* Full Content */}
           <div className="prose prose-lg max-w-none">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeSanitize]}
+            >
               {expandedCard?.content || ''}
             </ReactMarkdown>
           </div>

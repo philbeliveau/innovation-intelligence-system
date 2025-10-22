@@ -1,41 +1,131 @@
 # 9. Implementation Roadmap
 
-## ⚠️ CRITICAL PRE-IMPLEMENTATION CHECK
+## ⚠️ CRITICAL PRE-IMPLEMENTATION REQUIREMENTS
 
-**Before starting implementation, MUST validate Python execution on Vercel:**
+**READ FIRST:** Before starting Hour 1, complete these prerequisite tasks:
 
-```typescript
-// Create test-python/api/test/route.ts
-import { exec } from 'child_process'
-import { NextResponse } from 'next/server'
+1. **Review Integration Test Plan** (Architecture Section 13)
+   - Understand regression test requirements
+   - Prepare test fixtures for baseline validation
 
-export async function GET() {
-  return new Promise((resolve) => {
-    exec('python --version', (error, stdout, stderr) => {
-      resolve(NextResponse.json({
-        pythonAvailable: !error,
-        version: stdout || 'Not available',
-        error: error?.message || null
-      }))
-    })
-  })
-}
-```
+2. **Review Database Migration Strategy** (Architecture Section 14)
+   - Understand dual-write approach (database + file fallback)
+   - Review rollback procedures
 
-**Deploy this test to Vercel FIRST:**
-1. Create minimal Next.js project with above route
-2. Deploy to Vercel: `vercel --prod`
-3. Visit `/api/test` endpoint
-4. **If Python unavailable:** Use contingency plan (separate Python server or containerized deployment)
+3. **Review Rollback Strategy** (Architecture Section 15)
+   - Understand feature flag system
+   - Know how to revert to file-based mode
 
-**Contingency Options if Python Not Available:**
-- **Option A:** Deploy Python pipeline to Render.com, trigger via webhook from Next.js
-- **Option B:** Use Railway or Fly.io with Docker (containerize entire stack)
-- **Option C:** Use Replit or PythonAnywhere with Python support
+4. **Set up development environment:**
+   - Local PostgreSQL running OR Railway PostgreSQL connection string
+   - Python 3.11 environment with pipeline dependencies
+   - Node.js 20+ with Next.js dependencies
 
 ---
 
-## Hour 0-1: Project Setup
+## Hour -2 to 0: Pre-Implementation Setup (MUST COMPLETE BEFORE HOUR 1)
+
+### Hour -2: Railway PostgreSQL Deployment
+
+**🔴 BLOCKER:** Database must exist before any frontend API routes work.
+
+```bash
+# 1. Create Railway project
+railway login
+railway init
+railway link
+
+# 2. Add PostgreSQL database
+railway add --database postgres
+
+# 3. Get DATABASE_URL
+railway variables
+# Copy DATABASE_URL value
+
+# 4. Set local environment variable
+echo "DATABASE_URL=<railway-postgres-url>" >> .env
+
+# 5. Verify connection
+psql $DATABASE_URL -c "SELECT 1"
+# Expected: (1 row)
+```
+
+**✅ Validation:** Database accessible from local machine
+
+---
+
+### Hour -1: Prisma Schema Deployment
+
+**🔴 BLOCKER:** Schema must be deployed before API routes can query database.
+
+```bash
+# 1. Install Prisma CLI
+npm install -D prisma @prisma/client
+
+# 2. Generate Prisma Client
+npx prisma generate
+
+# 3. Deploy migrations to Railway PostgreSQL
+npx prisma migrate deploy
+
+# 4. Verify schema
+npx prisma studio
+# Opens browser → Check tables: User, Run, OpportunityCard, etc.
+
+# 5. Create test user (optional)
+npx prisma db seed
+```
+
+**File:** `.env` (required)
+
+```bash
+DATABASE_URL="postgresql://user:pass@railway.app:5432/railway?pgbouncer=true&connection_limit=1"
+DATABASE_URL_NON_POOLING="postgresql://user:pass@railway.app:5432/railway"  # For migrations
+OPENROUTER_API_KEY="sk-or-v1-xxxxx"
+OPENROUTER_BASE_URL="https://openrouter.ai/api/v1"
+ENABLE_DATABASE_WRITES=true
+ENABLE_FILE_FALLBACK=true  # Dual-write mode for safety
+```
+
+**✅ Validation:**
+- Prisma Studio shows all 5 tables
+- `npx prisma db pull` shows no drift
+
+---
+
+### Hour 0: Integration Test Baseline
+
+**🔴 BLOCKER:** Must capture baseline pipeline outputs before modifications.
+
+```bash
+# 1. Run existing pipeline (file-based) to create baseline
+python scripts/run_pipeline.py \
+  --input-file tests/fixtures/sample-report.pdf \
+  --brand lactalis-canada \
+  --run-id baseline-test-001
+
+# 2. Copy outputs to expected-outputs directory
+mkdir -p tests/fixtures/expected-outputs/
+cp -r data/test-outputs/baseline-test-001/ tests/fixtures/expected-outputs/
+
+# 3. Verify baseline
+ls tests/fixtures/expected-outputs/baseline-test-001/stage5/
+# Should see: opportunity-1.md through opportunity-5.md
+
+# 4. Run initial regression test
+pytest tests/test_pipeline_stages.py::TestStage1Regression::test_stage1_output_structure
+
+# Expected: PASS (baseline captured)
+```
+
+**✅ Validation:**
+- Existing pipeline runs successfully
+- Baseline outputs saved in `tests/fixtures/expected-outputs/`
+- At least 1 regression test passes
+
+---
+
+## Hour 1-2: Next.js Project Setup + Clerk Auth
 - [ ] Create Next.js 15 app: `npx create-next-app@latest innovation-web --app --tailwind`
 - [ ] Install dependencies:
   ```bash
