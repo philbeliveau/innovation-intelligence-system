@@ -84,39 +84,167 @@ export default function OpportunityModal({
           </div>
         </div>
 
-        {/* Content - Full screen scrollable on mobile */}
-        <div className="overflow-y-auto p-4 sm:p-6" style={{ maxHeight: 'calc(90vh - 200px)' }}>
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              // Prevent dangerous elements (XSS protection)
-              script: () => null,
-              iframe: () => null,
-              object: () => null,
-              embed: () => null,
-              // Style headings - Responsive sizing
-              h1: ({ ...props }) => <h1 className="text-2xl sm:text-3xl font-black uppercase mb-3 sm:mb-4 mt-4 sm:mt-6 text-black border-b-4 border-black pb-2" {...props} />,
-              h2: ({ ...props }) => <h2 className="text-xl sm:text-2xl font-black uppercase mb-2 sm:mb-3 mt-4 sm:mt-5 text-black" {...props} />,
-              h3: ({ ...props }) => <h3 className="text-lg sm:text-xl font-bold uppercase mb-2 mt-3 sm:mt-4 text-black" {...props} />,
-              h4: ({ ...props }) => <h4 className="text-base sm:text-lg font-bold mb-2 mt-2 sm:mt-3 text-black" {...props} />,
-              // Style paragraphs
-              p: ({ ...props }) => <p className="text-sm sm:text-base leading-relaxed mb-3 sm:mb-4 text-black" {...props} />,
-              // Style lists
-              ul: ({ ...props }) => <ul className="list-none space-y-2 mb-4 ml-0" {...props} />,
-              ol: ({ ...props }) => <ol className="list-decimal space-y-2 mb-4 ml-6" {...props} />,
-              li: ({ ...props }) => <li className="text-base leading-relaxed text-black before:content-['▸'] before:mr-2 before:font-bold" {...props} />,
-              // Style links
-              a: ({ ...props }) => <a className="text-orange-600 font-bold underline hover:text-orange-800" {...props} />,
-              // Style strong/bold
-              strong: ({ ...props }) => <strong className="font-black text-black" {...props} />,
-              // Style code
-              code: ({ ...props }) => <code className="bg-gray-100 border-2 border-black px-2 py-0.5 font-mono text-sm" {...props} />,
-              // Style blockquote
-              blockquote: ({ ...props }) => <blockquote className="border-l-4 border-black bg-amber-50 pl-4 py-2 italic my-4" {...props} />,
-            }}
-          >
-            {content}
-          </ReactMarkdown>
+        {/* Content - Notion-style beautiful formatting */}
+        <div className="overflow-y-auto p-6 sm:p-8 bg-white" style={{ maxHeight: 'calc(90vh - 200px)' }}>
+          <div className="max-w-3xl mx-auto">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                // Prevent dangerous elements (XSS protection)
+                script: () => null,
+                iframe: () => null,
+                object: () => null,
+                embed: () => null,
+
+                // Notion-style headings with clean hierarchy
+                h1: ({ ...props }) => (
+                  <h1
+                    className="text-3xl sm:text-4xl font-bold mb-4 mt-8 text-black leading-tight tracking-tight first:mt-0"
+                    {...props}
+                  />
+                ),
+                h2: ({ ...props }) => (
+                  <h2
+                    className="text-2xl sm:text-3xl font-bold mb-3 mt-6 text-black leading-tight tracking-tight"
+                    {...props}
+                  />
+                ),
+                h3: ({ ...props }) => (
+                  <h3
+                    className="text-xl sm:text-2xl font-semibold mb-2 mt-5 text-black leading-snug"
+                    {...props}
+                  />
+                ),
+                h4: ({ ...props }) => (
+                  <h4
+                    className="text-lg sm:text-xl font-semibold mb-2 mt-4 text-gray-900"
+                    {...props}
+                  />
+                ),
+
+                // Notion-style paragraphs with generous spacing
+                p: ({ ...props }) => (
+                  <p
+                    className="text-base sm:text-lg leading-relaxed mb-4 text-gray-800"
+                    {...props}
+                  />
+                ),
+
+                // Clean, readable lists
+                ul: ({ ...props }) => (
+                  <ul
+                    className="space-y-2 mb-6 ml-6"
+                    {...props}
+                  />
+                ),
+                ol: ({ ...props }) => (
+                  <ol
+                    className="space-y-2 mb-6 ml-6 list-decimal"
+                    {...props}
+                  />
+                ),
+                li: ({ children, ...props }) => (
+                  <li
+                    className="text-base sm:text-lg leading-relaxed text-gray-800 pl-2"
+                    {...props}
+                  >
+                    <span className="inline-flex items-start">
+                      <span className="mr-2 text-black font-bold">•</span>
+                      <span className="flex-1">{children}</span>
+                    </span>
+                  </li>
+                ),
+
+                // Styled links
+                a: ({ ...props }) => (
+                  <a
+                    className="text-blue-600 hover:text-blue-700 underline decoration-blue-300 hover:decoration-blue-500 transition-colors"
+                    {...props}
+                  />
+                ),
+
+                // Bold text - Notion style
+                strong: ({ ...props }) => (
+                  <strong
+                    className="font-semibold text-black"
+                    {...props}
+                  />
+                ),
+
+                // Inline code - Notion style
+                code: ({ node, inline, className, ...props }: React.HTMLAttributes<HTMLElement> & { node?: unknown; inline?: boolean }) => {
+                  if (inline) {
+                    return (
+                      <code
+                        className="bg-gray-100 text-red-600 px-1.5 py-0.5 rounded font-mono text-sm"
+                        {...props}
+                      />
+                    )
+                  }
+                  return (
+                    <code
+                      className="block bg-gray-50 border border-gray-200 p-4 rounded-lg font-mono text-sm overflow-x-auto my-4"
+                      {...props}
+                    />
+                  )
+                },
+
+                // Code blocks - Notion style
+                pre: ({ ...props }) => (
+                  <pre
+                    className="bg-gray-50 border border-gray-200 p-4 rounded-lg overflow-x-auto my-4"
+                    {...props}
+                  />
+                ),
+
+                // Blockquotes - Notion callout style
+                blockquote: ({ ...props }) => (
+                  <blockquote
+                    className="border-l-4 border-amber-400 bg-amber-50 px-4 py-3 my-4 rounded-r"
+                    {...props}
+                  />
+                ),
+
+                // Tables - Clean Notion style
+                table: ({ ...props }) => (
+                  <div className="overflow-x-auto my-6">
+                    <table
+                      className="w-full border-collapse"
+                      {...props}
+                    />
+                  </div>
+                ),
+                thead: ({ ...props }) => (
+                  <thead
+                    className="bg-gray-50 border-b-2 border-gray-200"
+                    {...props}
+                  />
+                ),
+                th: ({ ...props }) => (
+                  <th
+                    className="px-4 py-3 text-left text-sm font-semibold text-gray-900"
+                    {...props}
+                  />
+                ),
+                td: ({ ...props }) => (
+                  <td
+                    className="px-4 py-3 text-base text-gray-800 border-b border-gray-100"
+                    {...props}
+                  />
+                ),
+
+                // Horizontal rule - Notion style divider
+                hr: ({ ...props }) => (
+                  <hr
+                    className="my-8 border-0 h-px bg-gray-200"
+                    {...props}
+                  />
+                ),
+              }}
+            >
+              {content}
+            </ReactMarkdown>
+          </div>
         </div>
 
         {/* Footer - Responsive button sizing */}
