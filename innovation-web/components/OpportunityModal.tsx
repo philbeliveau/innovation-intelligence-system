@@ -85,7 +85,7 @@ export default function OpportunityModal({
         </div>
 
         {/* Content - Full screen scrollable on mobile */}
-        <div className="overflow-y-auto p-4 sm:p-6" style={{ maxHeight: 'calc(100vh - 180px)', maxHeight: 'calc(90vh - 200px)' }}>
+        <div className="overflow-y-auto p-4 sm:p-6" style={{ maxHeight: 'calc(90vh - 200px)' }}>
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
