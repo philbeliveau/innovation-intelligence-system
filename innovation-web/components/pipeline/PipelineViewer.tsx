@@ -25,7 +25,7 @@ interface Stage1Data {
 
 interface PipelineStatus {
   run_id: string
-  status: 'running' | 'completed' | 'error'
+  status: 'running' | 'complete' | 'completed' | 'error' // Backend uses 'complete', frontend uses 'completed'
   current_stage: number
   stage1_data?: Stage1Data
   brand_name?: string
@@ -58,10 +58,22 @@ export default function PipelineViewer({
   const [brandName, setBrandName] = useState<string>()
   const [loading, setLoading] = useState(true)
 
+  // Validate run ID format before starting
+  useEffect(() => {
+    if (!runId || runId.trim() === '') {
+      const errorMsg = 'Invalid run ID provided'
+      setStatus('error')
+      setLoading(false)
+      onError?.(errorMsg)
+      return
+    }
+  }, [runId, onError])
+
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | undefined
     let retryCount = 0
     let isFirstPoll = true
+    let isCancelled = false // Track if component unmounted
     const startTime = Date.now()
     const MAX_RUNTIME = 35 * 60 * 1000 // 35 minutes
     const MAX_RETRIES = 3
@@ -72,6 +84,9 @@ export default function PipelineViewer({
     }
 
     const pollStatus = async () => {
+      // Stop polling if component unmounted
+      if (isCancelled) return
+
       try {
         // FIX RACE-001: Add 2-second delay before first poll to let Python create log file
         if (isFirstPoll) {
@@ -96,12 +111,13 @@ export default function PipelineViewer({
           if (retryCount < 5) {
             // Pipeline still starting up - retry with short delay
             retryCount++
-            console.log(`Pipeline starting... retry ${retryCount}/5`)
+            console.log(`[PipelineViewer] Pipeline starting... retry ${retryCount}/5 for run: ${runId}`)
             timeoutId = setTimeout(pollStatus, 1000)
             return
           } else {
             // After 5 retries, treat as genuine error
-            const errorMsg = 'Pipeline not found after 5 retries'
+            console.error(`[PipelineViewer] Run ${runId} not found on backend after 5 retries`)
+            const errorMsg = `Pipeline run not found on server. Run ID: ${runId}. This usually means the pipeline was never started. Please try launching again.`
             setStatus('error')
             setLoading(false)
             onError?.(errorMsg)
@@ -127,8 +143,9 @@ export default function PipelineViewer({
           return
         }
 
-        // Handle completion
-        if (data.current_stage === 5 && data.status === 'completed') {
+        // Handle completion (backend returns 'complete', not 'completed')
+        if (data.current_stage === 5 && (data.status === 'complete' || data.status === 'completed')) {
+          console.log('[PipelineViewer] Pipeline completed! Navigating to results...')
           onComplete?.(runId)
           return
         }
@@ -159,6 +176,7 @@ export default function PipelineViewer({
 
     // Cleanup function to clear timeout on unmount
     return () => {
+      isCancelled = true // Signal to stop polling
       if (timeoutId) {
         clearTimeout(timeoutId)
       }

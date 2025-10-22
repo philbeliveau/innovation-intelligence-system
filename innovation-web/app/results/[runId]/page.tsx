@@ -55,21 +55,21 @@ async function loadOpportunities(runId: string): Promise<Opportunity[]> {
 async function getCompanyName(): Promise<string | null> {
   try {
     const cookieStore = await cookies()
-    const companyId = cookieStore.get('companyId')?.value
+    const companyId = cookieStore.get('company_id')?.value
 
     if (!companyId) {
       return null
     }
 
-    // Read brand profile directly to get name
-    const yaml = await import('yaml')
-    const { readFile: readBrandFile } = await import('fs/promises')
+    // Simple mapping of company IDs to names (avoid filesystem access in Next.js)
+    const companyNames: Record<string, string> = {
+      'lactalis-canada': 'Lactalis Canada',
+      'general-mills': 'General Mills',
+      'nestle': 'Nestlé',
+      // Add more as needed
+    }
 
-    const brandPath = `../data/brand-profiles/${companyId}.yaml`
-    const brandContent = await readBrandFile(brandPath, 'utf-8')
-    const brandData = yaml.parse(brandContent)
-
-    return brandData.name || companyId
+    return companyNames[companyId] || companyId
   } catch (error) {
     console.warn('Could not fetch company name:', error)
     return null

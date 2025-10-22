@@ -113,6 +113,8 @@ export default function AnalyzePage() {
     setLaunchError('') // Clear previous errors
 
     try {
+      console.log('[Launch] Starting pipeline with blob:', blobUrl)
+
       const response = await fetch('/api/run', {
         method: 'POST',
         headers: {
@@ -125,8 +127,11 @@ export default function AnalyzePage() {
         }),
       })
 
+      console.log('[Launch] /api/run response status:', response.status)
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
+        console.error('[Launch] Error response:', errorData)
         const errorMessage = getErrorMessage(
           response.status,
           errorData.error || 'Failed to launch pipeline'
@@ -135,12 +140,19 @@ export default function AnalyzePage() {
       }
 
       const data = await response.json()
+      console.log('[Launch] Pipeline started:', data.run_id)
+
+      // Verify run_id exists before proceeding
+      if (!data.run_id) {
+        throw new Error('No run ID received from backend')
+      }
 
       // Update state to show pipeline inline (NO NAVIGATION)
       setRunId(data.run_id)
       setIsPipelineRunning(true)
       setLaunching(false)
     } catch (err) {
+      console.error('[Launch] Pipeline launch failed:', err)
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to connect. Please check your connection.'
       setLaunchError(errorMessage)

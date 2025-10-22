@@ -14,7 +14,7 @@ const INITIAL_RETRY_DELAY = 1000 // 1 second
  */
 export interface PipelineStatus {
   run_id: string
-  status: 'running' | 'completed' | 'error'
+  status: 'running' | 'complete' | 'completed' | 'error' // Backend returns 'complete', not 'completed'
   current_stage: number
   brand_name?: string
   stage1_data?: unknown
