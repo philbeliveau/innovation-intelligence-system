@@ -99,14 +99,10 @@ export default function PipelinePage() {
         setLoading(false)
         retryCount = 0 // Reset retry count on success
 
+        console.log(`[Pipeline] Status: ${data.status}, Stage: ${data.current_stage}`)
+
         if (data.status === 'error') {
           setError('Pipeline failed')
-          return
-        }
-
-        // Auto-redirect when Stage 5 completes
-        if (data.current_stage === 5 && data.status === 'completed') {
-          router.push(`/results/${runId}`)
           return
         }
 
@@ -114,6 +110,9 @@ export default function PipelinePage() {
         if (data.status === 'running') {
           timeoutId = setTimeout(pollStatus, 5000)
         }
+
+        // Note: We don't auto-redirect anymore - let user click the button
+        // This prevents issues with router.push on mobile and gives user control
       } catch (err) {
         console.error('Polling error:', err)
 

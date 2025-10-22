@@ -22,21 +22,21 @@ export default function DetailPanel({ currentStage, status, runId, brandName }: 
   if (status === 'complete') {
     return (
       <div
-        className="mt-6 bg-gradient-to-r from-amber-200 to-amber-400 border-[5px] border-black shadow-[8px_8px_0_#000]"
+        className="mt-4 sm:mt-6 bg-gradient-to-r from-amber-200 to-amber-400 border-[3px] sm:border-[5px] border-black shadow-[4px_4px_0_#000] sm:shadow-[8px_8px_0_#000]"
         data-testid="detail-panel-complete"
       >
-        <div className="flex flex-col items-center justify-center p-8">
-          <div className="text-center mb-6">
-            <h3 className="text-3xl font-black uppercase text-black mb-3">
+        <div className="flex flex-col items-center justify-center p-6 sm:p-8">
+          <div className="text-center mb-4 sm:mb-6">
+            <h3 className="text-2xl sm:text-3xl font-black uppercase text-black mb-2 sm:mb-3">
               Pipeline Complete! 🎉
             </h3>
-            <p className="text-lg font-bold text-black">
+            <p className="text-base sm:text-lg font-bold text-black">
               Your innovation opportunities are ready to view.
             </p>
           </div>
           <button
             onClick={() => router.push(`/results/${runId}`)}
-            className="bg-orange-500 text-white px-8 py-4 font-black uppercase text-lg border-4 border-black shadow-[6px_6px_0_#000] hover:shadow-[8px_8px_0_#000] hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all"
+            className="bg-orange-500 text-white px-6 sm:px-8 py-3 sm:py-4 font-black uppercase text-base sm:text-lg border-[3px] sm:border-4 border-black shadow-[4px_4px_0_#000] sm:shadow-[6px_6px_0_#000] hover:shadow-[6px_6px_0_#000] sm:hover:shadow-[8px_8px_0_#000] hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all active:shadow-[2px_2px_0_#000] active:translate-x-[2px] active:translate-y-[2px] w-full sm:w-auto"
             data-testid="view-opportunities-button"
           >
             View Opportunities →
