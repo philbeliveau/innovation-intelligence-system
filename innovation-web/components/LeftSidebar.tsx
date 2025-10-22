@@ -3,6 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs'
+import { useRuns } from '@/lib/use-runs'
+import { formatRelativeTime } from '@/lib/format-relative-time'
+import type { RunStatus } from '@/app/api/runs/route'
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 
 interface Track {
   trackNumber: number
@@ -17,6 +21,14 @@ export function LeftSidebar() {
   const [isVisible, setIsVisible] = useState(false)
   const [nonSelectedTrack, setNonSelectedTrack] = useState<Track | null>(null)
   const [isMobile, setIsMobile] = useState(false)
+
+  // Enable polling only when on pipeline viewer page
+  const shouldPoll = pathname.includes('/pipeline/')
+  const { runs, loading, error } = useRuns({
+    pageSize: 5,
+    pollingInterval: 10000,
+    enabled: shouldPoll,
+  })
 
   // Detect mobile on mount
   useEffect(() => {
@@ -52,10 +64,42 @@ export function LeftSidebar() {
     router.push('/upload')
   }
 
-  const truncateSummary = (text: string, maxLength: number = 100) => {
+  const truncateDocumentName = (text: string, maxLength: number = 20) => {
     if (!text) return ''
     if (text.length <= maxLength) return text
     return text.slice(0, maxLength) + '...'
+  }
+
+  const getStatusBadge = (status: RunStatus) => {
+    switch (status) {
+      case 'PROCESSING':
+        return (
+          <span className="flex items-center gap-1 text-blue-600">
+            <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+          </span>
+        )
+      case 'COMPLETED':
+        return <span className="text-green-600">✅</span>
+      case 'FAILED':
+        return <span className="text-red-600">❌</span>
+      case 'CANCELLED':
+        return <span className="text-gray-400">⭕</span>
+      default:
+        return null
+    }
+  }
+
+  const handleRunClick = (runId: string) => {
+    router.push(`/runs/${runId}`)
+    if (isMobile) setIsVisible(false)
+  }
+
+  const handleViewAllRuns = () => {
+    router.push('/runs')
+    if (isMobile) setIsVisible(false)
   }
 
   return (
@@ -97,8 +141,9 @@ export function LeftSidebar() {
           isVisible ? 'translate-x-0' : '-translate-x-full'
         }`}
         onMouseLeave={() => !isMobile && setIsVisible(false)}
+        style={{ minWidth: isMobile ? 'auto' : '240px' }}
       >
-        <div className={`flex bg-white ${isMobile ? 'h-full flex-col p-4' : 'w-fit'} px-1.5 py-1.5 shadow-lg ${isMobile ? 'rounded-r-2xl' : 'rounded-2xl'}`}>
+        <div className={`flex bg-white ${isMobile ? 'h-full flex-col p-4' : 'w-full'} px-1.5 py-1.5 shadow-lg ${isMobile ? 'rounded-r-2xl' : 'rounded-2xl'}`}>
           {/* Mobile: Close button */}
           {isMobile && (
             <button
@@ -154,6 +199,96 @@ export function LeftSidebar() {
                 </svg>
               </button>
             )}
+
+            {/* My Runs Section */}
+            <SignedIn>
+              <div className="w-full border-t border-gray-200 my-2" />
+              <div className="w-full">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <h3 className="text-xs font-semibold text-gray-500 px-2 mb-2 cursor-help inline-flex items-center gap-1">
+                        My Runs
+                        <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </h3>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-xs">
+                      <p className="text-xs">Full status tracking coming soon. Currently showing upload history.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                {/* Loading State */}
+                {loading && (
+                  <div className="space-y-2">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="animate-pulse bg-gray-100 rounded-lg p-2 h-16" />
+                    ))}
+                  </div>
+                )}
+
+                {/* Error State */}
+                {error && !loading && (
+                  <div className="text-xs text-red-600 px-2 py-1 bg-red-50 rounded-lg">
+                    {error}
+                  </div>
+                )}
+
+                {/* Runs List */}
+                {!loading && !error && runs.length === 0 && (
+                  <div className="text-xs text-gray-400 px-2 py-1">
+                    No runs yet
+                  </div>
+                )}
+
+                {!loading && !error && runs.length > 0 && (
+                  <div className="space-y-1">
+                    {runs.map((run) => (
+                      <button
+                        key={run.id}
+                        onClick={() => handleRunClick(run.id)}
+                        className="w-full text-left p-2 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200"
+                        title={`${run.documentName} - ${run.companyName}`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-medium text-gray-900 truncate">
+                              {truncateDocumentName(run.documentName)}
+                            </div>
+                            <div className="text-xs text-gray-500 truncate">
+                              {run.companyName}
+                            </div>
+                            <div className="text-xs text-gray-400 mt-1">
+                              {formatRelativeTime(run.createdAt)}
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-1">
+                            {getStatusBadge(run.status)}
+                            {run.cardCount > 0 && (
+                              <span className="text-xs text-gray-500">
+                                {run.cardCount} cards
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* View All Runs Link */}
+                {runs.length > 0 && (
+                  <button
+                    onClick={handleViewAllRuns}
+                    className="w-full mt-2 text-xs text-blue-600 hover:text-blue-700 font-medium py-1 px-2 rounded hover:bg-blue-50 transition-colors"
+                  >
+                    View All Runs →
+                  </button>
+                )}
+              </div>
+            </SignedIn>
 
             {/* Authentication UI */}
             <SignedOut>
