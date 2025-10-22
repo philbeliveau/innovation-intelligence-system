@@ -7,6 +7,7 @@ const isPublicRoute = createRouteMatcher([
   "/upload",
   "/sign-in(.*)",
   "/sign-up(.*)",
+  "/api/runs/(.*)/complete", // Webhook endpoint for Railway backend
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
