@@ -131,7 +131,9 @@ export default function PipelineViewer({
 
         const data: PipelineStatus = await response.json()
 
-        setStatus(data.status)
+        // Normalize 'complete' to 'completed' for frontend state
+        const normalizedStatus = data.status === 'complete' ? 'completed' : data.status
+        setStatus(normalizedStatus)
         setCurrentStage(data.current_stage)
         setStage1Data(data.stage1_data ?? null)
         setBrandName(data.brand_name)
