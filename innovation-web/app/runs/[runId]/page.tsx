@@ -461,9 +461,10 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Pipeline Run</DialogTitle>
+            <DialogTitle>Delete this run?</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this run? This action cannot be undone.
+              This will permanently remove the run and all {run.opportunityCards.length} opportunity
+              cards. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
