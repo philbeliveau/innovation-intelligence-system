@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -29,7 +29,7 @@ interface RunsResponse {
   uniqueCompanies: string[]
 }
 
-export default function RunsPage() {
+function RunsPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -335,5 +335,22 @@ export default function RunsPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function RunsPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-6 py-12">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold mb-2">All Runs</h1>
+            <p className="text-gray-600">Loading runs...</p>
+          </div>
+        </div>
+      </div>
+    }>
+      <RunsPageContent />
+    </Suspense>
   )
 }
