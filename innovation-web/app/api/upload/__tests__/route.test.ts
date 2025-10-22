@@ -123,8 +123,8 @@ describe('POST /api/upload - Database Persistence', () => {
       updatedAt: new Date(),
     }
 
-    mockAuth.mockResolvedValue({ userId: mockUserId } as any)
-    mockPut.mockResolvedValue({ url: mockBlobUrl } as any)
+    mockAuth.mockResolvedValue({ userId: mockUserId } as Awaited<ReturnType<typeof auth>>)
+    mockPut.mockResolvedValue({ url: mockBlobUrl } as Awaited<ReturnType<typeof put>>)
     mockPrisma.user.upsert.mockResolvedValue(mockUser)
     mockPrisma.document.create.mockRejectedValue(new Error('Database error'))
 
@@ -150,7 +150,7 @@ describe('POST /api/upload - Database Persistence', () => {
 
   it('should return 401 if user is not authenticated', async () => {
     // Arrange
-    mockAuth.mockResolvedValue({ userId: null } as any)
+    mockAuth.mockResolvedValue({ userId: null } as Awaited<ReturnType<typeof auth>>)
 
     const file = createMockFile()
     const request = createMockRequest(file)
