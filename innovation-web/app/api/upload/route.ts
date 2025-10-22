@@ -1,6 +1,7 @@
 import { put, type PutBlobResult } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { prisma } from '@/lib/prisma';
 
 const ALLOWED_TYPES = ['application/pdf', 'text/plain', 'text/markdown'];
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB in bytes
@@ -132,6 +133,34 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     // Generate upload ID
     const uploadId = `upload-${timestamp}`;
+
+    // Save document to database
+    try {
+      // Find or create Prisma user from Clerk userId
+      const user = await prisma.user.upsert({
+        where: { clerkId: userId },
+        update: {},
+        create: {
+          clerkId: userId,
+          email: '', // Email can be populated from Clerk user object if needed
+        }
+      });
+
+      // Create document record
+      await prisma.document.create({
+        data: {
+          userId: user.id,
+          fileName: file.name,
+          fileSize: file.size,
+          blobUrl: blob.url,
+          uploadedAt: new Date(),
+        }
+      });
+    } catch (dbError) {
+      // Log database error but don't fail the upload
+      // The file is already in blob storage, so we return success
+      console.error('Database persistence error:', dbError);
+    }
 
     // Create response object
     const response = {

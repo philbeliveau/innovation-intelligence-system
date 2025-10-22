@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,17 +7,51 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// User model - Clerk authentication integration
-model User {
-  id           String        @id @default(uuid())
-  clerkId      String        @unique
-  email        String        @unique
-  name         String?
-  pipelineRuns PipelineRun[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+// Document model - User uploaded files
+model Document {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileName   String
+  fileSize   Int      // bytes
+  blobUrl    String   // Vercel Blob storage URL
+  uploadedAt DateTime
+  createdAt  DateTime @default(now())
 
-  @@index([clerkId])
+  @@index([userId, createdAt])
+}
+
+// InspirationReport model - Full pipeline report
+model InspirationReport {
+  id               String      @id @default(uuid())
+  runId            String      @unique
+  run              PipelineRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  selectedTrack    String      @db.Text
+  nonSelectedTrack String      @db.Text
+  stage1Output     String      @db.Text
+  stage2Output     String      @db.Text
+  stage3Output     String      @db.Text
+  stage4Output     String      @db.Text
+  stage5Output     String      @db.Text
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+}
+
+// OpportunityCard model - Generated opportunity cards
+model OpportunityCard {
+  id        String      @id @default(uuid())
+  runId     String
+  run       PipelineRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  number    Int
+  title     String
+  content   String      @db.Text
+  isStarred Boolean     @default(false)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([runId, number])
+  @@index([runId, number])
+  @@index([isStarred])
 }
 
 // PipelineRun model - Core run data
@@ -44,39 +75,6 @@ model PipelineRun {
   @@index([status])
 }
 
-// OpportunityCard model - Generated opportunity cards
-model OpportunityCard {
-  id        String      @id @default(uuid())
-  runId     String
-  run       PipelineRun @relation(fields: [runId], references: [id], onDelete: Cascade)
-  number    Int
-  title     String
-  content   String      @db.Text
-  isStarred Boolean     @default(false)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-
-  @@unique([runId, number])
-  @@index([runId, number])
-  @@index([isStarred])
-}
-
-// InspirationReport model - Full pipeline report
-model InspirationReport {
-  id               String      @id @default(uuid())
-  runId            String      @unique
-  run              PipelineRun @relation(fields: [runId], references: [id], onDelete: Cascade)
-  selectedTrack    String      @db.Text
-  nonSelectedTrack String      @db.Text
-  stage1Output     String      @db.Text
-  stage2Output     String      @db.Text
-  stage3Output     String      @db.Text
-  stage4Output     String      @db.Text
-  stage5Output     String      @db.Text
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-}
-
 // StageOutput model - Individual stage results
 model StageOutput {
   id          String      @id @default(uuid())
@@ -93,7 +91,20 @@ model StageOutput {
   @@index([runId, stageNumber])
 }
 
-// RunStatus enum
+// User model - Clerk authentication integration
+model User {
+  id           String        @id @default(uuid())
+  clerkId      String        @unique
+  email        String        @unique
+  name         String?
+  pipelineRuns PipelineRun[]
+  documents    Document[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([clerkId])
+}
+
 enum RunStatus {
   PROCESSING
   COMPLETED
