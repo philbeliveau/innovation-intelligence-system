@@ -139,11 +139,12 @@ export async function POST(
           runId,
           selectedTrack: stages.stage1?.inspirations?.[0]?.title || "",
           nonSelectedTrack: stages.stage1?.inspirations?.[1]?.title || "",
-          stage1Output: JSON.stringify(stages.stage1 || {}),
-          stage2Output: JSON.stringify(stages.stage2 || {}),
-          stage3Output: JSON.stringify(stages.stage3 || {}),
-          stage4Output: JSON.stringify(stages.stage4 || {}),
-          stage5Output: JSON.stringify(stages.stage5 || {})
+          // Extract markdown output from each stage's result object
+          stage1Output: stages.stage1?.stage1_output || JSON.stringify(stages.stage1 || {}),
+          stage2Output: stages.stage2?.stage2_output || JSON.stringify(stages.stage2 || {}),
+          stage3Output: stages.stage3?.stage3_output || JSON.stringify(stages.stage3 || {}),
+          stage4Output: stages.stage4?.stage4_output || JSON.stringify(stages.stage4 || {}),
+          stage5Output: stages.stage5?.stage5_output || JSON.stringify(stages.stage5 || {})
         }
       })
       console.log(`[Webhook] Created inspiration report for run ${runId}`)

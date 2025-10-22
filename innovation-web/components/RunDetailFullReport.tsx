@@ -27,69 +27,28 @@ interface RunDetailFullReportProps {
 }
 
 /**
- * Format stage output JSON into readable markdown
+ * Format stage output - handles both markdown strings and legacy JSON
  */
-function formatStageOutput(jsonString: string, stageNumber: number): string {
+function formatStageOutput(output: string): string {
+  if (!output || output.trim() === '') {
+    return '*No output available for this stage*'
+  }
+
+  // If it's already markdown (doesn't start with '{' or '['), return as-is
+  const trimmed = output.trim()
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+    return output
+  }
+
+  // Legacy handling: Try to parse as JSON (for old data)
   try {
-    const data = JSON.parse(jsonString)
+    const data = JSON.parse(output)
 
-    // Handle empty or invalid data
-    if (!data || Object.keys(data).length === 0) {
-      return '*No output available for this stage*'
-    }
-
-    // Format based on stage number and data structure
-    let formatted = ''
-
-    // Stage 1: Inspirations
-    if (stageNumber === 1 && data.inspirations) {
-      data.inspirations.forEach((insp: Record<string, unknown>, idx: number) => {
-        formatted += `## ${idx + 1}. ${insp.title || 'Untitled'}\n\n`
-        if (insp.description) formatted += `${insp.description}\n\n`
-        if (insp.why_interesting) formatted += `**Why Interesting:** ${insp.why_interesting}\n\n`
-        if (insp.key_mechanism) formatted += `**Key Mechanism:** ${insp.key_mechanism}\n\n`
-      })
-    }
-    // Stage 2-5: Generic handling for various structures
-    else {
-      // Try to extract markdown field if it exists
-      if (data.markdown) {
-        return data.markdown as string
-      }
-
-      // Try to extract content field
-      if (data.content) {
-        return data.content as string
-      }
-
-      // Try to extract insights/lessons/opportunities arrays
-      const arrayFields = ['insights', 'lessons', 'opportunities', 'translations']
-      for (const field of arrayFields) {
-        if (Array.isArray(data[field]) && data[field].length > 0) {
-          data[field].forEach((item: unknown, idx: number) => {
-            if (typeof item === 'string') {
-              formatted += `${idx + 1}. ${item}\n\n`
-            } else if (typeof item === 'object' && item !== null) {
-              const obj = item as Record<string, unknown>
-              if (obj.title || obj.name) {
-                formatted += `## ${idx + 1}. ${obj.title || obj.name}\n\n`
-                if (obj.description) formatted += `${obj.description}\n\n`
-                if (obj.rationale) formatted += `**Rationale:** ${obj.rationale}\n\n`
-              }
-            }
-          })
-          return formatted
-        }
-      }
-
-      // Fallback: Pretty print the JSON
-      formatted = '```json\n' + JSON.stringify(data, null, 2) + '\n```'
-    }
-
-    return formatted || '*No formatted output available*'
-  } catch (error) {
-    console.error(`Error formatting stage ${stageNumber} output:`, error)
-    return `*Error parsing stage output*\n\n\`\`\`\n${jsonString}\n\`\`\``
+    // Pretty print the JSON as fallback
+    return '```json\n' + JSON.stringify(data, null, 2) + '\n```'
+  } catch {
+    // If parsing fails, it's probably already markdown
+    return output
   }
 }
 
@@ -200,7 +159,7 @@ export default function RunDetailFullReport({ report }: RunDetailFullReportProps
                       remarkPlugins={[remarkGfm]}
                       rehypePlugins={[rehypeSanitize]}
                     >
-                      {formatStageOutput(stage.output, stage.number)}
+                      {formatStageOutput(stage.output)}
                     </ReactMarkdown>
                   </div>
                 </AccordionContent>
