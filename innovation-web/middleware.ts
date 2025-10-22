@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server'
 
 // Define public routes (everything else requires authentication)
 const isPublicRoute = createRouteMatcher([
+  "/",
+  "/upload",
   "/sign-in(.*)",
   "/sign-up(.*)",
 ]);
@@ -21,11 +23,12 @@ export default clerkMiddleware(async (auth, req) => {
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // Next.js requires unsafe-inline/unsafe-eval
-      "style-src 'self' 'unsafe-inline'", // Tailwind requires unsafe-inline
-      "img-src 'self' data: https:", // Allow images from Vercel Blob
-      "font-src 'self' data:",
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.clerk.accounts.dev https://*.clerk.com", // Allow Clerk scripts
+      "style-src 'self' 'unsafe-inline' https://*.clerk.accounts.dev https://*.clerk.com", // Allow Clerk styles
+      "img-src 'self' data: https: blob:", // Allow images from Clerk, Vercel Blob, etc.
+      "font-src 'self' data: https://*.clerk.accounts.dev https://*.clerk.com https://r2cdn.perplexity.ai", // Allow Clerk and external fonts
       "connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://*.vercel-storage.com https://*.railway.app",
+      "frame-src 'self' https://*.clerk.accounts.dev https://*.clerk.com", // Allow Clerk iframes
       "frame-ancestors 'none'", // Prevent clickjacking
       "base-uri 'self'",
       "form-action 'self'"

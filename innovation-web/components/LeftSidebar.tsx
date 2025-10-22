@@ -18,7 +18,7 @@ interface Track {
 export function LeftSidebar() {
   const router = useRouter()
   const pathname = usePathname()
-  const [isVisible, setIsVisible] = useState(false)
+  const [isVisible, setIsVisible] = useState(true) // Start visible for debugging
   const [nonSelectedTrack, setNonSelectedTrack] = useState<Track | null>(null)
   const [isMobile, setIsMobile] = useState(false)
 
@@ -200,6 +200,40 @@ export function LeftSidebar() {
               </button>
             )}
 
+            {/* Authentication UI - Moved to top for visibility */}
+            <SignedOut>
+              <SignInButton mode="modal">
+                <button
+                  title="Sign In"
+                  className="text-gray-600 hover:text-black border-2 flex items-center justify-center p-2.5 border-transparent bg-gray-50 shadow-sm hover:shadow-md focus:opacity-100 focus:outline-none active:shadow-inner font-medium rounded-full text-sm"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-5 h-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M3 3a1 1 0 011 1v12a1 1 0 11-2 0V4a1 1 0 011-1zm7.707 3.293a1 1 0 010 1.414L9.414 9H17a1 1 0 110 2H9.414l1.293 1.293a1 1 0 01-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              </SignInButton>
+            </SignedOut>
+            <SignedIn>
+              <div className="flex items-center justify-center p-2.5 bg-gray-50 rounded-full shadow-sm">
+                <UserButton
+                  appearance={{
+                    elements: {
+                      avatarBox: "w-5 h-5"
+                    }
+                  }}
+                />
+              </div>
+            </SignedIn>
+
             {/* My Runs Section */}
             <SignedIn>
               <div className="w-full border-t border-gray-200 my-2" />
@@ -287,40 +321,6 @@ export function LeftSidebar() {
                     View All Runs →
                   </button>
                 )}
-              </div>
-            </SignedIn>
-
-            {/* Authentication UI */}
-            <SignedOut>
-              <SignInButton mode="modal">
-                <button
-                  title="Sign In"
-                  className="text-gray-600 hover:text-black border-2 flex items-center justify-center p-2.5 border-transparent bg-gray-50 shadow-sm hover:shadow-md focus:opacity-100 focus:outline-none active:shadow-inner font-medium rounded-full text-sm"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-5 h-5"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M3 3a1 1 0 011 1v12a1 1 0 11-2 0V4a1 1 0 011-1zm7.707 3.293a1 1 0 010 1.414L9.414 9H17a1 1 0 110 2H9.414l1.293 1.293a1 1 0 01-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </button>
-              </SignInButton>
-            </SignedOut>
-            <SignedIn>
-              <div className="flex items-center justify-center p-2.5 bg-gray-50 rounded-full shadow-sm">
-                <UserButton
-                  appearance={{
-                    elements: {
-                      avatarBox: "w-5 h-5"
-                    }
-                  }}
-                />
               </div>
             </SignedIn>
           </div>

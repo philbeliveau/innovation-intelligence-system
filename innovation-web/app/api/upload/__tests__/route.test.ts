@@ -74,8 +74,8 @@ describe('POST /api/upload - Database Persistence', () => {
       createdAt: new Date(),
     }
 
-    mockAuth.mockResolvedValue({ userId: mockUserId } as any)
-    mockPut.mockResolvedValue({ url: mockBlobUrl } as any)
+    mockAuth.mockResolvedValue({ userId: mockUserId } as Awaited<ReturnType<typeof auth>>)
+    mockPut.mockResolvedValue({ url: mockBlobUrl } as Awaited<ReturnType<typeof put>>)
     mockPrisma.user.upsert.mockResolvedValue(mockUser)
     mockPrisma.document.create.mockResolvedValue(mockDocument)
 
