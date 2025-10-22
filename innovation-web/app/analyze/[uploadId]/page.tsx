@@ -10,6 +10,12 @@ import { FileViewerPanel } from '@/components/FileViewerPanel'
 import PipelineViewer from '@/components/pipeline/PipelineViewer'
 import LoadingDocument from '@/components/LoadingDocument'
 
+interface LatentFactor {
+  mechanismTitle: string
+  mechanismType: string
+  constraintEliminated: string
+}
+
 interface AnalysisData {
   upload_id: string
   analysis: {
@@ -18,6 +24,7 @@ interface AnalysisData {
     industry: string
     theme: string
     sources: string[]
+    latentFactors?: LatentFactor[]
   }
   blob_url: string
   analyzed_at: string
@@ -250,6 +257,7 @@ export default function AnalyzePage() {
                   industry={analysis.analysis.industry}
                   theme={analysis.analysis.theme}
                   sources={analysis.analysis.sources}
+                  latentFactors={analysis.analysis.latentFactors}
                   onClick={() => setIsPanelOpen(true)}
                   blobUrl={blobUrl}
                   fileName={fileName}
@@ -299,6 +307,7 @@ export default function AnalyzePage() {
                   industry={analysis.analysis.industry}
                   theme={analysis.analysis.theme}
                   sources={analysis.analysis.sources}
+                  latentFactors={analysis.analysis.latentFactors}
                   onClick={() => setIsPanelOpen(true)}
                   blobUrl={blobUrl}
                   fileName={fileName}

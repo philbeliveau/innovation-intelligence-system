@@ -8,12 +8,19 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 10 // Vercel Hobby plan limit
 
+interface LatentFactor {
+  mechanismTitle: string
+  mechanismType: string
+  constraintEliminated: string
+}
+
 interface AnalysisResult {
   title: string
   summary: string
   industry: string
   theme: string
   sources: string[]
+  latentFactors?: LatentFactor[]
 }
 
 interface AnalyzeDocumentResponse {
@@ -138,8 +145,36 @@ Extract the following information and respond ONLY with valid JSON in this exact
   "summary": "A concise summary of the document's main points (2-3 sentences, approximately 50 words)",
   "industry": "Primary industry as a single word (e.g., fashion, food, technology, healthcare, sports, retail, finance)",
   "theme": "Main theme or topic in 2-3 words (e.g., 'sustainability innovation', 'customer experience', 'digital transformation')",
-  "sources": ["Array of identifiable sources mentioned (website names, publications, companies)"]
+  "sources": ["Array of identifiable sources mentioned (website names, publications, companies)"],
+  "latentFactors": [
+    {
+      "mechanismTitle": "One-sentence description of the innovation pattern",
+      "mechanismType": "MECHANISM_TYPE",
+      "constraintEliminated": "Specific quantified constraint eliminated"
+    }
+  ]
 }
+
+LATENT FACTOR IDENTIFICATION:
+
+Beyond the surface description, identify the TOP 1-3 innovation mechanisms (latent factors) from this document:
+
+For each mechanism, extract:
+1. MECHANISM TITLE: One-sentence description of the pattern (e.g., "Subscription eliminates replenishment friction")
+2. MECHANISM TYPE: Choose ONE from:
+   - REMOVED FRICTION
+   - UNBUNDLED
+   - COMBINED
+   - CHANGED MODEL
+   - REFRAMED
+   - DEMOCRATIZED
+   - PREMIUMIZED
+   - DIGITIZED ANALOG
+   - HUMANIZED DIGITAL
+   - TIME-SHIFTED
+3. CONSTRAINT ELIMINATED: Specific, quantified constraint (e.g., "Time: 45 min shopping → 0 min auto-delivery")
+
+If no clear mechanisms are identifiable, use empty array: []
 
 IMPORTANT REQUIREMENTS:
 - Focus on the MAIN innovation or trend in the document
@@ -175,19 +210,39 @@ IMPORTANT REQUIREMENTS:
         parsed.sources = []
       }
 
+      // Validate and parse latentFactors array
+      let latentFactors: LatentFactor[] = []
+      if (Array.isArray(parsed.latentFactors)) {
+        latentFactors = (parsed.latentFactors as unknown[])
+          .filter((factor): factor is Record<string, unknown> =>
+            typeof factor === 'object' &&
+            factor !== null &&
+            typeof (factor as Record<string, unknown>).mechanismTitle === 'string' &&
+            typeof (factor as Record<string, unknown>).mechanismType === 'string' &&
+            typeof (factor as Record<string, unknown>).constraintEliminated === 'string'
+          )
+          .map((factor) => ({
+            mechanismTitle: factor.mechanismTitle as string,
+            mechanismType: factor.mechanismType as string,
+            constraintEliminated: factor.constraintEliminated as string
+          }))
+      }
+
       // Build analysis with LLM-generated metadata
       analysis = {
         title: parsed.title,
         summary: parsed.summary,
         industry: parsed.industry,
         theme: parsed.theme,
-        sources: parsed.sources
+        sources: parsed.sources,
+        latentFactors
       }
 
       console.log('[analyze-document] Analysis completed successfully')
       console.log(`[analyze-document] Title: ${analysis.title}`)
       console.log(`[analyze-document] Industry: ${analysis.industry}`)
       console.log(`[analyze-document] Theme: ${analysis.theme}`)
+      console.log(`[analyze-document] Latent Factors: ${latentFactors.length} extracted`)
 
     } catch (error) {
       console.error('[analyze-document] LLM response parsing error:', error)
@@ -201,7 +256,8 @@ IMPORTANT REQUIREMENTS:
         summary: `${preview}${documentText.length > 200 ? '...' : ''}`,
         industry: 'general',
         theme: 'innovation',
-        sources: []
+        sources: [],
+        latentFactors: []
       }
     }
 
