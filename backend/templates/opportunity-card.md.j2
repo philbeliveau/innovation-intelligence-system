@@ -1,0 +1,29 @@
+---
+opportunity_id: {{ opportunity_id }}
+brand: {{ brand }}
+input_source: {{ input_source }}
+timestamp: {{ timestamp }}
+tags: {{ tags }}
+---
+
+# {{ title }}
+
+## Description
+
+{{ description }}
+
+## Actionability
+
+{% for item in actionability_items -%}
+- {{ item }}
+{% endfor %}
+
+## Visual
+
+*{{ visual_description }}*
+
+## Follow-up Prompts
+
+{% for prompt in follow_up_prompts -%}
+{{ loop.index }}. {{ prompt }}
+{% endfor %}
