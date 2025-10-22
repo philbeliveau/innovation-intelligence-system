@@ -244,13 +244,15 @@ export default function PipelineViewer({
               </div>
             </div>
 
-            {/* Current Stage Detail Panel */}
-            <DetailPanel
-              currentStage={currentStage}
-              status={status === 'completed' ? 'complete' : status}
-              runId={runId}
-              brandName={brandName}
-            />
+            {/* Completion Message */}
+            {status === 'completed' && (
+              <DetailPanel
+                currentStage={currentStage}
+                status="complete"
+                runId={runId}
+                brandName={brandName}
+              />
+            )}
           </div>
         ) : (
           /* Full-page mode: Original 2-column layout */
@@ -278,7 +280,7 @@ export default function PipelineViewer({
               </div>
             </div>
 
-            {/* Main Content: Selected Track & Detail Panel */}
+            {/* Main Content: Selected Track & Completion Panel */}
             <div className="lg:col-span-9">
               {/* Selected Track Card */}
               {currentStage >= 1 && (
@@ -296,13 +298,15 @@ export default function PipelineViewer({
                 </div>
               )}
 
-              {/* Current Stage Detail Panel */}
-              <DetailPanel
-                currentStage={currentStage}
-                status={status === 'completed' ? 'complete' : status}
-                runId={runId}
-                brandName={brandName}
-              />
+              {/* Completion Message */}
+              {status === 'completed' && (
+                <DetailPanel
+                  currentStage={currentStage}
+                  status="complete"
+                  runId={runId}
+                  brandName={brandName}
+                />
+              )}
             </div>
           </div>
         )}
