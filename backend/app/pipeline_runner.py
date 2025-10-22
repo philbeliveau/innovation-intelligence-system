@@ -5,10 +5,12 @@ Handles background execution of the 5-stage innovation pipeline.
 import os
 import json
 import logging
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any
 
+import requests
 from pypdf import PdfReader
 
 from pipeline.stages.stage1_input_processing import Stage1Chain
@@ -240,12 +242,78 @@ def convert_opportunities_to_markdown(opportunities: list) -> list:
         # Create new opportunity dict with markdown
         opp_with_markdown = {
             **opp,  # Keep all original fields
-            'markdown': markdown_content
+            'markdown': markdown_content,
+            'number': idx  # Add card number for frontend
         }
 
         opportunities_with_markdown.append(opp_with_markdown)
 
     return opportunities_with_markdown
+
+
+def call_completion_webhook(
+    run_id: str,
+    start_time: float,
+    opportunities: list,
+    stage1_result: Dict[str, Any],
+    stage2_result: Dict[str, Any],
+    stage3_result: Dict[str, Any],
+    stage4_result: Dict[str, Any],
+    stage5_result: Dict[str, Any]
+) -> None:
+    """Call frontend webhook to notify pipeline completion.
+
+    Args:
+        run_id: Run identifier
+        start_time: Pipeline start timestamp (from time.time())
+        opportunities: List of opportunity cards with markdown
+        stage1_result: Stage 1 output dictionary
+        stage2_result: Stage 2 output dictionary
+        stage3_result: Stage 3 output dictionary
+        stage4_result: Stage 4 output dictionary
+        stage5_result: Stage 5 output dictionary
+    """
+    frontend_url = os.getenv("FRONTEND_WEBHOOK_URL", "https://innovation-web-rho.vercel.app")
+    webhook_secret = os.getenv("WEBHOOK_SECRET", "dev-secret-123")
+
+    # Prepare completion payload
+    completion_data = {
+        "status": "COMPLETED",
+        "completedAt": datetime.utcnow().isoformat() + "Z",
+        "duration": int((time.time() - start_time) * 1000),  # milliseconds
+        "opportunities": opportunities,
+        "stageOutputs": {
+            "stage1": stage1_result,
+            "stage2": stage2_result,
+            "stage3": stage3_result,
+            "stage4": stage4_result,
+            "stage5": stage5_result
+        }
+    }
+
+    try:
+        logger.info(f"[{run_id}] Calling completion webhook: {frontend_url}/api/runs/{run_id}/complete")
+
+        response = requests.post(
+            f"{frontend_url}/api/runs/{run_id}/complete",
+            json=completion_data,
+            headers={"X-Webhook-Secret": webhook_secret},
+            timeout=30
+        )
+
+        if response.ok:
+            logger.info(f"[{run_id}] Successfully notified frontend of completion")
+        else:
+            logger.error(
+                f"[{run_id}] Webhook failed: {response.status_code} - {response.text}"
+            )
+
+    except requests.exceptions.Timeout:
+        logger.error(f"[{run_id}] Webhook timeout after 30s")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"[{run_id}] Failed to call completion webhook: {e}")
+    except Exception as e:
+        logger.error(f"[{run_id}] Unexpected error calling webhook: {e}")
 
 
 def execute_pipeline_background(
@@ -261,6 +329,7 @@ def execute_pipeline_background(
         brand_profile: Brand profile data from YAML
     """
     logger.info(f"Starting pipeline execution for run {run_id}")
+    start_time = time.time()  # Track pipeline duration
 
     try:
         # Initialize status
@@ -353,6 +422,18 @@ def execute_pipeline_background(
         update_stage_status(run_id, 5, "complete", output=opportunities_output)
 
         logger.info(f"Pipeline execution completed successfully for run {run_id}")
+
+        # Call completion webhook to notify frontend
+        call_completion_webhook(
+            run_id=run_id,
+            start_time=start_time,
+            opportunities=opportunities_with_markdown,
+            stage1_result=stage1_result,
+            stage2_result=stage2_result,
+            stage3_result=stage3_result,
+            stage4_result=stage4_result,
+            stage5_result=stage5_result
+        )
 
     except Exception as e:
         logger.error(f"Pipeline execution failed for run {run_id}: {str(e)}", exc_info=True)
