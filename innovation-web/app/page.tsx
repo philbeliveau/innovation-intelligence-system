@@ -54,7 +54,7 @@ export default function Home() {
 
       {/* Main Content - centered */}
       <div className="flex flex-col items-center justify-center min-h-screen relative z-10 px-4">
-        <div className="flex flex-col items-center gap-3 w-full max-w-md">
+        <div className="flex flex-col items-center gap-3 w-full max-w-xs sm:max-w-md">
           {/* Light gray circle behind title - Responsive sizing */}
           <div className="absolute w-[280px] h-[280px] md:w-[400px] md:h-[400px] bg-white/60 rounded-full -z-10 left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2" aria-hidden="true"></div>
 
@@ -83,7 +83,7 @@ export default function Home() {
           {/* Company Input - Only shows when signed in - Centered on mobile */}
           <SignedIn>
             {/* Company Input Component */}
-            <div className="w-full sm:w-64 self-center md:self-end md:pr-8">
+            <div className="w-full max-w-[280px] sm:w-64 self-center md:self-end md:pr-8">
               <CompanyInput />
             </div>
           </SignedIn>

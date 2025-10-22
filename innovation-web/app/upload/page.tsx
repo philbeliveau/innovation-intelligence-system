@@ -213,14 +213,14 @@ export default function UploadPage() {
         )}
 
         {/* Upload Zone - Responsive sizing */}
-        <Card className="w-full max-w-full sm:max-w-2xl p-4 sm:p-8 bg-white shadow-lg border-0">
+        <Card className="w-full max-w-full sm:max-w-xl p-4 sm:p-8 bg-white shadow-lg border-0">
           {!uploading && !uploadSuccess && (
             <>
               <div
                 {...getRootProps()}
                 onKeyDown={handleKeyDown}
                 className={`
-                  border-2 border-dashed rounded-xl p-10 text-center cursor-pointer
+                  border-2 border-dashed rounded-xl p-4 text-center cursor-pointer
                   transition-all duration-300
                   ${isDragActive ? 'border-[#5B9A99] bg-teal-50/50 shadow-lg' : 'border-gray-200 bg-white'}
                   hover:border-[#5B9A99]/50 hover:bg-teal-50/20
@@ -231,17 +231,8 @@ export default function UploadPage() {
               >
                 <input {...getInputProps()} />
 
-                {/* Upload Icon */}
-                <div className="flex justify-center mb-4">
-                  <div className="w-14 h-14 rounded-full bg-[#5B9A99]/10 flex items-center justify-center">
-                    <svg className="w-7 h-7 text-[#5B9A99]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
-                  </div>
-                </div>
-
                 {/* Upload Heading */}
-                <h2 className="text-lg font-semibold text-gray-900 mb-3">
+                <h2 className="text-base font-semibold text-gray-900 mb-2">
                   Upload sources
                 </h2>
 
@@ -261,7 +252,7 @@ export default function UploadPage() {
                 </p>
 
                 {/* Supported file types */}
-                <p className="text-xs text-gray-500 mb-2">
+                <p className="text-sm text-gray-500 mb-2">
                   Supported file types: PDF, txt, Markdown, Audio (e.g. mp3)
                 </p>
 

@@ -112,12 +112,12 @@ export function LeftSidebar() {
             </button>
           )}
 
-          <div className={`rounded-2xl w-full px-1.5 py-1.5 md:px-3 md:py-3 ${isMobile ? 'flex flex-col gap-4' : ''}`}>
+          <div className={`rounded-2xl w-full px-1.5 py-1.5 md:px-3 md:py-3 flex flex-col gap-4`}>
             {/* Home Button */}
             <button
               title="Go to the home page"
               onClick={handleHomeClick}
-              className="text-gray-600 hover:text-black border-2 inline-flex items-center mr-4 last-of-type:mr-0 p-2.5 border-transparent bg-gray-50 shadow-sm hover:shadow-md focus:opacity-100 focus:outline-none active:shadow-inner font-medium rounded-full text-sm text-center"
+              className="text-gray-600 hover:text-black border-2 flex items-center justify-center p-2.5 border-transparent bg-gray-50 shadow-sm hover:shadow-md focus:opacity-100 focus:outline-none active:shadow-inner font-medium rounded-full text-sm"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -135,7 +135,7 @@ export function LeftSidebar() {
             {nonSelectedTrack && (
               <button
                 title={`Track ${nonSelectedTrack.trackNumber}: ${nonSelectedTrack.title}`}
-                className="text-gray-600 hover:text-black border-2 inline-flex items-center mr-4 last-of-type:mr-0 p-2.5 border-transparent bg-gray-50 shadow-sm hover:shadow-md focus:opacity-100 focus:outline-none active:shadow-inner font-medium rounded-full text-sm text-center"
+                className="text-gray-600 hover:text-black border-2 flex items-center justify-center p-2.5 border-transparent bg-gray-50 shadow-sm hover:shadow-md focus:opacity-100 focus:outline-none active:shadow-inner font-medium rounded-full text-sm"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -160,7 +160,7 @@ export function LeftSidebar() {
               <SignInButton mode="modal">
                 <button
                   title="Sign In"
-                  className="text-gray-600 hover:text-black border-2 inline-flex items-center p-2.5 border-transparent bg-gray-50 shadow-sm hover:shadow-md focus:opacity-100 focus:outline-none active:shadow-inner font-medium rounded-full text-sm text-center"
+                  className="text-gray-600 hover:text-black border-2 flex items-center justify-center p-2.5 border-transparent bg-gray-50 shadow-sm hover:shadow-md focus:opacity-100 focus:outline-none active:shadow-inner font-medium rounded-full text-sm"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -178,11 +178,11 @@ export function LeftSidebar() {
               </SignInButton>
             </SignedOut>
             <SignedIn>
-              <div className="flex items-center">
+              <div className="flex items-center justify-center p-2.5 bg-gray-50 rounded-full shadow-sm">
                 <UserButton
                   appearance={{
                     elements: {
-                      avatarBox: "w-10 h-10"
+                      avatarBox: "w-5 h-5"
                     }
                   }}
                 />

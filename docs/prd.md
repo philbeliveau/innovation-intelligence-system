@@ -25,13 +25,25 @@ Build a web-based interface for the Innovation Intelligence Pipeline that enable
 
 ### 1.3 Out of Scope (Post-Hackathon)
 
-- User authentication and accounts
-- Historical run management
+- ~~User authentication and accounts~~ **[IMPLEMENTED - Clerk Auth]**
+- ~~Historical run management~~ **[IN PROGRESS - This PRD Update]**
 - Collaborative features
 - Advanced analytics and reporting
 - Custom brand profile creation
 - Multi-file batch processing
 - Mobile optimization
+
+### 1.4 New Features (Phase 1.5 - User Run Management)
+
+**Implemented:**
+- Clerk authentication for user accounts
+- User-specific data isolation
+
+**In Development (This Update):**
+- Persistent storage of user runs and opportunity cards
+- Run history management with PostgreSQL database
+- Enhanced sidebar navigation with "My Runs" section
+- User-specific experimentation and tracking
 
 ---
 
@@ -1118,7 +1130,1286 @@ function detectStageFromLog(logContent: string): number {
 
 ---
 
-### 4.6 Pipeline Modifications (Priority: P0)
+### 4.6 User Run Management (Priority: P1 - Phase 1.5)
+
+#### 4.6.1 Overview
+
+**Purpose:** Enable persistent storage of pipeline runs and opportunity cards for each authenticated user, allowing them to access historical runs, track performance, and experiment with different parameters.
+
+**Architecture Change:** Transition from file-based storage to PostgreSQL database with Prisma ORM, integrated with Railway backend deployment.
+
+#### 4.6.2 Database Schema (Prisma + PostgreSQL)
+
+**Location:** `prisma/schema.prisma`
+
+**Overview:**
+Prisma is a next-generation ORM that provides type-safe database access through an auto-generated client. The schema below defines all models, relationships, and constraints for the Innovation Intelligence System.
+
+**Complete Prisma Schema:**
+
+```prisma
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  clerkId       String    @unique // Clerk user ID
+  email         String    @unique
+  name          String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  runs             Run[]
+  opportunityCards OpportunityCard[]
+
+  @@index([clerkId])
+  @@index([email])
+}
+
+model Run {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  companyId     String    // Brand/company used (e.g., "lactalis-canada")
+  companyName   String    // Display name
+  documentName  String    // Original uploaded file name
+  documentUrl   String    // Vercel Blob URL
+
+  status        RunStatus @default(PROCESSING)
+  currentStage  Int       @default(0)
+
+  createdAt     DateTime  @default(now())
+  completedAt   DateTime?
+
+  // Metadata
+  pipelineVersion String  @default("1.5")
+  parameters      Json?   // Store any custom parameters
+  errorMessage    String?
+
+  // Relationships
+  opportunityCards  OpportunityCard[]
+  inspirationReport InspirationReport?
+  stageOutputs      StageOutput[]
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@index([companyId])
+}
+
+model OpportunityCard {
+  id            String    @id @default(uuid())
+  runId         String
+  run           Run       @relation(fields: [runId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  number        Int       // Card number (1-5)
+  title         String
+  markdown      String    @db.Text // Full markdown content
+
+  // Extracted metrics from card
+  pricePoint    String?   // "$X.XX"
+  velocityTarget String?  // "X units/store/week"
+  grossMargin   String?   // "XX%"
+  launchTimeline String?  // "X months"
+
+  tags          String[]  // Innovation types
+
+  // User interactions
+  starred       Boolean   @default(false)
+  lastViewed    DateTime?
+  viewCount     Int       @default(0)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([runId, number])
+  @@index([userId, starred])
+  @@index([userId, createdAt])
+}
+
+model InspirationReport {
+  id            String    @id @default(uuid())
+  runId         String    @unique
+  run           Run       @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  // Store full stage outputs
+  stage1Output  Json      // Mechanism extractions
+  stage2Output  Json      // Innovation anatomy
+  stage3Output  Json      // Jobs-to-be-done
+  stage4Output  Json      // CPG translation
+  stage5Output  Json      // Final cards
+
+  createdAt     DateTime  @default(now())
+}
+
+model StageOutput {
+  id            String    @id @default(uuid())
+  runId         String
+  run           Run       @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  stageNumber   Int       // 1-5
+  stageName     String    // "Track Division", "Signal Amplification", etc.
+  output        Json      // Stage-specific output data
+  completedAt   DateTime
+
+  @@unique([runId, stageNumber])
+  @@index([runId])
+}
+
+enum RunStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+```
+
+**Schema Design Principles:**
+- **UUID Primary Keys**: Better for distributed systems and prevents enumeration attacks
+- **Cascade Deletes**: User deletion automatically removes all associated runs and cards (`onDelete: Cascade`)
+- **Indexes**: Optimized for common queries (userId + createdAt, clerkId, runId + number)
+- **JSON Columns**: Flexible storage for stage outputs and custom parameters
+- **Enum Types**: Type-safe status values with database-level constraints
+
+**Relationships:**
+- User (1) → (Many) Runs
+- User (1) → (Many) OpportunityCards
+- Run (1) → (Many) OpportunityCards
+- Run (1) → (1) InspirationReport
+- Run (1) → (Many) StageOutputs
+
+#### 4.6.3 Prisma Client Setup
+
+**Singleton Pattern for Serverless (Vercel):**
+
+Create `lib/prisma.ts` to prevent multiple Prisma Client instances in serverless environments:
+
+```typescript
+// lib/prisma.ts
+import { PrismaClient } from '@prisma/client'
+
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined
+}
+
+export const prisma = globalForPrisma.prisma ?? new PrismaClient({
+  log: process.env.NODE_ENV === 'development'
+    ? ['query', 'error', 'warn']
+    : ['error'],
+})
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+```
+
+**Why This Pattern:**
+- Prevents "Too many connections" errors in serverless environments
+- Reuses single Prisma Client instance during hot reloads in development
+- Enables query logging in development for debugging
+
+**Usage in API Routes:**
+
+```typescript
+// app/api/runs/route.ts
+import { prisma } from '@/lib/prisma'
+import { auth } from '@clerk/nextjs/server'
+
+export async function GET(request: NextRequest) {
+  const { userId } = await auth()
+
+  const runs = await prisma.run.findMany({
+    where: {
+      user: { clerkId: userId }
+    },
+    include: {
+      _count: { select: { opportunityCards: true } }
+    },
+    orderBy: { createdAt: 'desc' }
+  })
+
+  return NextResponse.json({ runs })
+}
+```
+
+#### 4.6.4 Enhanced UI Components
+
+**Left Sidebar Enhancement (`/components/LeftSidebar.tsx`):**
+
+```typescript
+interface SidebarRunSection {
+  // New section in left sidebar
+  title: "My Runs"
+  icon: "📊"
+
+  // Show last 5 runs
+  recentRuns: Array<{
+    id: string
+    documentName: string     // Truncated to 20 chars
+    companyName: string      // e.g., "Lactalis"
+    date: string            // "2 hours ago"
+    status: RunStatus
+    cardCount: number       // "5 cards"
+    onClick: () => router.push(`/runs/${id}`)
+  }>
+
+  // Quick filters
+  filters: {
+    showAll: () => router.push('/runs')
+    byCompany: boolean
+    byDate: 'today' | 'week' | 'month' | 'all'
+  }
+
+  // Visual indicators
+  statusBadges: {
+    processing: "🔄" // Animated spinner
+    completed: "✅"
+    failed: "❌"
+  }
+}
+```
+
+**Run History Page (`/app/runs/page.tsx`):**
+
+```typescript
+interface RunHistoryPage {
+  // Brutalist card grid matching OpportunityCard style
+  layout: 'grid' // 3 columns on desktop, 1 on mobile
+
+  header: {
+    title: "Your Innovation Runs"
+    subtitle: `${totalRuns} runs across ${uniqueCompanies} brands`
+
+    filters: {
+      companies: string[]      // Multi-select
+      dateRange: DateRange
+      status: RunStatus[]
+      search: string           // Search by document name
+    }
+
+    sortBy: 'date' | 'company' | 'status'
+  }
+
+  runCards: Array<{
+    // Brutalist design with thick borders
+    design: {
+      border: "5px solid black"
+      shadow: "8px 8px 0 #000"
+      hoverEffect: "translate(-3px, -3px)"
+    }
+
+    content: {
+      thumbnail: string         // Gradient or first card preview
+      documentName: string
+      companyBadge: string
+      date: string
+      statusIcon: string
+
+      metrics: {
+        cardCount: number
+        avgMargin?: string
+        fastestLaunch?: string
+      }
+    }
+
+    actions: {
+      view: () => router.push(`/runs/${id}`)
+      rerun: () => void        // Re-run with same parameters
+      delete: () => void       // Soft delete with confirmation
+    }
+  }>
+
+  pagination: {
+    pageSize: 12
+    currentPage: number
+    totalPages: number
+  }
+}
+```
+
+**Individual Run View (`/app/runs/[runId]/page.tsx`):**
+
+```typescript
+interface RunDetailPage {
+  header: {
+    breadcrumbs: ["Home", "My Runs", documentName]
+
+    metadata: {
+      documentName: string
+      company: string
+      date: string
+      duration: string         // "15 min 32 sec"
+      pipelineVersion: string
+    }
+
+    actions: {
+      rerun: () => void       // Re-run with same document
+      export: {
+        pdf: () => void
+        ppt: () => void       // Phase 2
+      }
+      share: () => void       // Phase 2
+      delete: () => void
+    }
+  }
+
+  tabs: [
+    {
+      id: 'cards'
+      label: 'Opportunity Cards'
+      content: OpportunityCardsGrid
+    },
+    {
+      id: 'report'
+      label: 'Full Report'
+      content: InspirationReport
+    },
+    {
+      id: 'stages'
+      label: 'Pipeline Stages'
+      content: StageByStageView
+    },
+    {
+      id: 'analytics'
+      label: 'Performance'      // Phase 2
+      content: Analytics
+    }
+  ]
+
+  opportunityCardsGrid: {
+    layout: 'grid'             // Same as results page
+    cards: OpportunityCard[]
+
+    interactions: {
+      star: async (cardId) => {
+        await fetch(`/api/cards/${cardId}/star`, { method: 'POST' })
+      }
+      viewDetails: (cardId) => openModal(cardId)
+      export: (cardId) => downloadCard(cardId)
+    }
+
+    bulkActions: {
+      exportAll: () => void
+      compareSelected: (cardIds: string[]) => void // Phase 2
+    }
+  }
+}
+```
+
+#### 4.6.5 API Routes Enhancement (Prisma-Powered)
+
+**New API Routes for Run Management:**
+
+**GET /api/runs - List User's Runs with Pagination**
+
+```typescript
+// app/api/runs/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
+import { prisma } from '@/lib/prisma'
+
+export async function GET(request: NextRequest) {
+  const { userId } = await auth()
+
+  if (!userId) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    )
+  }
+
+  const { searchParams } = new URL(request.url)
+  const page = Number(searchParams.get('page')) || 1
+  const pageSize = Number(searchParams.get('pageSize')) || 12
+  const companyId = searchParams.get('companyId')
+  const status = searchParams.get('status') as RunStatus | null
+
+  // Build where clause
+  const where = {
+    user: { clerkId: userId },
+    ...(companyId && { companyId }),
+    ...(status && { status })
+  }
+
+  // Fetch runs with total count for pagination
+  const [runs, totalCount] = await prisma.$transaction([
+    prisma.run.findMany({
+      where,
+      include: {
+        _count: { select: { opportunityCards: true } }
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize
+    }),
+    prisma.run.count({ where })
+  ])
+
+  return NextResponse.json({
+    runs,
+    pagination: {
+      page,
+      pageSize,
+      totalCount,
+      totalPages: Math.ceil(totalCount / pageSize)
+    }
+  })
+}
+
+```
+
+**GET /api/runs/[runId] - Get Specific Run with All Related Data**
+
+```typescript
+// app/api/runs/[runId]/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
+import { prisma } from '@/lib/prisma'
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { runId: string } }
+) {
+  const { userId } = await auth()
+
+  if (!userId) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    )
+  }
+
+  // Fetch run with all relationships
+  const run = await prisma.run.findFirst({
+    where: {
+      id: params.runId,
+      user: { clerkId: userId } // Ensure user owns this run
+    },
+    include: {
+      opportunityCards: {
+        orderBy: { number: 'asc' }
+      },
+      inspirationReport: true,
+      stageOutputs: {
+        orderBy: { stageNumber: 'asc' }
+      }
+    }
+  })
+
+  if (!run) {
+    return NextResponse.json(
+      { error: 'Run not found or access denied' },
+      { status: 404 }
+    )
+  }
+
+  return NextResponse.json({ run })
+}
+
+```
+
+**POST /api/runs/[runId]/rerun - Re-run Pipeline with Same Document**
+
+```typescript
+// app/api/runs/[runId]/rerun/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
+import { prisma } from '@/lib/prisma'
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { runId: string } }
+) {
+  const { userId } = await auth()
+
+  if (!userId) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    )
+  }
+
+  // Get original run with user check
+  const originalRun = await prisma.run.findFirst({
+    where: {
+      id: params.runId,
+      user: { clerkId: userId }
+    }
+  })
+
+  if (!originalRun) {
+    return NextResponse.json(
+      { error: 'Original run not found or access denied' },
+      { status: 404 }
+    )
+  }
+
+  // Create new run with same parameters
+  const newRun = await prisma.run.create({
+    data: {
+      user: {
+        connect: { id: originalRun.userId }
+      },
+      companyId: originalRun.companyId,
+      companyName: originalRun.companyName,
+      documentName: originalRun.documentName,
+      documentUrl: originalRun.documentUrl,
+      status: 'PROCESSING',
+      pipelineVersion: '1.5', // Use latest version
+      parameters: originalRun.parameters
+    }
+  })
+
+  // Trigger pipeline on Railway backend
+  const backendResponse = await fetch(
+    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/pipeline/run`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        run_id: newRun.id,
+        blob_url: originalRun.documentUrl,
+        company_id: originalRun.companyId,
+        user_id: originalRun.userId
+      })
+    }
+  )
+
+  if (!backendResponse.ok) {
+    // Mark run as failed if pipeline start failed
+    await prisma.run.update({
+      where: { id: newRun.id },
+      data: {
+        status: 'FAILED',
+        errorMessage: 'Failed to start pipeline'
+      }
+    })
+
+    return NextResponse.json(
+      { error: 'Failed to start pipeline' },
+      { status: 500 }
+    )
+  }
+
+  return NextResponse.json({ runId: newRun.id })
+}
+
+// DELETE /api/runs/[runId] - Soft delete run
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { runId: string } }
+) {
+  const { userId } = await auth()
+
+  // Verify ownership and delete
+  const deleted = await prisma.run.deleteMany({
+    where: {
+      id: params.runId,
+      userId
+    }
+  })
+
+  if (deleted.count === 0) {
+    return NextResponse.json(
+      { error: 'Run not found' },
+      { status: 404 }
+    )
+  }
+
+  return NextResponse.json({ success: true })
+}
+
+// POST /api/cards/[cardId]/star - Toggle star status
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { cardId: string } }
+) {
+  const { userId } = await auth()
+
+  // Verify ownership
+  const card = await prisma.opportunityCard.findFirst({
+    where: {
+      id: params.cardId,
+      userId
+    }
+  })
+
+  if (!card) {
+    return NextResponse.json(
+      { error: 'Card not found' },
+      { status: 404 }
+    )
+  }
+
+  // Toggle star status
+  const updated = await prisma.opportunityCard.update({
+    where: { id: params.cardId },
+    data: { starred: !card.starred }
+  })
+
+  return NextResponse.json({ starred: updated.starred })
+}
+```
+
+**Enhanced Pipeline Run API:**
+
+```typescript
+// Updated POST /api/run - Now saves to database
+export async function POST(request: NextRequest) {
+  const { userId } = await auth()
+
+  if (!userId) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    )
+  }
+
+  const body = await request.json()
+  const { blob_url, upload_id } = body
+
+  // Get user from database
+  let user = await prisma.user.findUnique({
+    where: { clerkId: userId }
+  })
+
+  // Create user if not exists
+  if (!user) {
+    const { emailAddresses, firstName, lastName } = await clerkClient.users.getUser(userId)
+    user = await prisma.user.create({
+      data: {
+        clerkId: userId,
+        email: emailAddresses[0].emailAddress,
+        name: `${firstName} ${lastName}`.trim()
+      }
+    })
+  }
+
+  // Get company from cookie
+  const cookieStore = await cookies()
+  const companyId = cookieStore.get('company_id')?.value
+  const companyName = getCompanyDisplayName(companyId)
+
+  // Parse document name from blob URL
+  const documentName = blob_url.split('/').pop() || 'Untitled Document'
+
+  // Create run record in database
+  const run = await prisma.run.create({
+    data: {
+      userId: user.id,
+      companyId,
+      companyName,
+      documentName,
+      documentUrl: blob_url,
+      status: 'PROCESSING',
+      currentStage: 0
+    }
+  })
+
+  // Call Railway backend to execute pipeline
+  const backendResponse = await fetch(
+    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/pipeline/run`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        run_id: run.id,
+        blob_url,
+        company_id: companyId,
+        user_id: user.id
+      })
+    }
+  )
+
+  if (!backendResponse.ok) {
+    // Update run status to failed
+    await prisma.run.update({
+      where: { id: run.id },
+      data: {
+        status: 'FAILED',
+        errorMessage: 'Failed to start pipeline'
+      }
+    })
+
+    return NextResponse.json(
+      { error: 'Pipeline execution failed' },
+      { status: 500 }
+    )
+  }
+
+  return NextResponse.json({
+    run_id: run.id,
+    status: 'running'
+  })
+}
+```
+
+#### 4.6.5 Railway Backend Integration
+
+**New Backend Endpoints (FastAPI on Railway):**
+
+```python
+# backend/app/routers/pipeline.py
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from typing import Optional
+import asyncio
+from app.services.pipeline_service import PipelineService
+from app.services.database_service import DatabaseService
+
+router = APIRouter()
+
+class PipelineRunRequest(BaseModel):
+    run_id: str
+    blob_url: str
+    company_id: str
+    user_id: str
+
+@router.post("/api/pipeline/run")
+async def run_pipeline(request: PipelineRunRequest):
+    """Execute pipeline asynchronously and update database."""
+
+    # Start pipeline in background
+    asyncio.create_task(
+        execute_pipeline_with_updates(
+            request.run_id,
+            request.blob_url,
+            request.company_id,
+            request.user_id
+        )
+    )
+
+    return {"status": "started", "run_id": request.run_id}
+
+async def execute_pipeline_with_updates(
+    run_id: str,
+    blob_url: str,
+    company_id: str,
+    user_id: str
+):
+    """Execute pipeline and update database after each stage."""
+
+    db = DatabaseService()
+    pipeline = PipelineService()
+
+    try:
+        # Download document from Vercel Blob
+        document_text = await pipeline.download_document(blob_url)
+
+        # Stage 1: Track Division
+        await db.update_run_stage(run_id, 1, "PROCESSING")
+        stage1_output = await pipeline.run_stage1(document_text, company_id)
+        await db.save_stage_output(run_id, 1, stage1_output)
+
+        # Stage 2: Signal Amplification
+        await db.update_run_stage(run_id, 2, "PROCESSING")
+        stage2_output = await pipeline.run_stage2(stage1_output, company_id)
+        await db.save_stage_output(run_id, 2, stage2_output)
+
+        # Stage 3: Universal Translation
+        await db.update_run_stage(run_id, 3, "PROCESSING")
+        stage3_output = await pipeline.run_stage3(stage2_output, company_id)
+        await db.save_stage_output(run_id, 3, stage3_output)
+
+        # Stage 4: Brand Contextualization
+        await db.update_run_stage(run_id, 4, "PROCESSING")
+        stage4_output = await pipeline.run_stage4(stage3_output, company_id)
+        await db.save_stage_output(run_id, 4, stage4_output)
+
+        # Stage 5: Opportunity Generation
+        await db.update_run_stage(run_id, 5, "PROCESSING")
+        stage5_output = await pipeline.run_stage5(stage4_output, company_id)
+        await db.save_stage_output(run_id, 5, stage5_output)
+
+        # Save opportunity cards to database
+        await db.save_opportunity_cards(run_id, user_id, stage5_output)
+
+        # Save full inspiration report
+        await db.save_inspiration_report(
+            run_id,
+            stage1_output,
+            stage2_output,
+            stage3_output,
+            stage4_output,
+            stage5_output
+        )
+
+        # Mark run as completed
+        await db.complete_run(run_id)
+
+    except Exception as e:
+        # Mark run as failed
+        await db.fail_run(run_id, str(e))
+        raise
+
+@router.get("/api/pipeline/status/{run_id}")
+async def get_pipeline_status(run_id: str):
+    """Get current pipeline status from database."""
+
+    db = DatabaseService()
+    status = await db.get_run_status(run_id)
+
+    if not status:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    return status
+```
+
+**Database Service for Railway:**
+
+```python
+# backend/app/services/database_service.py
+
+import os
+from datetime import datetime
+from typing import Optional, Dict, Any, List
+import asyncpg
+import json
+
+class DatabaseService:
+    def __init__(self):
+        self.database_url = os.getenv("DATABASE_URL")
+
+    async def get_connection(self):
+        return await asyncpg.connect(self.database_url)
+
+    async def update_run_stage(self, run_id: str, stage: int, status: str):
+        """Update run's current stage in database."""
+        conn = await self.get_connection()
+        try:
+            await conn.execute(
+                """
+                UPDATE "Run"
+                SET "currentStage" = $1, "updatedAt" = $2
+                WHERE id = $3
+                """,
+                stage, datetime.utcnow(), run_id
+            )
+        finally:
+            await conn.close()
+
+    async def save_stage_output(self, run_id: str, stage_number: int, output: Dict):
+        """Save stage output to database."""
+        conn = await self.get_connection()
+        try:
+            stage_names = {
+                1: "Track Division",
+                2: "Signal Amplification",
+                3: "Universal Translation",
+                4: "Brand Contextualization",
+                5: "Opportunity Generation"
+            }
+
+            await conn.execute(
+                """
+                INSERT INTO "StageOutput" (id, "runId", "stageNumber", "stageName", output, "completedAt")
+                VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)
+                ON CONFLICT ("runId", "stageNumber")
+                DO UPDATE SET output = $4, "completedAt" = $5
+                """,
+                run_id,
+                stage_number,
+                stage_names[stage_number],
+                json.dumps(output),
+                datetime.utcnow()
+            )
+        finally:
+            await conn.close()
+
+    async def save_opportunity_cards(self, run_id: str, user_id: str, stage5_output: Dict):
+        """Parse and save opportunity cards from Stage 5 output."""
+        conn = await self.get_connection()
+        try:
+            cards = stage5_output.get("opportunities", [])
+
+            for i, card in enumerate(cards, 1):
+                # Extract metrics from markdown
+                metrics = self.extract_card_metrics(card["markdown"])
+
+                await conn.execute(
+                    """
+                    INSERT INTO "OpportunityCard"
+                    (id, "runId", "userId", number, title, markdown,
+                     "pricePoint", "velocityTarget", "grossMargin", "launchTimeline",
+                     tags, "createdAt")
+                    VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                    """,
+                    run_id,
+                    user_id,
+                    i,
+                    card["title"],
+                    card["markdown"],
+                    metrics.get("pricePoint"),
+                    metrics.get("velocityTarget"),
+                    metrics.get("grossMargin"),
+                    metrics.get("launchTimeline"),
+                    card.get("tags", []),
+                    datetime.utcnow()
+                )
+        finally:
+            await conn.close()
+
+    async def complete_run(self, run_id: str):
+        """Mark run as completed."""
+        conn = await self.get_connection()
+        try:
+            await conn.execute(
+                """
+                UPDATE "Run"
+                SET status = 'COMPLETED', "completedAt" = $1, "updatedAt" = $1
+                WHERE id = $2
+                """,
+                datetime.utcnow(), run_id
+            )
+        finally:
+            await conn.close()
+
+    async def fail_run(self, run_id: str, error_message: str):
+        """Mark run as failed with error message."""
+        conn = await self.get_connection()
+        try:
+            await conn.execute(
+                """
+                UPDATE "Run"
+                SET status = 'FAILED', "errorMessage" = $1, "updatedAt" = $2
+                WHERE id = $3
+                """,
+                error_message, datetime.utcnow(), run_id
+            )
+        finally:
+            await conn.close()
+
+    def extract_card_metrics(self, markdown: str) -> Dict[str, Optional[str]]:
+        """Extract metrics from opportunity card markdown."""
+        import re
+
+        metrics = {}
+
+        # Extract price point
+        price_match = re.search(r'Price.*?(\$[\d.]+)', markdown, re.IGNORECASE)
+        if price_match:
+            metrics["pricePoint"] = price_match.group(1)
+
+        # Extract velocity target
+        velocity_match = re.search(r'Velocity.*?([\d.]+\s*units?/\w+/\w+)', markdown, re.IGNORECASE)
+        if velocity_match:
+            metrics["velocityTarget"] = velocity_match.group(1)
+
+        # Extract gross margin
+        margin_match = re.search(r'Margin.*?([\d.]+%)', markdown, re.IGNORECASE)
+        if margin_match:
+            metrics["grossMargin"] = margin_match.group(1)
+
+        # Extract launch timeline
+        timeline_match = re.search(r'Launch.*?([\d.]+\s*months?)', markdown, re.IGNORECASE)
+        if timeline_match:
+            metrics["launchTimeline"] = timeline_match.group(1)
+
+        return metrics
+```
+
+#### 4.6.6 Database Setup & Migration (Prisma Workflow)
+
+**Step 1: Install Prisma Dependencies**
+
+```bash
+# Navigate to Next.js frontend directory
+cd innovation-web
+
+# Install Prisma CLI and Client
+npm install prisma @prisma/client
+
+# Install additional TypeScript types (if not already present)
+npm install -D @types/node
+```
+
+**Step 2: Initialize Prisma**
+
+```bash
+# Initialize Prisma with PostgreSQL provider
+npx prisma init --datasource-provider postgresql
+```
+
+This creates:
+- `prisma/schema.prisma` - Database schema file
+- `.env` - Environment variables file (add to `.gitignore`)
+
+**Step 3: Configure Database Connection**
+
+Add to `.env.local` (Vercel):
+```env
+# Connection string with PgBouncer for serverless
+DATABASE_URL="postgresql://user:password@host:port/database?pgbouncer=true&connection_limit=1"
+```
+
+Add to Railway environment variables:
+```env
+# Direct connection for backend
+DATABASE_URL="postgresql://user:password@host:port/database"
+```
+
+**Step 4: Create Schema**
+
+Copy the complete Prisma schema from section 4.6.2 into `prisma/schema.prisma`.
+
+**Step 5: Create Initial Migration**
+
+```bash
+# Generate SQL migration file and apply to database
+npx prisma migrate dev --name init
+
+# This command will:
+# 1. Create prisma/migrations/XXXXXX_init/migration.sql
+# 2. Apply migration to database
+# 3. Generate Prisma Client
+```
+
+**Step 6: Generate Prisma Client**
+
+```bash
+# Generate type-safe Prisma Client (run after schema changes)
+npx prisma generate
+```
+
+**Step 7: Create Prisma Singleton (lib/prisma.ts)**
+
+Create the singleton pattern file as shown in section 4.6.3.
+
+**Migration Workflow (Development):**
+
+```bash
+# 1. Modify schema in prisma/schema.prisma
+# 2. Create migration with descriptive name
+npx prisma migrate dev --name add_user_preferences
+
+# 3. Prisma will:
+#    - Generate SQL migration file
+#    - Apply it to your database
+#    - Regenerate Prisma Client
+
+# 4. Commit migration files to Git
+git add prisma/migrations
+git commit -m "feat: add user preferences table"
+```
+
+**Migration Workflow (Production - Railway):**
+
+```bash
+# Apply pending migrations without prompts
+npx prisma migrate deploy
+
+# This is run automatically in Railway build process via package.json:
+# "scripts": {
+#   "build": "prisma generate && prisma migrate deploy && next build"
+# }
+```
+
+**Useful Prisma Commands:**
+
+```bash
+# Open Prisma Studio (database GUI)
+npx prisma studio
+
+# View database schema in terminal
+npx prisma db pull
+
+# Reset database (DANGER - deletes all data)
+npx prisma migrate reset
+
+# Format schema file
+npx prisma format
+
+# Validate schema for errors
+npx prisma validate
+```
+
+**Railway PostgreSQL Setup:**
+
+1. **Add PostgreSQL Service:**
+   - Railway Dashboard → New → Database → PostgreSQL
+   - Railway auto-generates `DATABASE_URL` environment variable
+
+2. **Copy Connection String to Vercel:**
+   - Railway Dashboard → PostgreSQL → Connect → Copy `DATABASE_URL`
+   - Vercel Dashboard → Settings → Environment Variables
+   - Add `DATABASE_URL` with value: `{railway_url}?pgbouncer=true&connection_limit=1`
+
+3. **Run Initial Migration:**
+   ```bash
+   # From local machine (connected to Railway DB)
+   npx prisma migrate deploy
+   ```
+
+**Connection Pooling Strategy:**
+
+| Environment | Connection String | Pool Size | Why |
+|-------------|------------------|-----------|-----|
+| **Vercel (Serverless)** | `?pgbouncer=true&connection_limit=1` | 1 per function | Prevents "too many connections" |
+| **Railway (Backend)** | Direct connection | 5-20 (asyncpg pool) | Long-running process |
+| **Local Development** | Direct connection | 1 (Prisma default) | Single developer |
+
+**Troubleshooting:**
+
+```bash
+# Error: "Can't reach database server"
+# Solution: Check DATABASE_URL is correct
+
+# Error: "Too many connections"
+# Solution: Add ?pgbouncer=true&connection_limit=1 to Vercel DATABASE_URL
+
+# Error: "Migration failed"
+# Solution: Check prisma/migrations/*.sql for syntax errors
+
+# Error: "Type 'PrismaClient' is not generic"
+# Solution: Run npx prisma generate to regenerate client
+```
+
+#### 4.6.7 Implementation Roadmap (Prisma-Powered)
+
+**Phase 1: Database Foundation (4 hours)**
+
+**Hour 1: Railway PostgreSQL Setup**
+1. Add PostgreSQL service to Railway project
+2. Copy `DATABASE_URL` from Railway dashboard
+3. Add to Vercel environment variables with `?pgbouncer=true&connection_limit=1`
+4. Add to Railway backend environment variables (direct connection)
+
+**Hour 2: Prisma Schema & Migrations**
+1. Install Prisma: `npm install prisma @prisma/client`
+2. Initialize: `npx prisma init --datasource-provider postgresql`
+3. Copy complete schema from section 4.6.2 to `prisma/schema.prisma`
+4. Create initial migration: `npx prisma migrate dev --name init`
+5. Verify with Prisma Studio: `npx prisma studio`
+
+**Hour 3: Prisma Client Setup**
+1. Create `lib/prisma.ts` with singleton pattern (section 4.6.3)
+2. Generate client: `npx prisma generate`
+3. Test connection with simple query in API route
+4. Add to `.gitignore`: `prisma/migrations/.env`
+
+**Hour 4: Update Existing API Routes**
+1. Update `POST /api/run` to create Run record with Prisma
+2. Update `POST /api/run` to use `upsert` for User creation
+3. Test upload → pipeline trigger → database write flow
+4. Verify data in Prisma Studio
+
+**Phase 2: Backend Integration (3 hours)**
+
+**Hour 1: Railway Backend Database Service**
+1. Add `asyncpg` to `backend/requirements.txt`
+2. Create `backend/app/services/database_service.py` with connection pool
+3. Implement `update_run_stage()`, `save_stage_output()` methods
+4. Test database writes from Railway backend
+
+**Hour 2: Pipeline Database Integration**
+1. Modify pipeline router to call database service after each stage
+2. Implement `save_opportunity_cards()` with metrics extraction
+3. Implement `save_inspiration_report()` for full stage outputs
+4. Add error handling with `fail_run()` method
+
+**Hour 3: End-to-End Testing**
+1. Run full pipeline and verify database updates
+2. Check stage progression in Prisma Studio
+3. Verify opportunity cards are saved correctly
+4. Test error scenarios (failed pipeline, database errors)
+
+**Phase 3: Run Management API Routes (4 hours)**
+
+**Hour 1: List Runs API**
+1. Create `app/api/runs/route.ts` (GET)
+2. Implement pagination with Prisma `skip`/`take`
+3. Add filtering by company, status
+4. Include card counts using `_count`
+5. Test with different query parameters
+
+**Hour 2: Run Detail API**
+1. Create `app/api/runs/[runId]/route.ts` (GET)
+2. Implement with full relationship includes
+3. Add user ownership check via Clerk ID
+4. Test with valid and invalid run IDs
+
+**Hour 3: Rerun & Delete APIs**
+1. Create `app/api/runs/[runId]/rerun/route.ts` (POST)
+2. Implement run duplication with Prisma `create`
+3. Create `app/api/runs/[runId]/route.ts` (DELETE)
+4. Test cascade deletes (runs → cards)
+
+**Hour 4: Card Interaction APIs**
+1. Create `app/api/cards/[cardId]/star/route.ts` (POST)
+2. Implement star toggle with Prisma `update`
+3. Add view tracking logic
+4. Test with multiple cards
+
+**Phase 4: UI Components (4 hours)**
+
+**Hour 1: Enhanced Left Sidebar**
+1. Fetch recent 5 runs with Prisma in server component
+2. Display with status badges (processing, completed, failed)
+3. Add "View All" link to `/runs`
+4. Test hover states and navigation
+
+**Hour 2: Run History Page**
+1. Create `app/runs/page.tsx` with Prisma pagination
+2. Implement brutalist card grid layout
+3. Add filters (company, status, date range)
+4. Add search by document name
+5. Test pagination controls
+
+**Hour 3: Individual Run Detail Page**
+1. Create `app/runs/[runId]/page.tsx`
+2. Implement tabbed interface (Cards, Report, Stages, Analytics)
+3. Fetch run with all relationships via Prisma
+4. Display opportunity cards in grid
+5. Add rerun/delete actions
+
+**Hour 4: Card Interactions**
+1. Implement star/favorite functionality
+2. Add view count tracking
+3. Create card export functionality
+4. Test on mobile devices
+
+**Phase 5: Testing & Deployment (2 hours)**
+
+**Hour 1: Testing**
+1. Test complete user flow: Upload → Process → View Runs
+2. Test pagination with 20+ runs
+3. Test filters and search
+4. Test rerun functionality
+5. Test error scenarios
+6. Performance test (database query times)
+
+**Hour 2: Deployment**
+1. Commit Prisma migrations: `git add prisma/migrations`
+2. Update Railway build command: `prisma generate && prisma migrate deploy`
+3. Deploy to Vercel
+4. Run migrations on production database
+5. Verify environment variables on both platforms
+6. Test production deployment end-to-end
+
+**Prisma-Specific Checklist:**
+- ✅ Schema matches all requirements
+- ✅ Migrations committed to Git
+- ✅ Prisma Client singleton implemented
+- ✅ Connection pooling configured for serverless
+- ✅ All relationships properly defined
+- ✅ Cascade deletes configured
+- ✅ Indexes on frequently queried fields
+- ✅ Prisma Studio accessible for debugging
+- ✅ Error handling for database failures
+- ✅ Type safety verified in all API routes
+
+---
+
+### 4.7 Pipeline Modifications (Priority: P0)
 
 #### 4.6.1 scripts/run_pipeline.py Changes
 
@@ -1396,25 +2687,33 @@ Input Document:
 | shadcn/ui | Latest | Component library |
 | react-dropzone | 14.x | File upload |
 | react-markdown | 9.x | Markdown rendering |
+| **Prisma** | **5.x** | **Database ORM** |
+| **@clerk/nextjs** | **Latest** | **Authentication** |
 
 ### 6.2 Backend
 
 | Technology | Version | Purpose |
 |-----------|---------|---------|
-| Next.js API Routes | 15.x | REST API |
-| Node.js | 20.x | Runtime |
+| **FastAPI** | **0.115.0** | **Python REST API (Railway)** |
+| **uvicorn** | **0.32.0** | **ASGI server for FastAPI** |
+| Next.js API Routes | 15.x | Frontend API proxy |
+| Node.js | 20.x | Frontend runtime |
 | Vercel Blob | Latest | File storage |
-| Python | 3.10+ | Pipeline execution |
+| Python | 3.11 | Pipeline execution |
 | LangChain | 0.1.x | LLM orchestration |
 | OpenRouter API | Latest | LLM provider |
+| **PostgreSQL** | **15.x** | **Relational database** |
+| **asyncpg** | **0.29.0** | **Async PostgreSQL client** |
 
 ### 6.3 Deployment
 
 | Service | Purpose |
 |---------|---------|
-| Vercel | Frontend + API hosting |
+| Vercel | Frontend + API proxy hosting |
+| **Railway** | **Backend Python API + PostgreSQL** |
 | Vercel Blob | File storage |
 | GitHub | Code repository |
+| **Clerk** | **User authentication service** |
 
 ### 6.4 Development Tools
 
@@ -1669,7 +2968,27 @@ Input Document:
 - ✅ Stage 1 two-track UI displays correctly
 - ✅ Markdown rendering looks professional
 
-### 11.2 Post-Hackathon Validation (Phase 2)
+### 11.2 Phase 1.5 - User Run Management Success Metrics
+
+**User Engagement:**
+- Average of 3+ runs per active user per week
+- 60%+ users return to view past runs
+- 30%+ of cards get starred/favorited
+- Average 2+ reruns per original run
+
+**Technical Performance:**
+- Database query response < 200ms
+- Run list page load < 1 second
+- Card retrieval < 500ms
+- 99%+ data integrity (no lost runs)
+
+**Feature Adoption:**
+- 80%+ users access "My Runs" within first week
+- 50%+ use filters/search functionality
+- 40%+ star at least one card
+- 20%+ use rerun feature
+
+### 11.3 Post-Hackathon Validation (Phase 2)
 
 **User Engagement:**
 - 10+ external users test the app
@@ -1775,11 +3094,20 @@ Input Document:
 ### 13.4 Environment Variables
 
 ```bash
-# .env.local (Next.js)
+# .env.local (Next.js Frontend - Vercel)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+DATABASE_URL=postgresql://user:pass@host:port/db?pgbouncer=true&connection_limit=1
+BLOB_READ_WRITE_TOKEN=vercel_blob_...  # Auto-generated
+NEXT_PUBLIC_BACKEND_URL=https://your-app.railway.app
+
+# Railway Backend Environment Variables
+DATABASE_URL=postgresql://user:pass@host:port/database
 OPENROUTER_API_KEY=sk-or-v1-...
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 LLM_MODEL=anthropic/claude-sonnet-4.5
-BLOB_READ_WRITE_TOKEN=vercel_blob_...  # Auto-generated
+VERCEL_BLOB_READ_WRITE_TOKEN=vercel_blob_...  # For downloading PDFs
+PORT=8000  # Railway sets this automatically
 ```
 
 ---
