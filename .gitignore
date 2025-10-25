@@ -144,3 +144,4 @@ agent_logs/
 .claude
 
 docs/architecture-full-web-app
+.vercel
