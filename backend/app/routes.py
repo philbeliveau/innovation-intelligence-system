@@ -150,12 +150,12 @@ def load_brand_profile(brand_id: str) -> Dict[str, Any]:
         )
 
 
-@router.get("/health", response_model=HealthResponse)
+@router.get("/health", response_model=HealthResponse, operation_id="health_check")
 async def health_check():
     """Health check endpoint for Railway monitoring
 
-    Returns 'ok' if all required environment variables are present,
-    'degraded' if any are missing.
+    Returns 'ok' if all required environment variables are present AND
+    frontend webhook URL is reachable, 'degraded' otherwise.
     """
     required_vars = [
         "OPENROUTER_API_KEY",
@@ -165,12 +165,34 @@ async def health_check():
     ]
 
     missing_vars = [var for var in required_vars if not os.getenv(var)]
-    status = "degraded" if missing_vars else "ok"
 
-    return HealthResponse(status=status, version="1.0.0")
+    # Test frontend connectivity
+    frontend_url = os.getenv("FRONTEND_WEBHOOK_URL", "https://innovation-web-rho.vercel.app")
+    frontend_reachable = False
+
+    try:
+        # Try to ping frontend health endpoint with 5s timeout
+        response = requests.get(f"{frontend_url}/api/health", timeout=5)
+        frontend_reachable = response.ok
+        if not frontend_reachable:
+            logger.warning(f"Frontend health check failed: {response.status_code}")
+    except requests.exceptions.RequestException as e:
+        logger.warning(f"Frontend not reachable at {frontend_url}: {e}")
+
+    # Status is degraded if env vars missing OR frontend unreachable
+    status = "degraded" if (missing_vars or not frontend_reachable) else "ok"
+
+    details = {}
+    if missing_vars:
+        details["missing_env_vars"] = missing_vars
+    if not frontend_reachable:
+        details["frontend_status"] = "unreachable"
+        details["frontend_url"] = frontend_url
+
+    return HealthResponse(status=status, version="1.0.0", details=details if details else None)
 
 
-@router.post("/run", response_model=RunPipelineResponse)
+@router.post("/run", response_model=RunPipelineResponse, operation_id="run_pipeline")
 async def run_pipeline(request: RunPipelineRequest):
     """
     Start pipeline execution
@@ -211,7 +233,7 @@ async def run_pipeline(request: RunPipelineRequest):
     return RunPipelineResponse(run_id=run_id, status="running")
 
 
-@router.get("/status/{run_id}", response_model=PipelineStatus)
+@router.get("/status/{run_id}", response_model=PipelineStatus, operation_id="get_status")
 async def get_status(run_id: str):
     """
     Get pipeline execution status

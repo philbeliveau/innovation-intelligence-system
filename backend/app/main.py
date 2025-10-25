@@ -8,6 +8,7 @@ import sys
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_mcp import FastApiMCP
 from app.routes import router
 
 # Configure logging
@@ -86,6 +87,18 @@ app.add_middleware(
 # Register routes
 app.include_router(router)
 
+# FastAPI MCP - Expose endpoints as MCP tools for Claude
+mcp = FastApiMCP(
+    app,
+    name="Innovation Intelligence MCP",
+    description="MCP server for CPG innovation pipeline - exposes pipeline execution and status endpoints",
+    # Only expose specific endpoints (by operation_id)
+    include_operations=["health_check", "run_pipeline", "get_status"]
+)
+
+# Mount MCP server at /mcp endpoint
+mcp.mount_http()
+
 
 @app.get("/")
 async def root():
@@ -93,5 +106,6 @@ async def root():
     return {
         "name": "Innovation Intelligence API",
         "version": "1.0.0",
-        "docs": "/docs"
+        "docs": "/docs",
+        "mcp": "/mcp"
     }
