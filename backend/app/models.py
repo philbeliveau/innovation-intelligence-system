@@ -7,6 +7,7 @@ class RunPipelineRequest(BaseModel):
     """Request model for POST /run endpoint"""
     blob_url: str = Field(..., description="Vercel Blob URL of uploaded PDF")
     brand_id: str = Field(..., description="Brand identifier (e.g., 'lactalis-canada')")
+    run_id: Optional[str] = Field(None, description="Pre-generated run ID from frontend (prevents race condition)")
 
 
 class RunPipelineResponse(BaseModel):

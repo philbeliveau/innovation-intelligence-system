@@ -100,12 +100,14 @@ async function fetchWithRetry(
  *
  * @param blobUrl - Vercel Blob URL of the uploaded PDF
  * @param brandId - Brand identifier (e.g., 'lactalis-canada')
+ * @param runId - Pre-generated run ID from frontend (prevents race condition)
  * @returns Run ID and initial status
  * @throws Error if backend is unreachable or returns error
  */
 export async function runPipeline(
   blobUrl: string,
-  brandId: string
+  brandId: string,
+  runId: string
 ): Promise<RunPipelineResponse> {
   try {
     const response = await fetchWithRetry(
@@ -118,6 +120,7 @@ export async function runPipeline(
         body: JSON.stringify({
           blob_url: blobUrl,
           brand_id: brandId,
+          run_id: runId,
         }),
       }
     )

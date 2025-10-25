@@ -177,6 +177,9 @@ async def run_pipeline(request: RunPipelineRequest):
 
     Accepts blob URL and brand ID, downloads PDF, and executes
     5-stage pipeline in background.
+
+    If run_id is provided by frontend, use it (prevents race condition).
+    Otherwise, generate one here (backward compatibility).
     """
     # Validate blob URL
     if not validate_blob_url(request.blob_url):
@@ -185,8 +188,9 @@ async def run_pipeline(request: RunPipelineRequest):
             detail="Invalid blob URL. Must be HTTPS URL from blob.vercel-storage.com"
         )
 
-    # Generate run ID
-    run_id = generate_run_id()
+    # Use frontend-provided run_id or generate new one
+    run_id = request.run_id or generate_run_id()
+    logger.info(f"Pipeline run_id: {run_id} {'(frontend-provided)' if request.run_id else '(backend-generated)'}")
 
     # Download PDF
     pdf_path = download_pdf_from_blob(request.blob_url, run_id)
