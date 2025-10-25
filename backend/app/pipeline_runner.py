@@ -363,7 +363,8 @@ def execute_pipeline_background(
         opportunities_output = {"opportunities": opportunities_with_markdown}
 
         # Mark stage 5 as completed (auto-marks PipelineRun as COMPLETED)
-        prisma_client.mark_stage_complete(run_id, 5, stage5_result)
+        # Save opportunities_output (with markdown) instead of stage5_result
+        prisma_client.mark_stage_complete(run_id, 5, opportunities_output)
 
         logger.info(f"Pipeline execution completed successfully for run {run_id}")
 
