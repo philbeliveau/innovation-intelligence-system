@@ -1,17 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getStatus } from '@/lib/backend-client'
 import { prisma } from '@/lib/prisma'
 
 /**
  * GET /api/pipeline/[runId]/status
  *
- * Retrieves the current status of a pipeline run.
- * Checks Prisma database first, then proxies to Railway backend.
+ * Retrieves the current status of a pipeline run from Prisma database.
+ * This endpoint now reads ONLY from Prisma (no Railway backend calls).
+ *
+ * The Python backend updates Prisma via POST /api/pipeline/[runId]/stage-update
  *
  * Response:
- * - status: 'PROCESSING' | 'COMPLETED' | 'FAILED'
- * - current_stage: 0-5
- * - stages: Object with stage outputs
+ * {
+ *   run_id: string
+ *   status: 'PROCESSING' | 'COMPLETED' | 'FAILED'
+ *   current_stage: 0-5  (highest stage number with data)
+ *   stages: {
+ *     "1": { status: "COMPLETED", output: {...}, completed_at: "..." }
+ *     "2": { status: "PROCESSING", ... }
+ *     ...
+ *   }
+ *   brand_name?: string (companyName from run)
+ * }
  */
 export async function GET(
   request: NextRequest,
@@ -32,86 +41,83 @@ export async function GET(
 
     console.log(`[API /pipeline/status] Fetching status for run: ${sanitizedRunId}`)
 
-    // First, check if run exists in Prisma database
-    const dbRun = await prisma.pipelineRun.findUnique({
+    // Fetch run with all stage outputs from Prisma
+    const run = await prisma.pipelineRun.findUnique({
       where: { id: sanitizedRunId },
-      select: { status: true, createdAt: true }
+      include: {
+        stageOutputs: {
+          orderBy: { stageNumber: 'asc' }
+        }
+      }
     })
 
-    if (!dbRun) {
+    if (!run) {
+      console.log(`[API /pipeline/status] Run not found: ${sanitizedRunId}`)
       return NextResponse.json(
         { error: 'Run ID not found' },
         { status: 404 }
       )
     }
 
-    // If run exists but backend hasn't started yet (very early in pipeline)
-    // Return a temporary status while backend initializes
-    const runAge = Date.now() - dbRun.createdAt.getTime()
-    const isVeryNew = runAge < 10000 // Less than 10 seconds old
+    // Build stages object keyed by stage number
+    const stages: Record<string, unknown> = {}
+    let currentStage = 0
 
-    // Call Railway backend to get status
-    let statusResponse
-    try {
-      statusResponse = await getStatus(sanitizedRunId)
-    } catch (error) {
-      console.error('[API /pipeline/status] Backend client error:', error)
-
-      // If run is very new and backend returns 404, it's still initializing
-      if (isVeryNew && error instanceof Error && (error.message.includes('not found') || error.message.includes('404'))) {
-        console.log('[API /pipeline/status] Run is initializing on backend, returning temporary status')
-        return NextResponse.json({
-          status: 'PROCESSING',
-          current_stage: 0,
-          message: 'Pipeline initializing...',
-        })
-      }
-
-      // Handle specific error cases
-      if (error instanceof Error) {
-        // 404 - Run ID not found
-        if (error.message.includes('not found') || error.message.includes('404')) {
-          return NextResponse.json(
-            { error: 'Run ID not found or pipeline not started yet' },
-            { status: 404 }
-          )
-        }
-
-        // Timeout errors
-        if (error.message.includes('timeout')) {
-          return NextResponse.json(
-            { error: 'Backend is slow to respond. Please wait and try again.' },
-            { status: 504 }
-          )
-        }
-
-        // Network errors
-        if (error.message.includes('fetch failed') || error.message.includes('Failed to fetch')) {
-          return NextResponse.json(
-            { error: 'Cannot connect to backend. Please try again later.' },
-            { status: 503 }
-          )
-        }
-
-        // Generic backend error
-        return NextResponse.json(
-          { error: error.message || 'Failed to fetch pipeline status' },
-          { status: 500 }
-        )
-      }
-
-      // Unknown error
-      return NextResponse.json(
-        { error: 'Internal server error' },
-        { status: 500 }
-      )
+    // Initialize all 5 stages as pending
+    for (let i = 1; i <= 5; i++) {
+      stages[i.toString()] = { status: 'pending' }
     }
 
-    // Proxy Railway backend response to frontend
-    console.log(`[API /pipeline/status] Status: ${statusResponse.status}, Stage: ${statusResponse.current_stage}`)
-    return NextResponse.json(statusResponse)
+    // Populate with actual stage data from database
+    for (const stageOutput of run.stageOutputs) {
+      const stageKey = stageOutput.stageNumber.toString()
+
+      // Parse output as JSON if it's a JSON string
+      let parsedOutput: unknown
+      try {
+        parsedOutput = JSON.parse(stageOutput.output)
+      } catch {
+        // If not JSON, use as-is (markdown or plain text)
+        parsedOutput = stageOutput.output
+      }
+
+      stages[stageKey] = {
+        status: stageOutput.status.toLowerCase(), // "COMPLETED" → "completed"
+        output: parsedOutput,
+        completed_at: stageOutput.completedAt?.toISOString() || null
+      }
+
+      // Track highest stage number we have data for
+      if (stageOutput.stageNumber > currentStage) {
+        currentStage = stageOutput.stageNumber
+      }
+    }
+
+    // If no stages have started yet, current_stage should be 0
+    if (run.stageOutputs.length === 0) {
+      currentStage = 0
+    }
+
+    // Build response matching Railway backend format
+    const response = {
+      run_id: run.id,
+      status: run.status.toLowerCase(), // "PROCESSING" → "processing"
+      current_stage: currentStage,
+      stages,
+      brand_name: run.companyName
+    }
+
+    console.log(`[API /pipeline/status] Returning status: ${run.status}, current_stage: ${currentStage}`)
+
+    return NextResponse.json(response)
+
   } catch (error) {
-    console.error('Unexpected error in /api/pipeline/[runId]/status:', error)
+    console.error('[API /pipeline/status] Unexpected error:', error)
+
+    if (error instanceof Error) {
+      console.error('[API /pipeline/status] Error details:', error.message)
+    }
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
