@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { SidebarRun } from '@/app/api/runs/route'
+import { SidebarRun } from '@/app/api/pipeline/route'
 import { Eye, Play, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -71,7 +71,7 @@ export default function RunCard({ run, onDelete, onRerun }: RunCardProps) {
   const handleDeleteConfirm = async () => {
     setIsDeleting(true)
     try {
-      const response = await fetch(`/api/runs/${run.id}`, {
+      const response = await fetch(`/api/pipeline/${run.id}`, {
         method: 'DELETE',
       })
 
@@ -93,7 +93,7 @@ export default function RunCard({ run, onDelete, onRerun }: RunCardProps) {
   const handleRerunConfirm = async () => {
     setIsRerunning(true)
     try {
-      const response = await fetch(`/api/runs/${run.id}/rerun`, {
+      const response = await fetch(`/api/pipeline/${run.id}/rerun`, {
         method: 'POST',
       })
 

@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getStatus } from '@/lib/backend-client'
 import { prisma } from '@/lib/prisma'
 
+/**
+ * GET /api/pipeline/[runId]/status
+ *
+ * Retrieves the current status of a pipeline run.
+ * Checks Prisma database first, then proxies to Railway backend.
+ *
+ * Response:
+ * - status: 'PROCESSING' | 'COMPLETED' | 'FAILED'
+ * - current_stage: 0-5
+ * - stages: Object with stage outputs
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ runId: string }> }
@@ -19,7 +30,7 @@ export async function GET(
       )
     }
 
-    console.log(`[API /status] Fetching status for run: ${sanitizedRunId}`)
+    console.log(`[API /pipeline/status] Fetching status for run: ${sanitizedRunId}`)
 
     // First, check if run exists in Prisma database
     const dbRun = await prisma.pipelineRun.findUnique({
@@ -44,11 +55,11 @@ export async function GET(
     try {
       statusResponse = await getStatus(sanitizedRunId)
     } catch (error) {
-      console.error('[API /status] Backend client error:', error)
+      console.error('[API /pipeline/status] Backend client error:', error)
 
       // If run is very new and backend returns 404, it's still initializing
       if (isVeryNew && error instanceof Error && (error.message.includes('not found') || error.message.includes('404'))) {
-        console.log('[API /status] Run is initializing on backend, returning temporary status')
+        console.log('[API /pipeline/status] Run is initializing on backend, returning temporary status')
         return NextResponse.json({
           status: 'PROCESSING',
           current_stage: 0,
@@ -97,10 +108,10 @@ export async function GET(
     }
 
     // Proxy Railway backend response to frontend
-    console.log(`[API /status] Status: ${statusResponse.status}, Stage: ${statusResponse.current_stage}`)
+    console.log(`[API /pipeline/status] Status: ${statusResponse.status}, Stage: ${statusResponse.current_stage}`)
     return NextResponse.json(statusResponse)
   } catch (error) {
-    console.error('Unexpected error in /api/status/[runId]:', error)
+    console.error('Unexpected error in /api/pipeline/[runId]/status:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

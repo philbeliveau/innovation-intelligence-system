@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import RunCard from '@/components/RunCard'
-import { SidebarRun } from '@/app/api/runs/route'
+import { SidebarRun } from '@/app/api/pipeline/route'
 import { Search, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
@@ -74,7 +74,7 @@ function RunsPageContent() {
       if (searchQuery) params.append('search', searchQuery)
       if (sortOption !== 'newest') params.append('sort', sortOption)
 
-      const response = await fetch(`/api/runs?${params.toString()}`)
+      const response = await fetch(`/api/pipeline?${params.toString()}`)
 
       if (!response.ok) {
         throw new Error('Failed to fetch runs')

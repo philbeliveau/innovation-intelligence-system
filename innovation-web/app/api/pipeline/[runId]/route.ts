@@ -3,7 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
 
 /**
- * GET /api/runs/[runId] - Get specific run details with all relations
+ * GET /api/pipeline/[runId] - Get specific run details with all relations
  */
 export async function GET(
   request: NextRequest,
@@ -96,7 +96,7 @@ export async function GET(
 
     return NextResponse.json(response)
   } catch (error) {
-    console.error('[API /runs/[runId]] Error:', error)
+    console.error('[API /pipeline/[runId]] Error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -105,7 +105,7 @@ export async function GET(
 }
 
 /**
- * DELETE /api/runs/[runId] - Delete run and all related data (cascade)
+ * DELETE /api/pipeline/[runId] - Delete run and all related data (cascade)
  */
 export async function DELETE(
   request: NextRequest,
@@ -154,7 +154,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('[API /runs/[runId]] Delete error:', error)
+    console.error('[API /pipeline/[runId]] Delete error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

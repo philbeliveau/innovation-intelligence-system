@@ -104,7 +104,7 @@ export default function PipelineViewer({
           return
         }
 
-        const response = await fetch(`/api/status/${runId}`)
+        const response = await fetch(`/api/pipeline/${runId}/status`)
 
         // FIX RACE-001: Treat initial 404s as "pipeline starting up" instead of error
         if (response.status === 404) {

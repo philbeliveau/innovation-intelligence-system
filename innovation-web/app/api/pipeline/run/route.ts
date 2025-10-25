@@ -4,6 +4,19 @@ import { auth } from '@clerk/nextjs/server'
 import { runPipeline } from '@/lib/backend-client'
 import { prisma } from '@/lib/prisma'
 
+/**
+ * POST /api/pipeline/run
+ *
+ * Starts a new pipeline execution for a given document and brand.
+ *
+ * Request body:
+ * - blob_url: Vercel Blob URL to PDF document
+ * - upload_id: Upload record ID (optional, for tracking)
+ *
+ * Response:
+ * - run_id: Unique pipeline run identifier
+ * - status: 'running'
+ */
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
@@ -57,14 +70,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`[API /run] Triggering pipeline for brand: ${sanitizedCompanyId}, blob: ${blob_url}`)
+    console.log(`[API /pipeline/run] Triggering pipeline for brand: ${sanitizedCompanyId}, blob: ${blob_url}`)
 
     // Call Railway backend to run pipeline
     let backendResponse
     try {
       backendResponse = await runPipeline(blob_url, sanitizedCompanyId)
     } catch (error) {
-      console.error('[API /run] Backend client error:', error)
+      console.error('[API /pipeline/run] Backend client error:', error)
 
       // Network/timeout errors
       if (error instanceof Error) {
@@ -125,22 +138,22 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      console.log(`[API /run] Created PipelineRun record: ${backendResponse.run_id}`)
+      console.log(`[API /pipeline/run] Created PipelineRun record: ${backendResponse.run_id}`)
     } catch (dbError) {
       // Log database error but don't fail the pipeline start
       // The pipeline is already running on Railway
-      console.error('[API /run] Database persistence error:', dbError)
+      console.error('[API /pipeline/run] Database persistence error:', dbError)
       // We still return success since the pipeline started
     }
 
     // Return run_id from Railway backend
-    console.log(`[API /run] Pipeline started successfully: ${backendResponse.run_id}`)
+    console.log(`[API /pipeline/run] Pipeline started successfully: ${backendResponse.run_id}`)
     return NextResponse.json({
       run_id: backendResponse.run_id,
       status: backendResponse.status,
     })
   } catch (error) {
-    console.error('Unexpected error in /api/run:', error)
+    console.error('Unexpected error in /api/pipeline/run:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

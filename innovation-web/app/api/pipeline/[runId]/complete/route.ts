@@ -9,10 +9,12 @@ interface OpportunityPayload {
 }
 
 /**
- * POST /api/runs/[runId]/complete
+ * POST /api/pipeline/[runId]/complete
  *
  * Webhook endpoint called by Railway backend when pipeline completes.
  * Updates run status, saves opportunity cards, and creates inspiration report.
+ *
+ * Authentication: X-Webhook-Secret header
  */
 export async function POST(
   request: NextRequest,

@@ -99,7 +99,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
         setIsLoading(true)
         setError(null)
 
-        const response = await fetch(`/api/runs/${runId}`)
+        const response = await fetch(`/api/pipeline/${runId}`)
 
         if (response.status === 404) {
           setError('Run not found or you do not have permission to view it.')
@@ -129,7 +129,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
 
     const pollInterval = setInterval(async () => {
       try {
-        const response = await fetch(`/api/runs/${runId}`)
+        const response = await fetch(`/api/pipeline/${runId}`)
         if (response.ok) {
           const data = await response.json()
           setRun(data)
@@ -183,7 +183,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
     if (!runId) return
 
     try {
-      const response = await fetch(`/api/runs/${runId}/rerun`, {
+      const response = await fetch(`/api/pipeline/${runId}/rerun`, {
         method: 'POST',
       })
 

@@ -157,7 +157,7 @@ export default function AnalyzePage() {
     try {
       console.log('[Launch] Starting pipeline with blob:', blobUrl)
 
-      const response = await fetch('/api/run', {
+      const response = await fetch('/api/pipeline/run', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -169,7 +169,7 @@ export default function AnalyzePage() {
         }),
       })
 
-      console.log('[Launch] /api/run response status:', response.status)
+      console.log('[Launch] /api/pipeline/run response status:', response.status)
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))

@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { runPipeline } from '@/lib/backend-client'
 
 /**
- * POST /api/runs/[runId]/rerun - Rerun a pipeline with same settings
+ * POST /api/pipeline/[runId]/rerun - Rerun a pipeline with same settings
  *
  * Creates a new run with same document and company, triggers Railway backend
  */
@@ -61,7 +61,7 @@ export async function POST(
       }
     })
 
-    console.log(`[API /runs/:id/rerun] Created rerun ${newRun.id} from original ${runId}`)
+    console.log(`[API /pipeline/:id/rerun] Created rerun ${newRun.id} from original ${runId}`)
 
     // 4. Trigger Railway backend with new run ID but original document
     try {
@@ -73,7 +73,7 @@ export async function POST(
 
       await runPipeline(originalRun.documentUrl || '', companyId)
 
-      console.log(`[API /runs/:id/rerun] Successfully triggered Railway backend for ${newRun.id}`)
+      console.log(`[API /pipeline/:id/rerun] Successfully triggered Railway backend for ${newRun.id}`)
 
       return NextResponse.json({
         success: true,
@@ -91,7 +91,7 @@ export async function POST(
         }
       })
 
-      console.error('[API /runs/:id/rerun] Railway backend trigger failed:', backendError)
+      console.error('[API /pipeline/:id/rerun] Railway backend trigger failed:', backendError)
 
       return NextResponse.json(
         { error: 'Failed to start pipeline rerun. The run has been marked as failed.' },
@@ -99,7 +99,7 @@ export async function POST(
       )
     }
   } catch (error) {
-    console.error('[API /runs/:id/rerun] Unexpected error:', error)
+    console.error('[API /pipeline/:id/rerun] Unexpected error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

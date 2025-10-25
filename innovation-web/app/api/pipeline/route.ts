@@ -23,7 +23,7 @@ interface RunsResponse {
 }
 
 /**
- * GET /api/runs - Fetch user's pipeline runs with pagination, filtering, and sorting
+ * GET /api/pipeline - Fetch user's pipeline runs with pagination, filtering, and sorting
  *
  * Query params:
  * - page: Page number (default: 1)
@@ -183,7 +183,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response)
   } catch (error) {
-    console.error('[API /runs] Unexpected error:', error)
+    console.error('[API /pipeline] Unexpected error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
