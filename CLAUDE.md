@@ -1,5 +1,38 @@
 # Innovation Intelligence System - Claude Configuration
-
+      340 +  ## Deployment to Railway
+       341 +  
+       342 +  ### Backend Deployment
+       343 +  
+       344 +  The Python FastAPI backend is deployed to Railway. The service is configured with:
+       345 +  - **Root Directory**: `backend` (configured in Railway dashboard)
+       346 +  - **Build**: Dockerfile-based build
+       347 +  - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+       348 +  
+       349 +  **Deploying from CLI:**
+       350 +  
+       351 +  ```bash
+       352 +  # Deploy from PROJECT ROOT (not from backend directory)
+       353 +  # Railway is configured with root directory as 'backend'
+       354 +  railway deploy
+       355 +  
+       356 +  # Or using Railway MCP tool
+       357 +  # Must provide absolute path to PROJECT ROOT
+       358 +  /Users/your-username/path/to/innovation-intelligence-system
+       359 +  ```
+       360 +  
+       361 +  **Important Notes:**
+       362 +  - ✅ Deploy from the **project root** directory (`innovation-intelligence-system/`)
+       363 +  - ❌ Do NOT deploy from `backend/` subdirectory
+       364 +  - The Railway service has `backend` configured as the root directory in the dashboard
+       365 +  - This means Railway expects to find the `backend/` folder relative to where you deploy from
+       366 +  
+       367 +  **Environment Variables:**
+       368 +  - Set in Railway dashboard under Settings → Variables
+       369 +  - Required: `DATABASE_URL`, `OPENROUTER_API_KEY`, `WEBHOOK_SECRET`, `VERCEL_BLOB_READ_WRITE_TOKEN`
+       370 +  
+       371 +  **Monitoring Deployment:**
+       372 +  - Build logs are available in Railway dashboard
+       373 +  - Or access via CLI: `railway logs`
 ## Current Sprint: Pipeline Visualization Frontend Build
 
 **Status:** Building the Pipeline Visualization Page (`/pipeline/[runId]`) with 4 progressive UI states
