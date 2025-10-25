@@ -25,7 +25,7 @@ interface Stage1Data {
 
 interface PipelineStatus {
   run_id: string
-  status: 'running' | 'complete' | 'completed' | 'error' // Backend uses 'complete', frontend uses 'completed'
+  status: 'running' | 'processing' | 'complete' | 'completed' | 'error' // API returns 'processing' (lowercase from PROCESSING)
   current_stage: number
   stage1_data?: Stage1Data
   brand_name?: string
@@ -141,8 +141,16 @@ export default function PipelineViewer({
         const data: PipelineStatus = await response.json()
         console.log('[PipelineViewer] Received status:', data.status, 'stage:', data.current_stage)
 
-        // Normalize 'complete' to 'completed' for frontend state
-        const normalizedStatus = data.status === 'complete' ? 'completed' : data.status
+        // Normalize status: 'complete' → 'completed', 'processing' → 'running'
+        let normalizedStatus: 'running' | 'completed' | 'error' = 'running'
+        if (data.status === 'complete' || data.status === 'completed') {
+          normalizedStatus = 'completed'
+        } else if (data.status === 'error') {
+          normalizedStatus = 'error'
+        } else {
+          // 'running' or 'processing' both map to 'running' for UI state
+          normalizedStatus = 'running'
+        }
         setStatus(normalizedStatus)
         setCurrentStage(data.current_stage)
         setStage1Data(data.stage1_data ?? null)
@@ -163,9 +171,9 @@ export default function PipelineViewer({
           return
         }
 
-        // Continue polling if still running
-        if (data.status === 'running') {
-          console.log('[PipelineViewer] Pipeline still running, polling again in 5s')
+        // Continue polling if still running or processing
+        if (data.status === 'running' || data.status === 'processing') {
+          console.log('[PipelineViewer] Pipeline still', data.status, '- polling again in 5s')
           timeoutId = setTimeout(pollStatus, 5000)
         } else {
           console.log('[PipelineViewer] Pipeline status:', data.status, '- stopping poll')
