@@ -99,7 +99,7 @@ describe('RunDetailPage', () => {
       render(<RunDetailPage params={mockParams} />)
 
       await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledWith('/api/runs/test-run-123')
+        expect(global.fetch).toHaveBeenCalledWith('/api/pipeline/test-run-123')
       })
     })
 
@@ -349,7 +349,7 @@ describe('RunDetailPage', () => {
 
       await waitFor(() => {
         expect(global.fetch).toHaveBeenCalledWith(
-          '/api/runs/test-run-123',
+          '/api/pipeline/test-run-123',
           expect.objectContaining({ method: 'DELETE' })
         )
         expect(mockPush).toHaveBeenCalledWith('/runs')

@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { useRouter } from 'next/navigation'
 import RunCard from '../RunCard'
-import { SidebarRun } from '@/app/api/runs/route'
+import { SidebarRun } from '@/app/api/pipeline/route'
 import '@testing-library/jest-dom'
 
 // Mock Next.js navigation
@@ -125,7 +125,7 @@ describe('RunCard', () => {
 
       await waitFor(() => {
         expect(global.fetch).toHaveBeenCalledWith(
-          '/api/runs/test-run-1',
+          '/api/pipeline/test-run-1',
           expect.objectContaining({ method: 'DELETE' })
         )
         expect(mockOnDelete).toHaveBeenCalledWith('test-run-1')
@@ -181,7 +181,7 @@ describe('RunCard', () => {
 
       await waitFor(() => {
         expect(global.fetch).toHaveBeenCalledWith(
-          '/api/runs/test-run-1/rerun',
+          '/api/pipeline/test-run-1/rerun',
           expect.objectContaining({ method: 'POST' })
         )
         expect(mockOnRerun).toHaveBeenCalledWith('new-run-123')

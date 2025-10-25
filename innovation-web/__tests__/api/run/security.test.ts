@@ -7,7 +7,7 @@
  * - SEC-001: Command injection vulnerability (fixed)
  */
 
-import { POST } from '@/app/api/run/route'
+import { POST } from '@/app/api/pipeline/run/route'
 import { NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 
@@ -50,7 +50,7 @@ describe('POST /api/run - Security Tests', () => {
           get: jest.fn(() => ({ value: maliciousId })),
         } as any)
 
-        const request = new NextRequest('http://localhost:3000/api/run', {
+        const request = new NextRequest('http://localhost:3000/api/pipeline/run', {
           method: 'POST',
           body: JSON.stringify({
             blob_url: 'https://example.com/test.pdf',
@@ -87,7 +87,7 @@ describe('POST /api/run - Security Tests', () => {
           } as Response)
         )
 
-        const request = new NextRequest('http://localhost:3000/api/run', {
+        const request = new NextRequest('http://localhost:3000/api/pipeline/run', {
           method: 'POST',
           body: JSON.stringify({
             blob_url: 'https://example.com/test.pdf',
@@ -117,7 +117,7 @@ describe('POST /api/run - Security Tests', () => {
         } as Response)
       )
 
-      const request = new NextRequest('http://localhost:3000/api/run', {
+      const request = new NextRequest('http://localhost:3000/api/pipeline/run', {
         method: 'POST',
         body: JSON.stringify({
           blob_url: 'https://example.com/test.pdf',
@@ -157,7 +157,7 @@ describe('POST /api/run - Security Tests', () => {
           Promise.reject(new Error('Invalid URL'))
         )
 
-        const request = new NextRequest('http://localhost:3000/api/run', {
+        const request = new NextRequest('http://localhost:3000/api/pipeline/run', {
           method: 'POST',
           body: JSON.stringify({
             blob_url: maliciousUrl,
@@ -180,7 +180,7 @@ describe('POST /api/run - Security Tests', () => {
         get: jest.fn(() => ({ value: 'test-company' })),
       } as any)
 
-      const request = new NextRequest('http://localhost:3000/api/run', {
+      const request = new NextRequest('http://localhost:3000/api/pipeline/run', {
         method: 'POST',
         body: JSON.stringify({
           upload_id: 'upload-123',
@@ -199,7 +199,7 @@ describe('POST /api/run - Security Tests', () => {
         get: jest.fn(() => ({ value: 'test-company' })),
       } as any)
 
-      const request = new NextRequest('http://localhost:3000/api/run', {
+      const request = new NextRequest('http://localhost:3000/api/pipeline/run', {
         method: 'POST',
         body: JSON.stringify({
           blob_url: 'https://example.com/test.pdf',
@@ -218,7 +218,7 @@ describe('POST /api/run - Security Tests', () => {
         get: jest.fn(() => undefined),
       } as any)
 
-      const request = new NextRequest('http://localhost:3000/api/run', {
+      const request = new NextRequest('http://localhost:3000/api/pipeline/run', {
         method: 'POST',
         body: JSON.stringify({
           blob_url: 'https://example.com/test.pdf',
@@ -247,7 +247,7 @@ describe('POST /api/run - Security Tests', () => {
         } as Response)
       )
 
-      const request = new NextRequest('http://localhost:3000/api/run', {
+      const request = new NextRequest('http://localhost:3000/api/pipeline/run', {
         method: 'POST',
         body: JSON.stringify({
           blob_url: 'https://example.com/test.pdf',
