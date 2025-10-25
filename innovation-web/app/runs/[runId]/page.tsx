@@ -160,7 +160,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
 
     setIsDeleting(true)
     try {
-      const response = await fetch(`/api/runs/${runId}`, {
+      const response = await fetch(`/api/pipeline/${runId}`, {
         method: 'DELETE',
       })
 
