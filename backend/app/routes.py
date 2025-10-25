@@ -266,3 +266,211 @@ async def get_status(run_id: str):
             status_code=500,
             detail=f"Error reading status: {str(e)}"
         )
+
+
+# ============================================
+# MCP Development & Debug Tools
+# ============================================
+
+@router.get("/brands", operation_id="list_brands")
+async def list_brands():
+    """List all available brand profiles for pipeline execution
+
+    Returns list of brand IDs that can be used with run_pipeline.
+    """
+    # Look in both backend/data and /data (for local dev vs Railway)
+    possible_paths = [
+        Path(__file__).parent.parent / "data" / "brand-profiles",
+        Path("/app/data/brand-profiles")
+    ]
+
+    brand_dir = None
+    for path in possible_paths:
+        if path.exists():
+            brand_dir = path
+            break
+
+    if not brand_dir:
+        return {"brands": [], "count": 0}
+
+    brands = []
+    for yaml_file in brand_dir.glob("*.yaml"):
+        brand_id = yaml_file.stem
+        brands.append(brand_id)
+
+    return {
+        "brands": sorted(brands),
+        "count": len(brands)
+    }
+
+
+@router.get("/brands/{brand_id}", operation_id="get_brand_profile")
+async def get_brand_profile_endpoint(brand_id: str):
+    """Get detailed brand profile configuration by ID
+
+    Returns the full brand profile YAML data including company_name,
+    portfolio, positioning, and other configuration.
+    """
+    # Reuse existing load_brand_profile() helper
+    brand_profile = load_brand_profile(brand_id)
+
+    return {
+        "brand_id": brand_id,
+        "profile": brand_profile
+    }
+
+
+@router.get("/config/env-check", operation_id="check_environment")
+async def check_environment():
+    """Check which environment variables are configured
+
+    Verifies presence of required environment variables without
+    exposing their values. Useful for deployment validation.
+    """
+    required_vars = [
+        "OPENROUTER_API_KEY",
+        "OPENROUTER_BASE_URL",
+        "LLM_MODEL",
+        "VERCEL_BLOB_READ_WRITE_TOKEN"
+    ]
+
+    optional_vars = [
+        "WEBHOOK_SECRET",
+        "FRONTEND_WEBHOOK_URL"
+    ]
+
+    configured = []
+    missing = []
+    warnings = []
+
+    # Check required vars
+    for var in required_vars:
+        value = os.getenv(var)
+        if value:
+            configured.append(var)
+        else:
+            missing.append(var)
+
+    # Check optional vars
+    for var in optional_vars:
+        value = os.getenv(var)
+        if value:
+            configured.append(var)
+        else:
+            warnings.append(f"{var} not set (optional)")
+
+    return {
+        "configured": configured,
+        "missing": missing,
+        "warnings": warnings,
+        "status": "ok" if not missing else "incomplete"
+    }
+
+
+@router.get("/debug/runs", operation_id="list_all_runs")
+async def list_all_runs(limit: int = 20):
+    """List all pipeline runs with status
+
+    Returns recent pipeline executions for debugging and monitoring.
+    Useful for checking pipeline history and finding run IDs.
+    """
+    runs_dir = Path("/tmp/runs")
+
+    if not runs_dir.exists():
+        return {"runs": [], "count": 0}
+
+    runs = []
+
+    # Get all run directories
+    for run_dir in runs_dir.iterdir():
+        if not run_dir.is_dir():
+            continue
+
+        run_id = run_dir.name
+        status_file = run_dir / "status.json"
+
+        if status_file.exists():
+            try:
+                with open(status_file, "r") as f:
+                    status_data = json.load(f)
+
+                runs.append({
+                    "run_id": run_id,
+                    "status": status_data.get("status", "unknown"),
+                    "current_stage": status_data.get("current_stage", 0),
+                    "brand_id": status_data.get("brand_id", "unknown"),
+                    "created_at": status_data.get("created_at", None)
+                })
+            except Exception as e:
+                logger.warning(f"Could not read status for {run_id}: {e}")
+                runs.append({
+                    "run_id": run_id,
+                    "status": "error_reading_status",
+                    "error": str(e)
+                })
+
+    # Sort by creation time (newest first)
+    runs.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+
+    # Limit results
+    runs = runs[:limit]
+
+    return {
+        "runs": runs,
+        "count": len(runs),
+        "limit": limit
+    }
+
+
+@router.get("/debug/runs/{run_id}/stage/{stage_num}", operation_id="get_stage_output")
+async def get_stage_output(run_id: str, stage_num: int):
+    """Get raw output from specific pipeline stage
+
+    Returns the complete output JSON from a specific stage,
+    useful for debugging stage failures and inspecting intermediate results.
+    """
+    if stage_num < 1 or stage_num > 5:
+        raise HTTPException(
+            status_code=400,
+            detail="Stage number must be between 1 and 5"
+        )
+
+    run_dir = Path("/tmp/runs") / run_id
+
+    if not run_dir.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"Run '{run_id}' not found"
+        )
+
+    # Look for stage output file
+    stage_file = run_dir / f"stage{stage_num}_output.json"
+
+    if not stage_file.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"Stage {stage_num} output not found for run '{run_id}'. Stage may not have completed yet."
+        )
+
+    try:
+        with open(stage_file, "r") as f:
+            stage_data = json.load(f)
+
+        return {
+            "run_id": run_id,
+            "stage": stage_num,
+            "output": stage_data
+        }
+
+    except json.JSONDecodeError as e:
+        logger.error(f"Corrupted stage output for {run_id}/stage{stage_num}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Stage {stage_num} output file corrupted"
+        )
+    except Exception as e:
+        logger.error(f"Error reading stage output {run_id}/stage{stage_num}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error reading stage output: {str(e)}"
+        )

@@ -93,7 +93,20 @@ mcp = FastApiMCP(
     name="Innovation Intelligence MCP",
     description="MCP server for CPG innovation pipeline - exposes pipeline execution and status endpoints",
     # Only expose specific endpoints (by operation_id)
-    include_operations=["health_check", "run_pipeline", "get_status"]
+    include_operations=[
+        # Core pipeline operations
+        "health_check",
+        "run_pipeline",
+        "get_status",
+        # Brand profile operations
+        "list_brands",
+        "get_brand_profile",
+        # Environment & configuration
+        "check_environment",
+        # Debug & introspection tools
+        "list_all_runs",
+        "get_stage_output"
+    ]
 )
 
 # Mount MCP server - using HTTP transport (recommended for Claude Code)
