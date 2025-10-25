@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs'
 import { useRuns } from '@/lib/use-runs'
 import { formatRelativeTime } from '@/lib/format-relative-time'
-import type { RunStatus } from '@/app/api/runs/route'
+import type { RunStatus } from '@/app/api/pipeline/route'
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 
 interface Track {
