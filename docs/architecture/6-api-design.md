@@ -103,8 +103,15 @@ export async function GET() {
 
 ---
 
-### `POST /api/analyze-document`
+### `POST /api/analyze-document` ⚠️ **DEPRECATED - See Story 8.1**
 **Purpose:** Use LLM to extract summary and metadata from uploaded document
+
+**⚠️ DEPRECATION NOTICE (Story 8.1):**
+This endpoint is being replaced by direct Railway backend calls to bypass Vercel's 10-second timeout limit.
+- **Reason:** Document analysis takes 30-60 seconds (PDF parsing + LLM), causing 504 Gateway Timeout errors on Vercel Hobby plan
+- **Replacement:** Frontend now calls Railway backend directly with Clerk authentication
+- **Migration Path:** See Story 8.1 for implementation details
+- **Status:** Deprecated as of Epic 8, scheduled for removal after 30-day deprecation period
 
 **Request:**
 ```json
@@ -238,6 +245,122 @@ export async function POST(request: Request) {
   })
 }
 ```
+
+---
+
+### **Direct Railway Backend Call (Story 8.1)** ⭐ **NEW - Bypasses Vercel Timeout**
+
+**Purpose:** Frontend calls Railway backend directly for document analysis (replaces `/api/analyze-document`)
+
+**Why Direct Call:**
+- Vercel Hobby plan has 10-second serverless function timeout
+- Document analysis takes 30-60 seconds (PDF parsing + 5-stage pipeline)
+- Direct Railway call bypasses Vercel entirely → Railway has 60-minute timeout
+
+**Frontend Implementation:**
+```typescript
+// app/analyze/[uploadId]/page.tsx
+'use client'
+import { useAuth } from '@clerk/nextjs'
+
+export default function AnalyzePage() {
+  const { getToken, userId } = useAuth()
+
+  const analyzeDocument = async (blobUrl: string, companyId: string) => {
+    // Get Clerk session token
+    const token = await getToken()
+
+    if (!token || !userId) {
+      throw new Error('Authentication required')
+    }
+
+    // Call Railway backend directly (bypasses Vercel API routes)
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/analyze`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`  // Clerk JWT for authentication
+      },
+      body: JSON.stringify({
+        blob_url: blobUrl,
+        company_id: companyId,
+        user_id: userId
+      })
+    })
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Authentication failed. Please sign in again.')
+      }
+      throw new Error(`Analysis failed: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    return data.run_id
+  }
+}
+```
+
+**Railway Backend Endpoint (`POST /api/analyze`):**
+```python
+# backend/app/routes.py
+from fastapi import APIRouter, HTTPException, Header
+from clerk_backend_api import Clerk
+import os
+
+router = APIRouter()
+clerk = Clerk(bearer_auth=os.getenv("CLERK_SECRET_KEY"))
+
+@router.post("/api/analyze")
+async def analyze_document(
+    blob_url: str,
+    company_id: str,
+    user_id: str,
+    authorization: str = Header(None)
+):
+    # Validate Clerk JWT token
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing authorization header")
+
+    token = authorization.replace("Bearer ", "")
+
+    try:
+        session = clerk.verify_token(token)
+        if session.user_id != user_id:
+            raise HTTPException(status_code=401, detail="Token user mismatch")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+
+    # Execute pipeline (can take 30-60 minutes, no timeout issues)
+    run_id = await execute_pipeline(blob_url, company_id, user_id)
+
+    return {
+        "run_id": run_id,
+        "status": "PROCESSING",
+        "message": "Pipeline started successfully"
+    }
+```
+
+**CSP Configuration (middleware.ts):**
+```typescript
+// Railway domain already allowed in Story 7.8
+"connect-src 'self' blob: https://*.railway.app https://*.clerk.com ..."
+```
+
+**Environment Variables:**
+- Frontend (Vercel): `NEXT_PUBLIC_BACKEND_URL` (Railway public URL)
+- Backend (Railway): `CLERK_SECRET_KEY` (for JWT validation)
+
+**Error Handling:**
+- 401 Unauthorized → Redirect to sign-in
+- 400 Bad Request → Show validation error
+- 500 Server Error → Show retry button
+- Network failures → "Unable to reach analysis service"
+
+**Integration with Existing Flows:**
+- ✅ Polling endpoint (`/api/runs`) still used for status updates
+- ✅ Webhook endpoint (`/api/runs/[runId]/complete`) still used for completion notifications
+- ✅ Upload flow (`/api/upload`) unchanged
 
 ---
 

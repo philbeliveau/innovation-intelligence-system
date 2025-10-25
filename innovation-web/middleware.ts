@@ -30,7 +30,7 @@ export default clerkMiddleware(async (auth, req) => {
       "style-src 'self' 'unsafe-inline' https://*.clerk.accounts.dev https://*.clerk.com", // Allow Clerk styles
       "img-src 'self' data: https: blob:", // Allow images from Clerk, Vercel Blob, etc.
       "font-src 'self' data: https://*.clerk.accounts.dev https://*.clerk.com https://r2cdn.perplexity.ai", // Allow Clerk and external fonts
-      "connect-src 'self' blob: https://*.clerk.accounts.dev https://*.clerk.com https://*.clerk.dev https://*.vercel-storage.com https://*.railway.app",
+      "connect-src 'self' blob: https://*.clerk.accounts.dev https://*.clerk.com https://*.clerk.dev https://*.vercel-storage.com https://*.railway.app https://*.clerk-telemetry.com",
       "frame-src 'self' blob: https://*.blob.vercel-storage.com https://*.clerk.accounts.dev https://*.clerk.com", // Allow Clerk iframes + Vercel Blob PDFs
       "frame-ancestors 'none'", // Prevent clickjacking
       "base-uri 'self'",

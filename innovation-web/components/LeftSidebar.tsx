@@ -140,14 +140,14 @@ export function LeftSidebar() {
           isVisible ? 'translate-x-0' : '-translate-x-full'
         }`}
         onMouseLeave={() => !isMobile && setIsVisible(false)}
-        style={{ minWidth: isMobile ? 'auto' : '240px' }}
+        style={{ minWidth: isMobile ? 'auto' : '288px' }}
       >
-        <div className={`flex bg-white ${isMobile ? 'h-full flex-col p-4' : 'w-full'} px-1.5 py-1.5 shadow-lg ${isMobile ? 'rounded-r-2xl' : 'rounded-2xl'}`}>
+        <div className={`flex bg-white ${isMobile ? 'h-full flex-col p-5' : 'w-72 p-5'} shadow-md shadow-purple-200/50 ${isMobile ? 'rounded-r-md' : 'rounded-md'}`}>
           {/* Mobile: Close button */}
           {isMobile && (
             <button
               onClick={() => setIsVisible(false)}
-              className="self-end mb-4 p-2 hover:bg-gray-100 rounded-full"
+              className="self-end mb-4 p-2 hover:bg-purple-100 rounded-full transition-all"
               aria-label="Close menu"
             >
               <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -156,91 +156,111 @@ export function LeftSidebar() {
             </button>
           )}
 
-          <div className={`rounded-2xl w-full px-1.5 py-1.5 md:px-3 md:py-3 flex flex-col gap-4`}>
+          <ul className="w-full flex flex-col gap-2">
             {/* Home Button */}
-            <button
-              title="Go to the home page"
-              onClick={handleHomeClick}
-              className="text-gray-600 hover:text-black border-2 flex items-center justify-center p-2.5 border-transparent bg-gray-50 shadow-sm hover:shadow-md focus:opacity-100 focus:outline-none active:shadow-inner font-medium rounded-full text-sm"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-5 h-5"
-                viewBox="0 0 20 20"
-                fill="currentColor"
+            <li className="flex-center cursor-pointer w-full whitespace-nowrap">
+              <button
+                title="Go to the home page"
+                onClick={handleHomeClick}
+                className="flex size-full gap-4 p-4 group font-semibold rounded-full bg-cover hover:bg-purple-100 hover:shadow-inner focus:bg-gradient-to-r focus:from-purple-400 focus:to-purple-600 focus:text-white text-gray-700 transition-all ease-linear"
               >
-                <path
-                  d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"
-                ></path>
-              </svg>
-            </button>
+                <svg
+                  stroke="#000000"
+                  className="size-6 group-focus:fill-white group-focus:stroke-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="#000000"
+                >
+                  <g strokeWidth="0"></g>
+                  <g strokeLinejoin="round" strokeLinecap="round"></g>
+                  <g>
+                    <path d="M14,10V22H4a2,2,0,0,1-2-2V10Z"></path>
+                    <path d="M22,10V20a2,2,0,0,1-2,2H16V10Z"></path>
+                    <path d="M22,4V8H2V4A2,2,0,0,1,4,2H20A2,2,0,0,1,22,4Z"></path>
+                  </g>
+                </svg>
+                Dashboard
+              </button>
+            </li>
 
             {/* Ideation Track Button (if track exists) */}
             {nonSelectedTrack && (
-              <button
-                title={`Track ${nonSelectedTrack.trackNumber}: ${nonSelectedTrack.title}`}
-                className="text-gray-600 hover:text-black border-2 flex items-center justify-center p-2.5 border-transparent bg-gray-50 shadow-sm hover:shadow-md focus:opacity-100 focus:outline-none active:shadow-inner font-medium rounded-full text-sm"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-5 h-5"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"
-                  ></path>
-                  <path
-                    fillRule="evenodd"
-                    d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
-                    clipRule="evenodd"
-                  ></path>
-                </svg>
-              </button>
-            )}
-
-            {/* Authentication UI - Moved to top for visibility */}
-            <SignedOut>
-              <SignInButton mode="modal">
+              <li className="flex-center cursor-pointer w-full whitespace-nowrap">
                 <button
-                  title="Sign In"
-                  className="text-gray-600 hover:text-black border-2 flex items-center justify-center p-2.5 border-transparent bg-gray-50 shadow-sm hover:shadow-md focus:opacity-100 focus:outline-none active:shadow-inner font-medium rounded-full text-sm"
+                  title={`Track ${nonSelectedTrack.trackNumber}: ${nonSelectedTrack.title}`}
+                  className="flex size-full gap-4 p-4 group font-semibold rounded-full bg-cover hover:bg-purple-100 hover:shadow-inner focus:bg-gradient-to-r focus:from-purple-400 focus:to-purple-600 focus:text-white text-gray-700 transition-all ease-linear"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="w-5 h-5"
+                    className="size-6 group-focus:fill-white"
                     viewBox="0 0 20 20"
                     fill="currentColor"
                   >
+                    <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
                     <path
                       fillRule="evenodd"
-                      d="M3 3a1 1 0 011 1v12a1 1 0 11-2 0V4a1 1 0 011-1zm7.707 3.293a1 1 0 010 1.414L9.414 9H17a1 1 0 110 2H9.414l1.293 1.293a1 1 0 01-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0z"
+                      d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
                       clipRule="evenodd"
-                    />
+                    ></path>
                   </svg>
+                  Track {nonSelectedTrack.trackNumber}
                 </button>
-              </SignInButton>
+              </li>
+            )}
+
+            {/* Authentication UI */}
+            <SignedOut>
+              <li className="flex-center cursor-pointer w-full whitespace-nowrap">
+                <SignInButton mode="modal">
+                  <button
+                    title="Sign In"
+                    className="flex size-full gap-4 p-4 group font-semibold rounded-full bg-cover hover:bg-purple-100 hover:shadow-inner focus:bg-gradient-to-r focus:from-purple-400 focus:to-purple-600 focus:text-white text-gray-700 transition-all ease-linear"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      className="size-6"
+                    >
+                      <path
+                        className="group-focus:fill-white"
+                        fill="#000"
+                        d="M5 2C3.34315 2 2 3.34315 2 5V19C2 20.6569 3.34315 22 5 22H14.5C15.8807 22 17 20.8807 17 19.5V16.7326C16.8519 16.647 16.7125 16.5409 16.5858 16.4142C15.9314 15.7598 15.8253 14.7649 16.2674 14H13C11.8954 14 11 13.1046 11 12C11 10.8954 11.8954 10 13 10H16.2674C15.8253 9.23514 15.9314 8.24015 16.5858 7.58579C16.7125 7.4591 16.8519 7.35296 17 7.26738V4.5C17 3.11929 15.8807 2 14.5 2H5Z"
+                      />
+                      <path
+                        className="group-focus:fill-white"
+                        fill="#000000"
+                        d="M17.2929 14.2929C16.9024 14.6834 16.9024 15.3166 17.2929 15.7071C17.6834 16.0976 18.3166 16.0976 18.7071 15.7071L21.6201 12.7941C21.6351 12.7791 21.6497 12.7637 21.6637 12.748C21.87 12.5648 22 12.2976 22 12C22 11.7024 21.87 11.4352 21.6637 11.252C21.6497 11.2363 21.6351 11.2209 21.6201 11.2059L18.7071 8.29289C18.3166 7.90237 17.6834 7.90237 17.2929 8.29289C16.9024 8.68342 16.9024 9.31658 17.2929 9.70711L18.5858 11H13C12.4477 11 12 11.4477 12 12C12 12.5523 12.4477 13 13 13H18.5858L17.2929 14.2929Z"
+                      />
+                    </svg>
+                    Login
+                  </button>
+                </SignInButton>
+              </li>
             </SignedOut>
             <SignedIn>
-              <div className="flex items-center justify-center p-2.5 bg-gray-50 rounded-full shadow-sm">
-                <UserButton
-                  appearance={{
-                    elements: {
-                      avatarBox: "w-5 h-5"
-                    }
-                  }}
-                />
-              </div>
+              <li className="flex-center cursor-pointer w-full whitespace-nowrap">
+                <button className="flex size-full gap-4 p-4 group font-semibold rounded-full bg-cover hover:bg-purple-100 hover:shadow-inner focus:bg-gradient-to-r focus:from-purple-400 focus:to-purple-600 focus:text-white text-gray-700 transition-all ease-linear items-center">
+                  <UserButton
+                    appearance={{
+                      elements: {
+                        avatarBox: "w-6 h-6"
+                      }
+                    }}
+                  />
+                  <span>Settings</span>
+                </button>
+              </li>
             </SignedIn>
 
             {/* My Runs Section */}
             <SignedIn>
-              <div className="w-full border-t border-gray-200 my-2" />
-              <div className="w-full">
+              <li className="w-full border-t border-gray-200 my-2" />
+              <li className="w-full px-2">
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <h3 className="text-xs font-semibold text-gray-500 px-2 mb-2 cursor-help inline-flex items-center gap-1">
+                      <h3 className="text-xs font-semibold text-gray-500 mb-2 cursor-help inline-flex items-center gap-1">
                         My Runs
                         <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -282,7 +302,7 @@ export function LeftSidebar() {
                       <button
                         key={run.id}
                         onClick={() => handleRunClick(run.id)}
-                        className="w-full text-left p-2 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200"
+                        className="w-full text-left p-2 rounded-lg hover:bg-purple-50 transition-colors border border-transparent hover:border-purple-200"
                         title={`${run.documentName} - ${run.companyName}`}
                       >
                         <div className="flex items-start justify-between gap-2">
@@ -315,14 +335,14 @@ export function LeftSidebar() {
                 {runs.length > 0 && (
                   <button
                     onClick={handleViewAllRuns}
-                    className="w-full mt-2 text-xs text-blue-600 hover:text-blue-700 font-medium py-1 px-2 rounded hover:bg-blue-50 transition-colors"
+                    className="w-full mt-2 text-xs text-purple-600 hover:text-purple-700 font-medium py-1 px-2 rounded hover:bg-purple-50 transition-colors"
                   >
                     View All Runs →
                   </button>
                 )}
-              </div>
+              </li>
             </SignedIn>
-          </div>
+          </ul>
         </div>
       </div>
     </>
