@@ -88,6 +88,9 @@ export async function POST(
     // 6. Save opportunity cards (validate required fields)
     const opportunities = (body.opportunities || []) as OpportunityPayload[]
 
+    console.log(`[Webhook] Received ${opportunities.length} opportunities for run ${runId}`)
+    console.log(`[Webhook] First opportunity sample:`, JSON.stringify(opportunities[0], null, 2))
+
     // Filter and map valid opportunities
     const validOpportunities = opportunities
       .map((opp, idx) => ({
@@ -95,8 +98,12 @@ export async function POST(
         index: idx
       }))
       .filter(({ opp }) => {
-        if (!opp.title || !opp.markdown) {
-          console.warn(`[Webhook] Skipping opportunity with missing fields:`, opp)
+        if (!opp.title) {
+          console.warn(`[Webhook] Skipping opportunity ${opp.number || 'unknown'} - missing title`)
+          return false
+        }
+        if (!opp.markdown && !opp.content) {
+          console.warn(`[Webhook] Skipping opportunity ${opp.number || 'unknown'} "${opp.title}" - missing markdown/content`)
           return false
         }
         return true
@@ -108,6 +115,8 @@ export async function POST(
         content: opp.markdown || opp.content || '',
         isStarred: false
       }))
+
+    console.log(`[Webhook] Validated ${validOpportunities.length}/${opportunities.length} opportunities for database insertion`)
 
     let cardsCreated = 0
     try {
