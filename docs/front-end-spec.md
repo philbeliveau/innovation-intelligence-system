@@ -6,6 +6,8 @@ This document defines the user experience goals, information architecture, user 
 
 **Scope:** This specification covers only the pipeline visualization page, not the onboarding or upload pages (which are already implemented per slides 1-2).
 
+**Architecture Note:** This system uses **Prisma ORM with PostgreSQL** as the single source of truth for pipeline state. The Python backend updates the database via webhook calls to `/api/pipeline/[runId]/stage-update`, and the frontend polls `/api/pipeline/[runId]/status` for real-time updates. No file-based state management is used.
+
 ## Overall UX Goals & Principles
 
 ### Target User Personas
@@ -127,10 +129,12 @@ PipelinePage (current)
   }
   ```
 
-**7. Update API Status Endpoint**
-- **File:** `innovation-web/app/api/status/[runId]/route.ts` (needs creation/update)
-- **Add:** Stage completion timestamps for progress bars
-- **Add:** Estimated time remaining calculation
+**7. API Status Endpoint** ✅ ALREADY IMPLEMENTED
+- **File:** `innovation-web/app/api/pipeline/[runId]/status/route.ts`
+- **Already includes:** Stage completion timestamps (`completed_at`)
+- **Already includes:** Stages with output data in JSON format
+- **Database:** Prisma as single source of truth (no file-based state)
+- **Still needs:** Estimated time remaining calculation
 
 **8. Remove Auto-Redirect to Results**
 - **File:** innovation-web/app/pipeline/[runId]/page.tsx:108-110
@@ -154,16 +158,17 @@ PipelinePage (current)
 
 ```
 innovation-web/components/pipeline/
-├── ExtractionAnimation.tsx        (NEW)
+├── ExtractionAnimation.tsx        (NEW - with BOI badge)
 ├── WorkflowIllustration.tsx       (NEW)
-├── ExtractedTextView.tsx          (NEW)
-├── MechanismCard.tsx              (NEW)
-├── StagesAnimation.tsx            (NEW)
-├── Stage2to5Box.tsx               (NEW)
-├── OpportunityCardsGrid.tsx       (NEW)
-├── OpportunityCard.tsx            (NEW)
+├── SignalsColumn.tsx              (NEW - left column State 2)
+├── TransferableInsightsView.tsx  (NEW - middle column State 2)
+├── SparksPreviewColumn.tsx        (NEW - right column State 2)
+├── StagesAnimation.tsx            (NEW - for stages 2-5)
+├── IconNavigation.tsx             (NEW - signal/insight/spark icons)
+├── SparksGrid.tsx                 (NEW - replaces OpportunityCardsGrid)
+├── SparkCard.tsx                  (NEW - replaces OpportunityCard)
 ├── CollapsedSidebar.tsx           (NEW)
-├── ExpandedOpportunityDetail.tsx  (NEW)
+├── ExpandedSparkDetail.tsx        (NEW - replaces ExpandedOpportunityDetail)
 └── PipelineStateMachine.tsx       (NEW - orchestrator)
 ```
 
@@ -486,11 +491,12 @@ graph TD
 
 **Location:** Left box of TwoBoxLayout in State 1
 
-**Visual Design:**
-- Animated illustration matching mockup Page 3 style (beaker/flask with bubbles)
+**Visual Design (matches Mockup Page 3):**
+- BOI badge in top-left corner (teal circle with "BOI" text)
+- Animated illustration: beaker/flask with bubbling teal liquid
 - Teal color scheme (#5B9A99 primary, #7DB5AA accents)
 - Subtle pulsing/bubbling animation (2-3s loop)
-- Optional: Rotating mechanism type labels ("UNBUNDLED" → "COMBINED" → etc.)
+- Text overlay: "Extracting transferable insights"
 
 **States:**
 - Active: Full opacity, animated
@@ -543,36 +549,66 @@ interface WorkflowIllustrationProps {
 
 ---
 
-### State 2 Components: Mechanisms Revealed
+### State 2 Components: Signals to Sparks (3-Column Layout)
 
-#### ExtractedTextView Component
+#### SignalsColumn Component
 
-**Purpose:** Display extracted mechanisms with download option
+**Purpose:** Display original signal/trend that was analyzed
 
-**Location:** Left box of TwoBoxLayout in State 2
+**Location:** Left column (1/3 width) in State 2
 
-**Visual Design:**
-- White background card
-- Heading: "Mechanisms Extracted" (teal underline)
-- 2-3 MechanismCard components (vertical stack)
-- Download PDF button at bottom (teal, prominent)
+**Visual Design (matches Mockup Page 5):**
+- Header: Signal icon + "Signals" label
+- QR code garment image (from original trend)
+- Title: "Ad-generating QR codes incorporated into garments to make resale easy"
+- White background card with shadow
 
-**Layout:**
+#### TransferableInsightsView Component
+
+**Purpose:** Display extracted transferable insights
+
+**Location:** Middle column (1/3 width) in State 2
+
+**Visual Design (matches Mockup Page 5):**
+- Header: Light bulb icon + "Transferable Insights" label
+- Full text description of mechanism
+- Sections: Core Mechanism, Business Impact, Pattern transfers to
+- Link: "View/download extraction report" (blue text link, not button)
+
+#### SparksPreviewColumn Component
+
+**Purpose:** Preview of generated opportunity "sparks"
+
+**Location:** Right column (1/3 width) in State 2
+
+**Visual Design (matches Mockup Page 5):**
+- Header: Rocket icon + "Sparks" label
+- 2 numbered spark preview cards
+- Each card shows:
+  - Number badge (1, 2)
+  - Hero image
+  - Title text
+  - Brief summary
+- Cards are clickable previews
+
+**Layout (3-Column State 2):**
 ```
-┌──────────────────────────────────┐
-│ Mechanisms Extracted             │
-│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
-│                                  │
-│ ┌────────────────────────────┐  │
-│ │ MechanismCard #1           │  │
-│ └────────────────────────────┘  │
-│                                  │
-│ ┌────────────────────────────┐  │
-│ │ MechanismCard #2           │  │
-│ └────────────────────────────┘  │
-│                                  │
-│ [Download PDF] ↓                 │
-└──────────────────────────────────┘
+┌─────────────┬─────────────────┬──────────────┐
+│  Signals    │ Transferable    │   Sparks     │
+│             │   Insights      │              │
+│ [QR Image]  │                 │  ┌─────────┐ │
+│             │ Core Mechanism: │  │    1    │ │
+│ Ad-gener... │ Pre-embed...    │  │ [Image] │ │
+│             │                 │  │ Title...│ │
+│             │ Business Impact:│  └─────────┘ │
+│             │ 360% ROI...     │              │
+│             │                 │  ┌─────────┐ │
+│             │ Pattern trans:  │  │    2    │ │
+│             │ consumer elec...│  │ [Image] │ │
+│             │                 │  │ Title...│ │
+│             │ View/download   │  └─────────┘ │
+│             │ extraction rep. │              │
+└─────────────┴─────────────────┴──────────────┘
 ```
 
 **Props:**
@@ -677,11 +713,23 @@ interface StagesAnimationProps {
 
 ---
 
-### State 3 Components: Opportunity Cards Grid
+### State 3 Components: Sparks Grid (Final Opportunities)
 
-#### OpportunityCardsGrid Component
+#### IconNavigation Component
 
-**Purpose:** Display all generated opportunities in 2-column grid
+**Purpose:** Navigation icons showing pipeline stages
+
+**Location:** Top of State 3 and State 4 views
+
+**Visual Design (matches Mockup Page 6):**
+- Three icons in a row: Signal (antenna), Insights (lightbulb), Sparks (rocket)
+- Active state: Full color
+- Inactive state: Grayed out
+- Clickable for navigation between sections
+
+#### SparksGrid Component
+
+**Purpose:** Display all generated sparks (opportunities) in 2-column grid
 
 **Layout:**
 - Desktop: 2 columns, equal width
@@ -713,12 +761,13 @@ interface Opportunity {
 
 ---
 
-#### OpportunityCard Component
+#### SparkCard Component
 
-**Purpose:** Individual opportunity preview matching mockup Page 5 style
+**Purpose:** Individual spark (opportunity) preview matching mockup Page 6 style
 
-**Visual Design:**
-- Hero image: 16:9 aspect ratio, rounded corners (12px)
+**Visual Design (matches Mockup Page 6):**
+- Hero image: 16:9 aspect ratio with large number overlay (1, 2, 3, etc.)
+- Number badge: Large white number on semi-transparent dark overlay in bottom-right of image
 - Title: 20px bold, 2 lines max (truncate with ellipsis)
 - Summary: 14px regular, 3-4 lines max
 - View button: Teal, bottom-right
@@ -728,10 +777,10 @@ interface Opportunity {
 ```
 ┌───────────────────────────────┐
 │                               │
-│     [Hero Image 16:9]         │
+│     [Hero Image 16:9]    [1]  │
 │                               │
 ├───────────────────────────────┤
-│ Title of Opportunity          │
+│ Title of Spark                │
 │                               │
 │ Summary text here. Summary    │
 │ continues for 3-4 lines max...│
@@ -742,9 +791,18 @@ interface Opportunity {
 
 **Props:**
 ```typescript
-interface OpportunityCardProps {
-  opportunity: Opportunity
+interface SparkCardProps {
+  spark: Spark
+  number: number
   onClick: () => void
+}
+
+interface Spark {
+  id: string
+  title: string
+  summary: string
+  heroImageUrl?: string
+  fullContent: string // Markdown
 }
 ```
 
@@ -928,8 +986,25 @@ const [uiState, setUiState] = useState<'state1' | 'state2' | 'state3' | 'state4'
 const [currentStage, setCurrentStage] = useState<number>(0)
 const [pipelineStatus, setPipelineStatus] = useState<'running' | 'completed' | 'error'>('running')
 const [stage1Data, setStage1Data] = useState<Stage1Data | null>(null)
+const [stages, setStages] = useState<Record<string, StageOutput>>({}) // Prisma stages data
 const [opportunities, setOpportunities] = useState<Opportunity[]>([])
 const [selectedOpportunityId, setSelectedOpportunityId] = useState<string | null>(null)
+```
+
+**Prisma Data Integration:**
+```typescript
+// Parse stage1_data from Prisma stages output
+const parseStage1Data = (stages: Record<string, StageOutput>) => {
+  if (stages["1"]?.status === "completed" && stages["1"]?.output) {
+    try {
+      return JSON.parse(stages["1"].output)
+    } catch (e) {
+      console.error("Failed to parse Stage 1 output", e)
+      return null
+    }
+  }
+  return null
+}
 ```
 
 **State Transition Logic:**
@@ -954,12 +1029,16 @@ useEffect(() => {
 
   const poll = async () => {
     try {
-      const response = await fetch(`/api/status/${runId}`)
+      const response = await fetch(`/api/pipeline/${runId}/status`)
       const data = await response.json()
 
       setCurrentStage(data.current_stage)
       setPipelineStatus(data.status)
-      setStage1Data(data.stage1_data)
+
+      // Parse stage1_data from Prisma stages output
+      if (data.stages?.["1"]?.status === "completed") {
+        setStage1Data(JSON.parse(data.stages["1"].output))
+      }
 
       // Continue polling if running
       if (data.status === 'running') {
@@ -986,10 +1065,10 @@ useEffect(() => {
 ```
 
 **API Endpoints Required:**
-- `GET /api/status/[runId]` - Poll pipeline progress
-- `GET /api/results/[runId]` - Fetch final opportunities
-- `GET /api/download/stage1/[runId]` - Download Stage 1 PDF
-- `GET /api/download/all/[runId]` - Download all opportunities PDF
+- `GET /api/pipeline/[runId]/status` - Poll pipeline progress (Prisma-backed, returns stages with timestamps)
+- `GET /api/opportunities/[runId]` - Fetch final opportunities (needs implementation)
+- `GET /api/download/stage1/[runId]` - Download Stage 1 PDF (needs implementation)
+- `GET /api/download/all/[runId]` - Download all opportunities PDF (needs implementation)
 
 ### Performance Considerations
 

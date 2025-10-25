@@ -37,7 +37,7 @@
 
 **Status:** Building the Pipeline Visualization Page (`/pipeline/[runId]`) with 4 progressive UI states
 
-**Goal:** Transform the existing pipeline page into a live, real-time UI that visualizes all 5 pipeline stages and displays final Opportunity Cards
+**Goal:** Transform the existing pipeline page into a live, real-time UI that visualizes all 5 pipeline stages and displays final "Sparks" (formerly Opportunity Cards) per BOI branding
 
 ## Architecture Overview
 
@@ -46,7 +46,8 @@
 - shadcn/ui component library
 - Tailwind CSS for styling
 - Python backend pipeline (5 stages)
-- File-based state (no database)
+- Prisma ORM with PostgreSQL (NOT file-based)
+- Webhook-based state updates from Railway backend
 
 **Key Directories:**
 - `innovation-web/` - Next.js frontend application
@@ -65,16 +66,19 @@ The pipeline page exists as **a single component with 4 progressive states** tha
 - Right box: Workflow illustration
 
 **State 2: Stage 1 Complete + Stages 2-5 Running**
-- Left box: Extracted mechanisms cards with PDF download
-- Right box: Stages 2-5 animation with progress indicators
+- 3-column layout: Signals → Transferable Insights → Sparks
+- Shows pipeline transformation in real-time
+- BOI branding: "My Board of Ideators" badge
 
-**State 3: All Complete - Opportunity Cards Grid**
-- 2-column grid of opportunity cards
+**State 3: All Complete - Sparks Grid**
+- 2-column grid of spark cards with numbered overlays
 - Download All and New Pipeline buttons
+- Icon navigation: Signal, Insights, Sparks icons
 
 **State 4: Card Detail View**
-- Collapsed sidebar (thumbnails)
-- Expanded opportunity detail with full markdown
+- Collapsed sidebar (thumbnails) on left
+- Expanded spark detail with full markdown on right
+- Click thumbnails to navigate between sparks
 
 ### Current Implementation Status
 
@@ -100,13 +104,14 @@ innovation-web/components/pipeline/
 ├── PipelineStateMachine.tsx       (Orchestrator)
 ├── ExtractionAnimation.tsx        (State 1)
 ├── WorkflowIllustration.tsx       (State 1)
-├── ExtractedTextView.tsx          (State 2)
-├── MechanismCard.tsx              (State 2)
-├── StagesAnimation.tsx            (State 2)
-├── OpportunityCardsGrid.tsx       (State 3)
-├── OpportunityCard.tsx            (State 3)
+├── ThreeColumnLayout.tsx          (State 2 - Signals → Insights → Sparks)
+├── SignalCard.tsx                 (State 2)
+├── InsightCard.tsx                (State 2)
+├── IconNavigation.tsx             (States 3-4 navigation)
+├── SparksGrid.tsx                 (State 3)
+├── SparkCard.tsx                  (State 3 - with number overlay)
 ├── CollapsedSidebar.tsx           (State 4)
-└── ExpandedOpportunityDetail.tsx  (State 4)
+└── ExpandedSparkDetail.tsx        (State 4)
 ```
 
 ### Key Technical Details
@@ -117,8 +122,9 @@ innovation-web/components/pipeline/
 - Polling continues until pipeline complete
 
 **API Integration:**
-- Poll `GET /api/status/[runId]` every 5 seconds
-- Fetch opportunities when `status === 'completed' && currentStage === 5`
+- Poll `GET /api/pipeline/[runId]/status` every 5 seconds (corrected endpoint)
+- Backend updates via webhook to `/api/pipeline/[runId]/stage-update`
+- Opportunity cards saved via `/api/pipeline/[runId]/complete` webhook
 - Download endpoints for PDFs
 
 **Visual Design:**
@@ -315,3 +321,90 @@ architecture:
 - [ ] Test full pipeline integration
 
 **Total Estimated Time:** 11-16 hours
+
+## Frontend Refactor Safety Guidelines
+
+### Critical: This Refactor WILL NOT Break Pipeline or Opportunity Saving
+
+**Why It's Safe:**
+1. **Backend Independence**: Python pipeline runs on Railway, completely separate from frontend
+2. **Webhook Integrity**: All webhooks remain unchanged (`/api/pipeline/[runId]/stage-update`, `/api/pipeline/[runId]/complete`)
+3. **Database Unchanged**: Prisma schema and OpportunityCard model untouched
+4. **API Compatibility**: Status endpoint structure remains identical
+
+### Safety Recommendations for Implementation
+
+#### 1. Feature Flag Deployment
+```typescript
+// In pipeline/[runId]/page.tsx
+const ENABLE_NEW_UI = process.env.NEXT_PUBLIC_NEW_UI === 'true'
+
+return ENABLE_NEW_UI ? (
+  <PipelineStateMachine {...props} />
+) : (
+  <CurrentImplementation {...props} />
+)
+```
+
+#### 2. Preserve Results Page as Fallback
+- Keep `/results/[runId]` page functional during transition
+- Users can still access it directly if needed
+- Remove only after confirming new UI works in production
+
+#### 3. Staged Deployment Testing
+```bash
+# Stage 1: Deploy with feature flag OFF
+vercel --prod --yes
+
+# Stage 2: Test existing pipeline works
+# Run a full pipeline, verify opportunity cards save
+
+# Stage 3: Enable new UI with flag
+NEXT_PUBLIC_NEW_UI=true vercel --prod --yes
+
+# Stage 4: Test new UI with same pipeline
+```
+
+#### 4. Data Validation in New Components
+```typescript
+// Add validation to all new components
+const validateSparkData = (spark: unknown): boolean => {
+  return !!(spark?.title && (spark?.markdown || spark?.content))
+}
+```
+
+#### 5. Critical Path Monitoring
+- Add console.log at webhook entry/exit points
+- Log opportunity card creation counts
+- Monitor Railway logs during first runs
+- Watch for 404s or 500s in Vercel Functions logs
+
+### Pre-Refactor Checklist
+- [ ] Backup `page.tsx` as `page.backup.tsx`
+- [ ] Create `NEXT_PUBLIC_NEW_UI` environment variable
+- [ ] Test current pipeline end-to-end
+- [ ] Document current opportunity card count
+- [ ] Verify Railway backend is healthy
+- [ ] Check Prisma database connection
+
+### Rollback Plan
+If issues arise:
+1. Set `NEXT_PUBLIC_NEW_UI=false` in Vercel
+2. Redeploy: `vercel --prod --yes`
+3. Users immediately return to old UI
+4. Debug new components offline
+
+### What Changes, What Doesn't
+
+**Changes (Frontend Only):**
+- Visual presentation of pipeline states
+- Component structure in `/components/pipeline/`
+- User interaction flow (no redirect to results)
+- Terminology: Opportunities → Sparks
+
+**Unchanged (Backend/Data):**
+- Railway Python pipeline execution
+- Webhook endpoints and payloads
+- Prisma database schema
+- OpportunityCard saving logic
+- API response structures

@@ -30,7 +30,11 @@ interface PipelineStatus {
   run_id: string
   status: 'running' | 'completed' | 'error'
   current_stage: number
-  stage1_data?: Stage1Data
+  stages?: Record<string, {
+    status: string
+    output: string
+    completed_at?: string
+  }>
   brand_name?: string
 }
 
@@ -77,7 +81,7 @@ export default function PipelinePage() {
           return
         }
 
-        const response = await fetch(`/api/status/${runId}`)
+        const response = await fetch(`/api/pipeline/${runId}/status`)
 
         if (response.status === 404) {
           setError('Pipeline not found')
@@ -94,7 +98,20 @@ export default function PipelinePage() {
 
         setStatus(data.status)
         setCurrentStage(data.current_stage)
-        setStage1Data(data.stage1_data ?? null)
+
+        // Parse stage1_data from Prisma stages output
+        if (data.stages?.["1"]?.status === "completed" && data.stages["1"].output) {
+          try {
+            const stage1Output = JSON.parse(data.stages["1"].output)
+            setStage1Data(stage1Output)
+          } catch (e) {
+            console.error("Failed to parse Stage 1 output:", e)
+            setStage1Data(null)
+          }
+        } else {
+          setStage1Data(null)
+        }
+
         setBrandName(data.brand_name)
         setLoading(false)
         retryCount = 0 // Reset retry count on success
