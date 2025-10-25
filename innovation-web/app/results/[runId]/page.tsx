@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import OpportunityCard from '@/components/OpportunityCard'
 import Link from 'next/link'
+import { prisma } from '@/lib/prisma'
 
 interface PageProps {
   params: Promise<{ runId: string }>
@@ -18,27 +19,39 @@ interface Opportunity {
 
 async function loadOpportunities(runId: string): Promise<Opportunity[]> {
   try {
-    // Fetch status from backend API to get opportunities
-    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
-    const response = await fetch(`${BACKEND_URL}/status/${runId}`, {
-      cache: 'no-store'
+    // Query Prisma database directly (Server Component advantage)
+    const run = await prisma.pipelineRun.findUnique({
+      where: { id: runId },
+      include: {
+        stageOutputs: {
+          where: { stageNumber: 5 },
+          orderBy: { stageNumber: 'asc' }
+        }
+      }
     })
 
-    if (!response.ok) {
-      console.error(`Failed to fetch status for ${runId}: ${response.status}`)
+    if (!run) {
+      console.error(`Pipeline run not found: ${runId}`)
       return []
     }
 
-    const status = await response.json()
-
-    // Extract opportunities from Stage 5 output
-    const stage5 = status.stages?.['5']
-    if (!stage5 || stage5.status !== 'complete') {
+    // Check if Stage 5 is completed
+    const stage5 = run.stageOutputs[0]
+    if (!stage5 || stage5.status !== 'COMPLETED') {
       console.warn('Stage 5 not completed yet')
       return []
     }
 
-    const opportunitiesData = stage5.output?.opportunities || []
+    // Parse Stage 5 output
+    let stage5Output: Record<string, unknown>
+    try {
+      stage5Output = JSON.parse(stage5.output)
+    } catch {
+      console.error('Failed to parse Stage 5 output as JSON')
+      return []
+    }
+
+    const opportunitiesData = (stage5Output.opportunities as Record<string, unknown>[]) || []
 
     // Transform backend format to frontend format
     return opportunitiesData.map((opp: Record<string, unknown>, index: number) => ({
