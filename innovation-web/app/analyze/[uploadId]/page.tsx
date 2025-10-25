@@ -47,72 +47,90 @@ export default function AnalyzePage() {
   const [runId, setRunId] = useState<string | null>(null)
 
   useEffect(() => {
-    // Try to fetch upload data from sessionStorage first (Story 2.2.1 enhanced format)
-    const storedData = sessionStorage.getItem(`upload_${uploadId}`)
+    const loadDocumentData = async () => {
+      // Try to fetch upload data from sessionStorage first (Story 2.2.1 enhanced format)
+      const storedData = sessionStorage.getItem(`upload_${uploadId}`)
 
-    if (storedData) {
-      // Found in sessionStorage - use it
-      try {
-        // Parse new format {blobUrl, fileName, fileSize, uploadedAt}
-        const uploadData = JSON.parse(storedData)
-        const url = uploadData.blobUrl || storedData // Fallback to old format (plain string)
-        setBlobUrl(url)
-        setFileName(uploadData.fileName || 'document.pdf')
-      } catch {
-        // Fallback for old format (plain string blob URL)
-        setBlobUrl(storedData)
-        setFileName('document.pdf')
+      if (storedData) {
+        // Found in sessionStorage - use it
+        try {
+          // Parse new format {blobUrl, fileName, fileSize, uploadedAt}
+          const uploadData = JSON.parse(storedData)
+          const url = uploadData.blobUrl || storedData // Fallback to old format (plain string)
+          setBlobUrl(url)
+          setFileName(uploadData.fileName || 'document.pdf')
+          return
+        } catch {
+          // Fallback for old format (plain string blob URL)
+          setBlobUrl(storedData)
+          setFileName('document.pdf')
+          return
+        }
       }
-    } else {
-      // Not in sessionStorage - try to find in upload history from localStorage
+
+      // Not in sessionStorage - try localStorage
       try {
         // Get company_id from cookies to look up history
         const cookies = document.cookie.split(';')
         const companyIdCookie = cookies.find(c => c.trim().startsWith('company_id='))
         const companyId = companyIdCookie?.split('=')[1]
 
-        if (!companyId) {
-          setError('Company context not found. Please select a company first.')
-          setLoading(false)
-          return
+        if (companyId) {
+          const historyKey = `upload_history_${companyId}`
+          const historyData = localStorage.getItem(historyKey)
+
+          if (historyData) {
+            const history = JSON.parse(historyData)
+            const upload = history.find((u: { upload_id: string }) => u.upload_id === uploadId)
+
+            if (upload) {
+              // Found in localStorage history
+              setBlobUrl(upload.blob_url)
+              setFileName(upload.filename || 'document.pdf')
+              return
+            }
+          }
         }
-
-        // Import and use upload history functions
-        const historyKey = `upload_history_${companyId}`
-        const historyData = localStorage.getItem(historyKey)
-
-        if (!historyData) {
-          setError('Upload not found. Please upload a file first.')
-          setLoading(false)
-          return
-        }
-
-        const history = JSON.parse(historyData)
-        const upload = history.find((u: { upload_id: string }) => u.upload_id === uploadId)
-
-        if (!upload) {
-          setError('Upload not found in history.')
-          setLoading(false)
-          return
-        }
-
-        // Found in history - use the stored blob_url and filename
-        setBlobUrl(upload.blob_url)
-        setFileName(upload.filename || 'document.pdf')
       } catch (err) {
-        console.error('Failed to retrieve upload from history:', err)
-        setError('Upload not found. Please upload a file first.')
+        console.error('Failed to retrieve from localStorage:', err)
+      }
+
+      // Final fallback: Query database via API
+      try {
+        console.log('[Analyze] Querying database for uploadId:', uploadId)
+        const response = await fetch(`/api/documents/${uploadId}`)
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            setError('Document not found. It may have been deleted or you may not have access.')
+          } else if (response.status === 401) {
+            setError('Please sign in to access this document.')
+          } else {
+            setError('Failed to load document. Please try again.')
+          }
+          setLoading(false)
+          return
+        }
+
+        const documentData = await response.json()
+        console.log('[Analyze] Document loaded from database:', documentData.fileName)
+
+        setBlobUrl(documentData.blobUrl)
+        setFileName(documentData.fileName)
+      } catch (err) {
+        console.error('Failed to retrieve document from database:', err)
+        setError('Failed to load document. Please upload a file first.')
         setLoading(false)
-        return
       }
     }
 
-    // Don't proceed if we don't have a blob URL
-    if (!blobUrl) {
-      return
-    }
+    loadDocumentData()
+  }, [uploadId])
 
-    // Call analyze-document API
+  // Separate effect to trigger analysis once blobUrl is loaded
+  useEffect(() => {
+    if (!blobUrl || analysis) return
+
     const analyzeDocument = async () => {
       try {
         const response = await fetch('/api/analyze-document', {
@@ -137,7 +155,7 @@ export default function AnalyzePage() {
     }
 
     analyzeDocument()
-  }, [uploadId, blobUrl])
+  }, [blobUrl, analysis])
 
   const getErrorMessage = (status: number, defaultMessage: string): string => {
     const errorMap: Record<number, string> = {
