@@ -201,16 +201,31 @@ export default function AnalyzePage() {
 
       const data = await response.json()
       console.log('[Launch] Pipeline started:', data.run_id)
+      console.log('[Launch] Full API response:', JSON.stringify(data))
 
       // Verify run_id exists before proceeding
       if (!data.run_id) {
+        console.error('[Launch] ERROR: No run_id in response:', data)
         throw new Error('No run ID received from backend')
       }
+
+      // Validate run_id format
+      const runIdPattern = /^run-\d+-\d+$/
+      if (!runIdPattern.test(data.run_id)) {
+        console.error('[Launch] ERROR: Invalid run_id format:', data.run_id)
+        throw new Error(`Invalid run ID format: ${data.run_id}`)
+      }
+
+      console.log('[Launch] Valid run_id received, setting state to show inline pipeline')
+      console.log('[Launch] runId:', data.run_id)
+      console.log('[Launch] Setting isPipelineRunning: true')
 
       // Update state to show pipeline inline (NO NAVIGATION)
       setRunId(data.run_id)
       setIsPipelineRunning(true)
       setLaunching(false)
+
+      console.log('[Launch] State updated. PipelineViewer should render now with runId:', data.run_id)
     } catch (err) {
       console.error('[Launch] Pipeline launch failed:', err)
       const errorMessage =
@@ -335,16 +350,25 @@ export default function AnalyzePage() {
 
             {/* Right: Pipeline viewer - Responsive spacing */}
             <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
-              {runId && (
-                <PipelineViewer
-                  runId={runId}
-                  inlineMode={true}
-                  onComplete={(id) => router.push(`/results/${id}`)}
-                  onError={(err) => {
-                    setLaunchError(err)
-                    setIsPipelineRunning(false)
-                  }}
-                />
+              {runId ? (
+                <>
+                  {console.log('[Analyze] Rendering PipelineViewer with runId:', runId)}
+                  <PipelineViewer
+                    runId={runId}
+                    inlineMode={true}
+                    onComplete={(id) => {
+                      console.log('[Analyze] Pipeline completed, redirecting to results:', id)
+                      router.push(`/results/${id}`)
+                    }}
+                    onError={(err) => {
+                      console.error('[Analyze] Pipeline error callback:', err)
+                      setLaunchError(err)
+                      setIsPipelineRunning(false)
+                    }}
+                  />
+                </>
+              ) : (
+                console.log('[Analyze] No runId set, PipelineViewer not rendering')
               )}
 
               {/* Error Recovery UI */}

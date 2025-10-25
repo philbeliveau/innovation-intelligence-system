@@ -60,14 +60,18 @@ export default function PipelineViewer({
 
   // Validate run ID format before starting
   useEffect(() => {
+    console.log('[PipelineViewer] Component mounted with runId:', runId)
+    console.log('[PipelineViewer] Inline mode:', inlineMode)
+
     if (!runId || runId.trim() === '') {
       const errorMsg = 'Invalid run ID provided'
+      console.error('[PipelineViewer] ERROR: Invalid run ID:', runId)
       setStatus('error')
       setLoading(false)
       onError?.(errorMsg)
       return
     }
-  }, [runId, onError])
+  }, [runId, onError, inlineMode])
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | undefined
@@ -90,6 +94,8 @@ export default function PipelineViewer({
       try {
         // FIX RACE-001: Add 2-second delay before first poll to let Python create log file
         if (isFirstPoll) {
+          console.log('[PipelineViewer] Starting polling for runId:', runId)
+          console.log('[PipelineViewer] Will poll endpoint:', `/api/pipeline/${runId}/status`)
           isFirstPoll = false
           await new Promise(resolve => setTimeout(resolve, 2000))
         }
@@ -98,13 +104,16 @@ export default function PipelineViewer({
         const elapsed = Date.now() - startTime
         if (elapsed > MAX_RUNTIME) {
           const errorMsg = 'Pipeline timeout - exceeded 35 minutes'
+          console.error('[PipelineViewer] Pipeline timeout after 35 minutes')
           setStatus('error')
           setLoading(false)
           onError?.(errorMsg)
           return
         }
 
-        const response = await fetch(`/api/pipeline/${runId}/status`)
+        const statusUrl = `/api/pipeline/${runId}/status`
+        console.log('[PipelineViewer] Polling status:', statusUrl)
+        const response = await fetch(statusUrl)
 
         // FIX RACE-001: Treat initial 404s as "pipeline starting up" instead of error
         if (response.status === 404) {
@@ -130,6 +139,7 @@ export default function PipelineViewer({
         }
 
         const data: PipelineStatus = await response.json()
+        console.log('[PipelineViewer] Received status:', data.status, 'stage:', data.current_stage)
 
         // Normalize 'complete' to 'completed' for frontend state
         const normalizedStatus = data.status === 'complete' ? 'completed' : data.status
@@ -141,6 +151,7 @@ export default function PipelineViewer({
         retryCount = 0 // Reset retry count on success
 
         if (data.status === 'error') {
+          console.error('[PipelineViewer] Pipeline failed with error status')
           onError?.('Pipeline failed')
           return
         }
@@ -154,7 +165,10 @@ export default function PipelineViewer({
 
         // Continue polling if still running
         if (data.status === 'running') {
+          console.log('[PipelineViewer] Pipeline still running, polling again in 5s')
           timeoutId = setTimeout(pollStatus, 5000)
+        } else {
+          console.log('[PipelineViewer] Pipeline status:', data.status, '- stopping poll')
         }
       } catch (err) {
         console.error('Polling error:', err)
