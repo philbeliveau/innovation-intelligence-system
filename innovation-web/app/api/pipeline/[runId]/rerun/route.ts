@@ -71,7 +71,7 @@ export async function POST(
         ? 'lactalis-canada'
         : 'default-company'
 
-      await runPipeline(originalRun.documentUrl || '', companyId)
+      await runPipeline(originalRun.documentUrl || '', companyId, newRun.id)
 
       console.log(`[API /pipeline/:id/rerun] Successfully triggered Railway backend for ${newRun.id}`)
 
