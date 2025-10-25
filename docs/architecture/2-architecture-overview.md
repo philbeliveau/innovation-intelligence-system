@@ -21,20 +21,21 @@ graph TB
     subgraph "API Layer - Next.js Route Handlers (Vercel)"
         D[POST /api/upload<br/>Save to Vercel Blob]
         D1[POST /api/analyze-document<br/>LLM Extract Summary + Industry]
-        E[POST /api/run<br/>Create Run & Trigger Pipeline]
-        F[GET /api/status/:runId<br/>Proxy Status from Railway]
-        RUNS_API[GET /api/runs<br/>List User Runs - Prisma]
-        RUN_API[GET /api/runs/:id<br/>Get Run Details - Prisma]
-        RERUN_API[POST /api/runs/:id/rerun<br/>Duplicate & Rerun - Prisma]
+        E[POST /api/pipeline/run<br/>Create Run & Trigger Pipeline]
+        F[GET /api/pipeline/:runId/status<br/>Read Status from Prisma]
+        STAGE_UPDATE[POST /api/pipeline/:runId/stage-update<br/>Webhook from Backend]
+        RUNS_API[GET /api/pipeline<br/>List User Runs - Prisma]
+        RUN_API[GET /api/pipeline/:id<br/>Get Run Details - Prisma]
+        RERUN_API[POST /api/pipeline/:id/rerun<br/>Duplicate & Rerun - Prisma]
         CARD_API[POST /api/cards/:id/star<br/>Toggle Favorite - Prisma]
         PRISMA_LIB[lib/prisma.ts<br/>Singleton Client]
     end
 
     subgraph "Backend - FastAPI (Railway)"
         R1[POST /run<br/>Download PDF & Execute Pipeline]
-        R2[GET /status/:runId<br/>Return Pipeline Status]
+        R2[GET /status/:runId<br/>DEPRECATED - Legacy Endpoint]
         R3[GET /health<br/>Health Check]
-        DB_SERVICE[Database Service<br/>asyncpg Connection Pool]
+        PRISMA_CLIENT[PrismaAPIClient<br/>HTTP Client to Next.js]
     end
 
     subgraph "Pipeline Execution - Python (Railway)"
@@ -47,7 +48,7 @@ graph TB
 
     subgraph "Data Layer"
         H[Vercel Blob<br/>PDF Files]
-        PG[(PostgreSQL<br/>Railway<br/><br/>Tables:<br/>User, Run,<br/>OpportunityCard,<br/>InspirationReport,<br/>StageOutput)]
+        PG[(PostgreSQL<br/>Vercel/Neon<br/><br/>Tables:<br/>User, PipelineRun,<br/>OpportunityCard,<br/>InspirationReport,<br/>StageOutput)]
     end
 
     AUTH --> A0
@@ -69,26 +70,26 @@ graph TB
     RUN_API --> PRISMA_LIB
     RERUN_API --> PRISMA_LIB
     CARD_API --> PRISMA_LIB
+    STAGE_UPDATE --> PRISMA_LIB
     PRISMA_LIB --> PG
+    F --> PRISMA_LIB
 
     D --> H
     E --> R1
-    E --> PG
-    F --> R2
+    E --> PRISMA_LIB
     R1 --> H
-    R1 --> DB_SERVICE
     R1 --> G1
     G1 --> G2
     G2 --> G3
     G3 --> G4
     G4 --> G5
 
-    DB_SERVICE --> PG
-    G1 --> DB_SERVICE
-    G2 --> DB_SERVICE
-    G3 --> DB_SERVICE
-    G4 --> DB_SERVICE
-    G5 --> DB_SERVICE
+    G1 --> PRISMA_CLIENT
+    G2 --> PRISMA_CLIENT
+    G3 --> PRISMA_CLIENT
+    G4 --> PRISMA_CLIENT
+    G5 --> PRISMA_CLIENT
+    PRISMA_CLIENT --> STAGE_UPDATE
 
     style G1 fill:#e3f2fd
     style G2 fill:#f3e5f5
@@ -96,24 +97,25 @@ graph TB
     style G4 fill:#e8f5e9
     style G5 fill:#fce4ec
     style R1 fill:#fff9c4
-    style R2 fill:#fff9c4
+    style R2 fill:#ffcccc
     style R3 fill:#fff9c4
     style PG fill:#d1c4e9
     style PRISMA_LIB fill:#b2ebf2
-    style DB_SERVICE fill:#ffccbc
+    style PRISMA_CLIENT fill:#b2ebf2
+    style STAGE_UPDATE fill:#c8e6c9
     style AUTH fill:#c8e6c9
 ```
 
 ## Architecture Principles
 
 1. **User Authentication Layer**: Clerk handles authentication, provides `userId` for all database queries
-2. **Prisma Data Layer**: Type-safe ORM for Next.js frontend (reads from PostgreSQL)
-3. **asyncpg Backend Service**: Python async PostgreSQL driver for high-performance pipeline writes
+2. **Prisma-First Database**: Single ORM for all database operations (reads AND writes)
+3. **HTTP API Integration**: Python backend writes to Prisma via Next.js API webhook endpoints
 4. **Backend Separation**: FastAPI backend on Railway handles Python pipeline execution
 5. **Vercel Blob Storage**: Store uploaded PDFs, Railway backend downloads via blob URLs
-6. **Database-Driven State**: PostgreSQL stores runs, cards, reports, stage outputs
-7. **Sequential Execution**: Run stages 1-5 sequentially, writing to DB after each stage
-8. **Connection Pooling Strategy**: PgBouncer for Vercel serverless, asyncpg pool for Railway
+6. **Database-Driven State**: PostgreSQL stores runs, cards, reports, stage outputs (single source of truth)
+7. **Sequential Execution**: Run stages 1-5 sequentially, writing to Prisma after each stage via HTTP
+8. **Real-time Status Updates**: Frontend reads directly from Prisma, no polling Railway backend
 9. **User Data Isolation**: Every query filtered by authenticated Clerk user ID
 10. **shadcn/ui MCP**: Use Magic component builder for rapid UI development
 
@@ -124,22 +126,26 @@ graph TB
 User Request → Clerk Auth → Next.js API Route → Prisma Client → PostgreSQL
 ```
 
-### Backend Write Path (asyncpg)
+### Backend Write Path (Prisma via HTTP API)
 ```
-Pipeline Stage → Database Service → asyncpg Pool → PostgreSQL
+Pipeline Stage → PrismaAPIClient → POST /api/pipeline/:runId/stage-update → Prisma Client → PostgreSQL
 ```
 
-### Why Two Database Clients?
+### Prisma-First Architecture Benefits
 
-| Client | Language | Use Case | Location |
-|--------|----------|----------|----------|
-| **Prisma** | TypeScript | Type-safe reads, user queries | Next.js (Vercel) |
-| **asyncpg** | Python | High-performance writes during pipeline | FastAPI (Railway) |
+**Why Prisma for Everything:**
+- ✅ Single source of truth (no dual-state management)
+- ✅ Type-safe schema shared between frontend and backend contracts
+- ✅ Real-time status updates (no polling, no sync issues)
+- ✅ Survives Railway dyno restarts (database persistence)
+- ✅ Auto-completion logic (stage 5 done → PipelineRun.status = COMPLETED)
+- ✅ Simplified testing (one database to mock/seed)
 
-**Rationale:**
-- Prisma provides TypeScript type safety and autocomplete for frontend
-- asyncpg provides async high-performance writes for long-running Python pipeline
-- Separation of concerns: Frontend reads, backend writes
+**Backend Integration via HTTP:**
+- Python backend calls Next.js API endpoints via HTTP
+- Authenticated with `X-Webhook-Secret` header
+- No direct database connection needed from Railway
+- Frontend acts as database gateway (Prisma ORM layer)
 
 ## Deployment Architecture (Epic 5)
 
