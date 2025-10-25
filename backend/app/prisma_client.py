@@ -122,53 +122,6 @@ class PrismaAPIClient:
 
         return False
 
-    def initialize_pipeline_run(
-        self,
-        run_id: str,
-        blob_url: str,
-        brand_name: str,
-        document_name: str = "document.pdf"
-    ) -> bool:
-        """Initialize PipelineRun record in database via API.
-
-        This creates the PipelineRun record when backend is called directly
-        (e.g., via MCP), bypassing the frontend.
-
-        Args:
-            run_id: Pipeline run identifier
-            blob_url: Vercel Blob URL of PDF
-            brand_name: Brand/company name
-            document_name: Document filename
-
-        Returns:
-            True if initialization successful, False otherwise
-        """
-        url = f"{self.frontend_url}/api/pipeline/init"
-
-        payload = {
-            "runId": run_id,
-            "blobUrl": blob_url,
-            "brandName": brand_name,
-            "documentName": document_name
-        }
-
-        try:
-            logger.info(f"[{run_id}] Initializing PipelineRun in database via API")
-            response = self.session.post(url, json=payload, timeout=30)
-
-            if response.ok:
-                logger.info(f"[{run_id}] Successfully initialized PipelineRun in database")
-                return True
-            else:
-                logger.error(
-                    f"[{run_id}] Failed to initialize PipelineRun: {response.status_code} - {response.text}"
-                )
-                return False
-
-        except Exception as e:
-            logger.error(f"[{run_id}] Error initializing PipelineRun: {e}")
-            return False
-
     def initialize_pipeline_stages(self, run_id: str) -> bool:
         """Initialize all 5 stages as PROCESSING (stage 1) / pending (2-5).
 
@@ -304,32 +257,3 @@ class PrismaAPIClient:
             status="PROCESSING",
             output=""
         )
-
-    def get_run_status(self, run_id: str) -> Optional[Dict[str, Any]]:
-        """Get pipeline run status from database via API.
-
-        Args:
-            run_id: Pipeline run identifier
-
-        Returns:
-            Dict with status and stageOutputs, or None if not found
-        """
-        url = f"{self.frontend_url}/api/pipeline/{run_id}/status"
-
-        try:
-            response = self.session.get(url, timeout=10)
-
-            if response.ok:
-                return response.json()
-            elif response.status_code == 404:
-                logger.warning(f"[{run_id}] Run not found in database")
-                return None
-            else:
-                logger.error(
-                    f"[{run_id}] Failed to get status: {response.status_code} - {response.text}"
-                )
-                return None
-
-        except Exception as e:
-            logger.error(f"[{run_id}] Error getting run status: {e}")
-            return None

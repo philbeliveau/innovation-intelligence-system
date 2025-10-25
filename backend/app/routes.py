@@ -203,8 +203,6 @@ async def run_pipeline(request: RunPipelineRequest):
     If run_id is provided by frontend, use it (prevents race condition).
     Otherwise, generate one here (backward compatibility).
     """
-    from app.prisma_client import PrismaAPIClient
-
     # Validate blob URL
     if not validate_blob_url(request.blob_url):
         raise HTTPException(
@@ -221,29 +219,6 @@ async def run_pipeline(request: RunPipelineRequest):
 
     # Load brand profile
     brand_profile = load_brand_profile(request.brand_id)
-
-    # Extract document name from blob URL
-    try:
-        document_name = request.blob_url.split('/')[-1].split('-', 1)[-1] if '/' in request.blob_url else "document.pdf"
-    except:
-        document_name = "document.pdf"
-
-    # If run_id was backend-generated (not from frontend), initialize PipelineRun record
-    if not request.run_id:
-        logger.info(f"[{run_id}] Backend-generated run_id - initializing PipelineRun in database")
-        prisma_client = PrismaAPIClient()
-        brand_name = brand_profile.get("company_name", request.brand_id)
-
-        # Initialize PipelineRun record via API
-        init_success = prisma_client.initialize_pipeline_run(
-            run_id=run_id,
-            blob_url=request.blob_url,
-            brand_name=brand_name,
-            document_name=document_name
-        )
-
-        if not init_success:
-            logger.warning(f"[{run_id}] Failed to initialize PipelineRun - continuing anyway")
 
     # Start background execution
     thread = Thread(
@@ -264,66 +239,27 @@ async def get_status(run_id: str):
     Get pipeline execution status
 
     Returns current status including stage progress and outputs.
-    Queries Prisma database for real-time status.
     """
-    from app.prisma_client import PrismaAPIClient
+    status_file = Path("/tmp/runs") / run_id / "status.json"
 
-    try:
-        prisma_client = PrismaAPIClient()
-
-        # Query database for pipeline run status
-        run_data = prisma_client.get_run_status(run_id)
-
-        if not run_data:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Run '{run_id}' not found"
-            )
-
-        # Transform database format to PipelineStatus model
-        # run_data has: {status, stageOutputs: [{stageNumber, status, output}]}
-        stages_dict = {}
-        current_stage = 0
-
-        for stage_output in run_data.get("stageOutputs", []):
-            stage_num = stage_output["stageNumber"]
-            stage_status = stage_output["status"]
-
-            # Map database status to API status
-            if stage_status == "COMPLETED":
-                status_str = "complete"
-                current_stage = max(current_stage, stage_num)
-            elif stage_status == "PROCESSING":
-                status_str = "running"
-                current_stage = max(current_stage, stage_num)
-            elif stage_status == "FAILED":
-                status_str = "failed"
-            else:  # PENDING
-                status_str = "pending"
-
-            stages_dict[str(stage_num)] = {
-                "status": status_str,
-                "output": json.loads(stage_output["output"]) if stage_output.get("output") else None
-            }
-
-        # Determine overall status
-        run_status = run_data.get("status", "PENDING")
-        if run_status == "COMPLETED":
-            overall_status = "complete"
-        elif run_status == "FAILED":
-            overall_status = "failed"
-        else:
-            overall_status = "running"
-
-        return PipelineStatus(
-            run_id=run_id,
-            status=overall_status,
-            current_stage=current_stage,
-            stages=stages_dict
+    if not status_file.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"Run '{run_id}' not found"
         )
 
-    except HTTPException:
-        raise
+    try:
+        with open(status_file, "r") as f:
+            status_data = json.load(f)
+
+        return PipelineStatus(**status_data)
+
+    except json.JSONDecodeError as e:
+        logger.error(f"Corrupted status file for run {run_id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Status file corrupted"
+        )
     except Exception as e:
         logger.error(f"Error reading status for run {run_id}: {e}")
         raise HTTPException(
