@@ -247,6 +247,13 @@ enum PipelineStatus {
 **Cause:** Backend `.env.local` had wrong port
 **Fix:** Changed `FRONTEND_WEBHOOK_URL` to port 3000
 
+### Issue 4: Results Page 404 After Pipeline Completion
+**Status:** RESOLVED (2025-10-25)
+**Cause:** Results page calling Railway backend `/status/{runId}` which returns 404 after cleanup
+**Fix:** Changed results page to query Prisma database directly via Server Component
+**File:** `app/results/[runId]/page.tsx`
+**Impact:** Results page now reliably loads completed opportunities from database
+
 ## Impact Assessment
 
 ### Before Fix:
