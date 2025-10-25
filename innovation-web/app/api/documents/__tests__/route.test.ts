@@ -49,7 +49,7 @@ describe('GET /api/documents/:uploadId', () => {
 
   it('should return document metadata for valid uploadId', async () => {
     // Arrange
-    mockAuth.mockResolvedValue({ userId: mockUserId } as any)
+    mockAuth.mockResolvedValue({ userId: mockUserId } as unknown)
     mockPrisma.user.findUnique.mockResolvedValue(mockUser)
     mockPrisma.document.findFirst.mockResolvedValue(mockDocument)
 
@@ -72,7 +72,7 @@ describe('GET /api/documents/:uploadId', () => {
 
   it('should return 401 when user is not authenticated', async () => {
     // Arrange
-    mockAuth.mockResolvedValue({ userId: null } as any)
+    mockAuth.mockResolvedValue({ userId: null } as unknown)
 
     const request = new NextRequest('http://localhost:3000/api/documents/upload-1737799200000')
     const params = Promise.resolve({ uploadId: 'upload-1737799200000' })
@@ -88,7 +88,7 @@ describe('GET /api/documents/:uploadId', () => {
 
   it('should return 400 for invalid uploadId format', async () => {
     // Arrange
-    mockAuth.mockResolvedValue({ userId: mockUserId } as any)
+    mockAuth.mockResolvedValue({ userId: mockUserId } as unknown)
 
     const request = new NextRequest('http://localhost:3000/api/documents/invalid-id')
     const params = Promise.resolve({ uploadId: 'invalid-id' })
@@ -104,7 +104,7 @@ describe('GET /api/documents/:uploadId', () => {
 
   it('should return 404 when user not found in database', async () => {
     // Arrange
-    mockAuth.mockResolvedValue({ userId: mockUserId } as any)
+    mockAuth.mockResolvedValue({ userId: mockUserId } as unknown)
     mockPrisma.user.findUnique.mockResolvedValue(null)
 
     const request = new NextRequest('http://localhost:3000/api/documents/upload-1737799200000')
@@ -121,7 +121,7 @@ describe('GET /api/documents/:uploadId', () => {
 
   it('should return 404 when document not found', async () => {
     // Arrange
-    mockAuth.mockResolvedValue({ userId: mockUserId } as any)
+    mockAuth.mockResolvedValue({ userId: mockUserId } as unknown)
     mockPrisma.user.findUnique.mockResolvedValue(mockUser)
     mockPrisma.document.findFirst.mockResolvedValue(null)
 
@@ -139,7 +139,7 @@ describe('GET /api/documents/:uploadId', () => {
 
   it('should query database with 5-second time window', async () => {
     // Arrange
-    mockAuth.mockResolvedValue({ userId: mockUserId } as any)
+    mockAuth.mockResolvedValue({ userId: mockUserId } as unknown)
     mockPrisma.user.findUnique.mockResolvedValue(mockUser)
     mockPrisma.document.findFirst.mockResolvedValue(mockDocument)
 
@@ -165,7 +165,7 @@ describe('GET /api/documents/:uploadId', () => {
 
   it('should only return documents belonging to authenticated user', async () => {
     // Arrange
-    mockAuth.mockResolvedValue({ userId: mockUserId } as any)
+    mockAuth.mockResolvedValue({ userId: mockUserId } as unknown)
     mockPrisma.user.findUnique.mockResolvedValue(mockUser)
     mockPrisma.document.findFirst.mockResolvedValue(mockDocument)
 
