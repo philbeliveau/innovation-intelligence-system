@@ -351,25 +351,20 @@ export default function AnalyzePage() {
             {/* Right: Pipeline viewer - Responsive spacing */}
             <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
               {runId ? (
-                <>
-                  {console.log('[Analyze] Rendering PipelineViewer with runId:', runId)}
-                  <PipelineViewer
-                    runId={runId}
-                    inlineMode={true}
-                    onComplete={(id) => {
-                      console.log('[Analyze] Pipeline completed, redirecting to results:', id)
-                      router.push(`/results/${id}`)
-                    }}
-                    onError={(err) => {
-                      console.error('[Analyze] Pipeline error callback:', err)
-                      setLaunchError(err)
-                      setIsPipelineRunning(false)
-                    }}
-                  />
-                </>
-              ) : (
-                console.log('[Analyze] No runId set, PipelineViewer not rendering')
-              )}
+                <PipelineViewer
+                  runId={runId}
+                  inlineMode={true}
+                  onComplete={(id) => {
+                    console.log('[Analyze] Pipeline completed, redirecting to results:', id)
+                    router.push(`/results/${id}`)
+                  }}
+                  onError={(err) => {
+                    console.error('[Analyze] Pipeline error callback:', err)
+                    setLaunchError(err)
+                    setIsPipelineRunning(false)
+                  }}
+                />
+              ) : null}
 
               {/* Error Recovery UI */}
               {launchError && !launching && (
