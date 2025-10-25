@@ -321,7 +321,9 @@ def execute_pipeline_background(
         stage3_output_text = stage3_result.get("stage3_output", "")
 
         # Load research data for brand (returns empty string if missing)
-        brand_id = brand_profile.get("brand_id", "unknown")
+        # Note: YAML files use 'brand_name' field, convert to filename format
+        brand_name = brand_profile.get("brand_name", "Unknown")
+        brand_id = brand_name.lower().replace(" ", "-")
         research_data = load_research_data(brand_id)
         if not research_data:
             logger.warning(f"No research data found for brand {brand_id}, using empty string")
