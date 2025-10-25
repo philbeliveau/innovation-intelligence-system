@@ -108,5 +108,6 @@ async def root():
         "name": "Innovation Intelligence API",
         "version": "1.0.0",
         "docs": "/docs",
-        "mcp": "/mcp"
+        "mcp": "/mcp",
+        "transport": "http"  # HTTP transport enabled
     }
