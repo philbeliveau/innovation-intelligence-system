@@ -113,17 +113,10 @@ export async function POST(
 
     console.log(`[StageUpdate] Stage ${stageNumber} updated: ${stageOutput.id}`)
 
-    // 6. If stage 5 is completed, update PipelineRun status to COMPLETED
-    if (stageNumber === 5 && status === 'COMPLETED') {
-      await prisma.pipelineRun.update({
-        where: { id: runId },
-        data: {
-          status: 'COMPLETED',
-          completedAt: new Date()
-        }
-      })
-      console.log(`[StageUpdate] Pipeline ${runId} marked as COMPLETED`)
-    }
+    // 6. NOTE: Do NOT mark PipelineRun as COMPLETED here when stage 5 completes
+    //    The /complete webhook will handle final status update AND save opportunities
+    //    Marking as COMPLETED here creates a race condition where /complete sees
+    //    status=COMPLETED and skips saving opportunities (idempotent check)
 
     // 7. If any stage fails, update PipelineRun status to FAILED
     if (status === 'FAILED') {
