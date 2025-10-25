@@ -37,3 +37,4 @@ class HealthResponse(BaseModel):
     """Health check response"""
     status: Literal["ok", "degraded"]
     version: str = "1.0.0"
+    details: Optional[Dict[str, Any]] = Field(None, description="Additional health check details (missing env vars, connectivity issues)")

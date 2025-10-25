@@ -81,6 +81,8 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [staleWarning, setStaleWarning] = useState<string | null>(null)
+  const [lastProgressTime, setLastProgressTime] = useState<number>(Date.now())
 
   // Get active tab from URL or default to "cards"
   const activeTab = searchParams.get('tab') || 'cards'
@@ -123,24 +125,52 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
     fetchRun()
   }, [runId])
 
-  // Polling for PROCESSING runs
+  // Polling for PROCESSING runs with stale detection
   useEffect(() => {
     if (!run || run.status !== 'PROCESSING') return
+
+    let previousStage = run.stageOutputs.filter(s => s.status === 'COMPLETED').length
+    let staleCheckCount = 0
+    const STALE_THRESHOLD = 12 // 12 polls * 5s = 60 seconds without progress
 
     const pollInterval = setInterval(async () => {
       try {
         const response = await fetch(`/api/pipeline/${runId}`)
         if (response.ok) {
           const data = await response.json()
+          const currentStage = data.stageOutputs.filter((s: StageOutput) => s.status === 'COMPLETED').length
+
+          // Check if pipeline made progress
+          if (currentStage > previousStage) {
+            previousStage = currentStage
+            staleCheckCount = 0
+            setStaleWarning(null)
+            setLastProgressTime(Date.now())
+          } else {
+            staleCheckCount++
+
+            // Warn after 60s of no progress
+            if (staleCheckCount >= STALE_THRESHOLD) {
+              setStaleWarning(
+                `Pipeline appears stuck on stage ${previousStage + 1}. The backend may have lost connection. Check backend logs or restart the pipeline.`
+              )
+            }
+          }
+
           setRun(data)
 
           // Stop polling if no longer processing
           if (data.status !== 'PROCESSING') {
             clearInterval(pollInterval)
+            setStaleWarning(null)
           }
+        } else {
+          console.error('Polling failed:', response.status, response.statusText)
+          setStaleWarning('Failed to fetch pipeline status. Backend may be down.')
         }
       } catch (err) {
         console.error('Polling error:', err)
+        setStaleWarning('Network error while fetching status. Check backend connectivity.')
       }
     }, 5000) // Poll every 5 seconds
 
@@ -358,6 +388,16 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
+
+        {/* Stale Pipeline Warning */}
+        {staleWarning && (
+          <Alert variant="destructive" className="border-2 border-red-500">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="font-semibold">
+              {staleWarning}
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Header */}
         <div className="border-4 border-black p-6 space-y-4">

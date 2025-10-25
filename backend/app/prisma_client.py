@@ -5,12 +5,18 @@ Replaces file-based status management with database writes via HTTP.
 """
 import os
 import logging
+import time
 from typing import Dict, Any, Optional
 from datetime import datetime
 
 import requests
 
 logger = logging.getLogger(__name__)
+
+# Retry configuration
+MAX_RETRIES = 3
+INITIAL_RETRY_DELAY = 1.0  # seconds
+MAX_RETRY_DELAY = 10.0  # seconds
 
 
 class PrismaAPIClient:
@@ -72,33 +78,49 @@ class PrismaAPIClient:
         elif status == "COMPLETED":
             payload["completedAt"] = datetime.utcnow().isoformat() + "Z"
 
-        try:
-            logger.info(
-                f"[{run_id}] Updating stage {stage_number} to {status} via Prisma API"
-            )
-
-            response = self.session.post(url, json=payload, timeout=30)
-
-            if response.ok:
+        # Retry logic with exponential backoff
+        for attempt in range(MAX_RETRIES):
+            try:
                 logger.info(
-                    f"[{run_id}] Successfully updated stage {stage_number} in Prisma"
+                    f"[{run_id}] Updating stage {stage_number} to {status} via Prisma API (attempt {attempt + 1}/{MAX_RETRIES})"
                 )
-                return True
+
+                response = self.session.post(url, json=payload, timeout=30)
+
+                if response.ok:
+                    logger.info(
+                        f"[{run_id}] Successfully updated stage {stage_number} in Prisma"
+                    )
+                    return True
+                else:
+                    logger.error(
+                        f"[{run_id}] Prisma API error: {response.status_code} - {response.text}"
+                    )
+                    # Don't retry on 4xx client errors (except 429 rate limit)
+                    if 400 <= response.status_code < 500 and response.status_code != 429:
+                        logger.error(f"[{run_id}] Client error, not retrying")
+                        return False
+
+            except requests.exceptions.Timeout:
+                logger.error(f"[{run_id}] Prisma API timeout after 30s")
+            except requests.exceptions.RequestException as e:
+                logger.error(f"[{run_id}] Failed to call Prisma API: {e}")
+            except Exception as e:
+                logger.error(f"[{run_id}] Unexpected error calling Prisma API: {e}")
+
+            # If not the last attempt, wait before retrying
+            if attempt < MAX_RETRIES - 1:
+                delay = min(INITIAL_RETRY_DELAY * (2 ** attempt), MAX_RETRY_DELAY)
+                logger.warning(
+                    f"[{run_id}] Retrying stage {stage_number} update in {delay:.1f}s..."
+                )
+                time.sleep(delay)
             else:
                 logger.error(
-                    f"[{run_id}] Prisma API error: {response.status_code} - {response.text}"
+                    f"[{run_id}] Failed to update stage {stage_number} after {MAX_RETRIES} attempts"
                 )
-                return False
 
-        except requests.exceptions.Timeout:
-            logger.error(f"[{run_id}] Prisma API timeout after 30s")
-            return False
-        except requests.exceptions.RequestException as e:
-            logger.error(f"[{run_id}] Failed to call Prisma API: {e}")
-            return False
-        except Exception as e:
-            logger.error(f"[{run_id}] Unexpected error calling Prisma API: {e}")
-            return False
+        return False
 
     def initialize_pipeline_stages(self, run_id: str) -> bool:
         """Initialize all 5 stages as PROCESSING (stage 1) / pending (2-5).

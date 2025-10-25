@@ -96,8 +96,8 @@ mcp = FastApiMCP(
     include_operations=["health_check", "run_pipeline", "get_status"]
 )
 
-# Mount MCP server at /mcp endpoint
-mcp.mount_http()
+# Mount MCP server - using default mount() which sets up both HTTP and SSE
+mcp.mount()
 
 
 @app.get("/")
