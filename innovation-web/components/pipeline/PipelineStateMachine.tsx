@@ -46,16 +46,14 @@ const determineCurrentState = (
   status: PipelineStatus,
   selectedCardId: string | null | undefined
 ): PipelineState => {
-  // State 4: Detail view (spark selected)
-  if (status === 'COMPLETED' && selectedCardId !== null && selectedCardId !== undefined) {
+  // State 4: Detail view (spark selected) - can happen from State 2 or State 3
+  if (selectedCardId !== null && selectedCardId !== undefined && selectedCardId !== '') {
     return PipelineState.State4
   }
-  // State 3: Grid view (pipeline complete, no selection)
-  if (status === 'COMPLETED') {
-    return PipelineState.State3
-  }
-  // State 2: Processing stages 2-5
-  if (currentStage >= 2 && status === 'PROCESSING') {
+  // State 2: Processing stages 2-5 OR completed (stays in State 2 after completion)
+  // User can click cards in State 2 to go to State 4
+  // State 3 (grid view) only accessible via icon navigation (future feature)
+  if (currentStage >= 2) {
     return PipelineState.State2
   }
   // State 1: Extraction animation
@@ -68,6 +66,7 @@ export default function PipelineStateMachine({
   pipelineData,
   selectedCardId,
   onCardSelect,
+  onSignalCardClick,
 }: PipelineStateMachineProps) {
   const router = useRouter()
   const [internalSelectedCardId, setInternalSelectedCardId] = useState<string | null>(null)
@@ -228,7 +227,11 @@ export default function PipelineStateMachine({
             return (
               <ThreeColumnLayout>
                 {hasStage1Data ? (
-                  <SignalsColumn trendImage={trendImage} trendTitle={trendTitle} />
+                  <SignalsColumn
+                    trendImage={trendImage}
+                    trendTitle={trendTitle}
+                    onClick={onSignalCardClick}
+                  />
                 ) : (
                   <SignalsColumnSkeleton />
                 )}
@@ -249,7 +252,15 @@ export default function PipelineStateMachine({
                 )}
 
                 {displaySparks.length > 0 ? (
-                  <SparksPreviewColumn sparks={displaySparks} isGenerating={currentStage < 5} />
+                  <SparksPreviewColumn
+                    sparks={displaySparks}
+                    isGenerating={currentStage < 5}
+                    onCardClick={(index) => {
+                      if (pipelineData.opportunityCards && pipelineData.opportunityCards[index]) {
+                        handleCardSelect(pipelineData.opportunityCards[index].id)
+                      }
+                    }}
+                  />
                 ) : (
                   <SparksPreviewColumnSkeleton />
                 )}

@@ -4,6 +4,7 @@ import { useRef, useEffect } from 'react'
 import Image from 'next/image'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import { DURATION, EASING_FUNCTION } from '@/lib/transitions'
+import { getCardColorGradient } from '@/lib/card-colors'
 
 export interface Spark {
   id: string
@@ -51,38 +52,44 @@ export default function CollapsedSidebar({
       }}
     >
       <div className="flex flex-col gap-2 p-2">
-        {sparks.map((spark, index) => (
-          <div
-            key={spark.id}
-            ref={spark.id === selectedId ? selectedRef : null}
-            onClick={() => onSelectSpark(spark.id)}
-            className={`
-              relative w-20 h-20 rounded-lg overflow-hidden cursor-pointer
-              transition-all
-              hover:shadow-md
-              ${spark.id === selectedId ? 'ring-2 ring-[#5B9A99]' : 'ring-1 ring-gray-200'}
-            `}
-            style={{
-              transform: isCollapsed ? 'scale(0.9)' : 'scale(1)',
-              transitionDuration: `${duration}ms`,
-              transitionTimingFunction: EASING_FUNCTION
-            }}
-          >
-            {spark.heroImageUrl ? (
-              <Image
-                src={spark.heroImageUrl}
-                alt={spark.title}
-                fill
-                className="object-cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-gray-200" />
-            )}
-            <div className="absolute top-1 left-1 w-6 h-6 bg-white rounded-full flex items-center justify-center text-xs font-bold shadow-sm">
-              {index + 1}
+        {sparks.map((spark, index) => {
+          const gradientClass = getCardColorGradient(index + 1)
+
+          return (
+            <div
+              key={spark.id}
+              ref={spark.id === selectedId ? selectedRef : null}
+              onClick={() => onSelectSpark(spark.id)}
+              className={`
+                relative w-20 h-20 rounded-lg overflow-hidden cursor-pointer
+                transition-all
+                hover:shadow-md
+                ${spark.id === selectedId ? 'ring-2 ring-[#5B9A99]' : 'ring-1 ring-gray-200'}
+              `}
+              style={{
+                transform: isCollapsed ? 'scale(0.9)' : 'scale(1)',
+                transitionDuration: `${duration}ms`,
+                transitionTimingFunction: EASING_FUNCTION
+              }}
+            >
+              {spark.heroImageUrl ? (
+                <Image
+                  src={spark.heroImageUrl}
+                  alt={spark.title}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className={`w-full h-full bg-gradient-to-br ${gradientClass} flex items-center justify-center`}>
+                  <span className="text-white/20 text-2xl font-bold">{index + 1}</span>
+                </div>
+              )}
+              <div className="absolute top-1 left-1 w-6 h-6 bg-white rounded-full flex items-center justify-center text-xs font-bold shadow-sm">
+                {index + 1}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

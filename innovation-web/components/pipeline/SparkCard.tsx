@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import { getCardColorGradient } from '@/lib/card-colors'
 
 interface Spark {
   id: string
@@ -15,6 +16,8 @@ interface SparkCardProps {
 }
 
 export default function SparkCard({ spark, number, onClick }: SparkCardProps) {
+  const gradientClass = getCardColorGradient(number)
+
   return (
     <div
       onClick={onClick}
@@ -34,7 +37,7 @@ export default function SparkCard({ spark, number, onClick }: SparkCardProps) {
       aria-label={`View spark ${number}: ${spark.title}`}
     >
       {/* Hero Image with Number Overlay */}
-      <div className="relative aspect-video bg-gray-200">
+      <div className={`relative aspect-video ${!spark.heroImageUrl ? `bg-gradient-to-br ${gradientClass}` : ''}`}>
         {spark.heroImageUrl ? (
           <Image
             src={spark.heroImageUrl}
@@ -43,7 +46,9 @@ export default function SparkCard({ spark, number, onClick }: SparkCardProps) {
             className="object-cover"
           />
         ) : (
-          <div className="w-full h-full bg-gray-200" />
+          <div className="w-full h-full flex items-center justify-center">
+            <span className="text-white/20 text-8xl font-bold">{number}</span>
+          </div>
         )}
         <div className="absolute bottom-3 right-3 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg">
           <span className="text-xl font-bold text-gray-900">{number}</span>
