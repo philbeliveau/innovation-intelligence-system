@@ -326,8 +326,21 @@ def execute_pipeline_background(
         # Save raw output locally
         save_stage_output(run_id, 1, stage1_result)
 
-        # Mark stage 1 as completed in Prisma
-        prisma_client.mark_stage_complete(run_id, 1, stage1_result)
+        # Flatten Stage 1 output for Prisma (move structured fields to top level)
+        stage1_output_for_prisma = stage1_result.get("stage1_output", {})
+        if isinstance(stage1_output_for_prisma, dict):
+            # If stage1_output is a dict with structured fields, flatten it
+            flattened_output = {
+                **stage1_output_for_prisma,  # Spread all structured fields to top level
+                "input_text": stage1_result.get("input_text", ""),
+                "raw_text": stage1_result.get("raw_text", "")
+            }
+        else:
+            # If stage1_output is a string (old format), keep original structure
+            flattened_output = stage1_result
+
+        # Mark stage 1 as completed in Prisma with flattened structure
+        prisma_client.mark_stage_complete(run_id, 1, flattened_output)
 
         # Extract stage1 output text for Stage 2
         stage1_output_text = stage1_result.get("stage1_output", "")
