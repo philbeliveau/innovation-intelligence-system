@@ -23,6 +23,8 @@ export default function PipelinePage() {
   const router = useRouter()
   const runId = params.runId as string
 
+  console.log('🔥🔥🔥 NEW PIPELINE PAGE LOADED - OLD UI REMOVED 🔥🔥🔥', { runId })
+
   const [status, setStatus] = useState<'running' | 'completed' | 'error'>('running')
   const [currentStage, setCurrentStage] = useState<number>(0)
   const [brandName, setBrandName] = useState<string>()
