@@ -313,8 +313,9 @@ export default function PipelineStateMachine({
                     content: card.content || card.markdown || '',
                   })) || []
                 }
-                selectedId={activeCardId}
+                selectedId={activeCardId || ''}
                 onSelectSpark={handleCardSelect}
+                onBackToColumns={() => handleCardSelect('')}
                 isCollapsed={true}
               />
             </div>
@@ -342,6 +343,7 @@ export default function PipelineStateMachine({
                 onBack={() => handleCardSelect('')}
                 currentIndex={currentIndex}
                 totalSparks={totalSparks}
+                cardNumber={selectedCard.number}
                 onPrev={() => {
                   if (currentIndex > 0 && pipelineData.opportunityCards) {
                     handleCardSelect(pipelineData.opportunityCards[currentIndex - 1].id)

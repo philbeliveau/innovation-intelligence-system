@@ -109,6 +109,7 @@ Based on this innovation anatomy, the most relevant patterns for CPG are:
 **Critical Success Factors:** [What capabilities or conditions are required?]
 
 QUALITY CRITERIA:
+- BE CONCISE: Use tight, focused prose - eliminate redundancy
 - Map EVERY mechanism to specific innovation types
 - Identify both primary and secondary types
 - Explain the value creation pattern

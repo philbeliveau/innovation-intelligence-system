@@ -1,7 +1,7 @@
 /**
  * ExtractionAnimation Component
- * Animated beaker visualization for Stage 1 extraction process
- * Displays bubbling animation while processing, error state if failed
+ * Animated coffee machine visualization for Stage 1 extraction process
+ * Displays brewing animation while processing, error state if failed
  */
 
 'use client'
@@ -14,92 +14,201 @@ export interface ExtractionAnimationProps {
   elapsedTime?: number
 }
 
-const BeakerSVG = ({ isAnimating }: { isAnimating: boolean }) => (
-  <svg
-    viewBox="0 0 200 300"
-    className="w-32 h-48 mx-auto"
-    aria-hidden="true"
-  >
-    {/* Beaker body */}
-    <path
-      d="M 60 50 L 60 200 Q 100 250 140 200 L 140 50 Z"
-      fill="none"
-      stroke="#5B9A99"
-      strokeWidth="3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
+const CoffeeMachineAnimation = ({ isAnimating }: { isAnimating: boolean }) => (
+  <div className="relative w-[300px] h-[280px] mx-auto">
+    <style jsx>{`
+      @keyframes liquid {
+        0% { height: 0px; opacity: 1; }
+        5% { height: 0px; opacity: 1; }
+        20% { height: 62px; opacity: 1; }
+        95% { height: 62px; opacity: 1; }
+        100% { height: 62px; opacity: 0; }
+      }
+      @keyframes smokeOne {
+        0% { bottom: 20px; opacity: 0; }
+        40% { bottom: 50px; opacity: 0.5; }
+        80% { bottom: 80px; opacity: 0.3; }
+        100% { bottom: 80px; opacity: 0; }
+      }
+      @keyframes smokeTwo {
+        0% { bottom: 40px; opacity: 0; }
+        40% { bottom: 70px; opacity: 0.5; }
+        80% { bottom: 80px; opacity: 0.3; }
+        100% { bottom: 80px; opacity: 0; }
+      }
+      .liquid-animate {
+        animation: liquid 4s 4s linear infinite;
+      }
+      .smoke-one {
+        animation: smokeOne 3s 4s linear infinite;
+      }
+      .smoke-two {
+        animation: smokeTwo 3s 5s linear infinite;
+      }
+      .smoke-three {
+        animation: smokeTwo 3s 6s linear infinite;
+      }
+      .smoke-four {
+        animation: smokeOne 3s 5s linear infinite;
+      }
+    `}</style>
 
-    {/* Beaker neck */}
-    <rect
-      x="85"
-      y="30"
-      width="30"
-      height="20"
-      fill="none"
-      stroke="#5B9A99"
-      strokeWidth="3"
-      rx="2"
-    />
+    {/* Coffee Header */}
+    <div
+      className="absolute top-0 left-0 w-full h-[80px] rounded-[10px]"
+      style={{ backgroundColor: '#ddcfcc' }}
+    >
+      {/* Button One */}
+      <div
+        className="absolute top-[25px] left-[15px] w-[25px] h-[25px] rounded-full"
+        style={{ backgroundColor: '#282323' }}
+      >
+        <div
+          className="absolute bottom-[-8px] left-[calc(50%-4px)] w-[8px] h-[8px]"
+          style={{ backgroundColor: '#615e5e' }}
+        />
+      </div>
 
-    {/* Liquid fill */}
-    <path
-      d="M 65 150 L 65 195 Q 100 235 135 195 L 135 150 Z"
-      fill="#5B9A99"
-      opacity="0.3"
-    />
+      {/* Button Two */}
+      <div
+        className="absolute top-[25px] left-[50px] w-[25px] h-[25px] rounded-full"
+        style={{ backgroundColor: '#282323' }}
+      >
+        <div
+          className="absolute bottom-[-8px] left-[calc(50%-4px)] w-[8px] h-[8px]"
+          style={{ backgroundColor: '#615e5e' }}
+        />
+      </div>
 
-    {/* Measurement lines */}
-    <line x1="145" y1="100" x2="155" y2="100" stroke="#5B9A99" strokeWidth="1.5" />
-    <line x1="145" y1="150" x2="155" y2="150" stroke="#5B9A99" strokeWidth="1.5" />
-    <line x1="145" y1="200" x2="155" y2="200" stroke="#5B9A99" strokeWidth="1.5" />
+      {/* Display - Teal accent */}
+      <div
+        className="absolute top-[calc(50%-25px)] left-[calc(50%-25px)] w-[50px] h-[50px] rounded-full border-[5px] box-border"
+        style={{
+          backgroundColor: '#9acfc5',
+          borderColor: '#43beae'
+        }}
+      />
 
-    {/* Animated bubbles - only when running */}
-    {isAnimating && (
-      <>
-        <circle
-          cx="90"
-          cy="180"
-          r="4"
-          fill="#5B9A99"
-          className="bubble-animation"
-          style={{ animationDelay: '0s' }}
+      {/* Details */}
+      <div
+        className="absolute top-[10px] right-[10px] w-[8px] h-[20px]"
+        style={{
+          backgroundColor: '#9b9091',
+          boxShadow: '-12px 0 0 #9b9091, -24px 0 0 #9b9091'
+        }}
+      />
+    </div>
+
+    {/* Coffee Medium */}
+    <div
+      className="absolute top-[80px] left-[calc(50%-45%)] w-[90%] h-[160px]"
+      style={{ backgroundColor: '#bcb0af' }}
+    >
+      {/* Base */}
+      <div
+        className="absolute bottom-0 left-[calc(50%-45%)] w-[90%] h-[100px] rounded-t-[20px]"
+        style={{ backgroundColor: '#776f6e' }}
+      />
+
+      {/* Exit Spout */}
+      <div
+        className="absolute top-0 left-[calc(50%-30px)] w-[60px] h-[20px]"
+        style={{ backgroundColor: '#231f20' }}
+      >
+        <div
+          className="absolute bottom-[-20px] left-[calc(50%-25px)] w-[50px] h-[20px]"
+          style={{
+            backgroundColor: '#231f20',
+            borderRadius: '0 0 50% 50%'
+          }}
         />
-        <circle
-          cx="110"
-          cy="190"
-          r="3"
-          fill="#5B9A99"
-          className="bubble-animation"
-          style={{ animationDelay: '0.5s' }}
+        <div
+          className="absolute bottom-[-30px] left-[calc(50%-5px)] w-[10px] h-[10px]"
+          style={{ backgroundColor: '#231f20' }}
         />
-        <circle
-          cx="100"
-          cy="170"
-          r="3.5"
-          fill="#5B9A99"
-          className="bubble-animation"
-          style={{ animationDelay: '1s' }}
+      </div>
+
+      {/* Arm */}
+      <div
+        className="absolute top-[15px] right-[25px] w-[70px] h-[20px]"
+        style={{ backgroundColor: '#231f20' }}
+      >
+        <div
+          className="absolute top-[7px] left-[-15px] w-[15px] h-[5px]"
+          style={{ backgroundColor: '#9e9495' }}
         />
-        <circle
-          cx="85"
-          cy="195"
-          r="2.5"
-          fill="#5B9A99"
-          className="bubble-animation"
-          style={{ animationDelay: '1.5s' }}
+      </div>
+
+      {/* Cup */}
+      <div
+        className="absolute bottom-0 left-[calc(50%-40px)] w-[80px] h-[47px] bg-white"
+        style={{
+          borderRadius: '0 0 70px 70px / 0 0 110px 110px'
+        }}
+      >
+        {/* Cup Handle */}
+        <div
+          className="absolute top-[6px] right-[-13px] w-[20px] h-[20px] rounded-full border-[5px] border-white"
         />
-        <circle
-          cx="115"
-          cy="175"
-          r="3"
-          fill="#5B9A99"
-          className="bubble-animation"
-          style={{ animationDelay: '2s' }}
+      </div>
+
+      {/* Liquid Animation - Teal colored */}
+      {isAnimating && (
+        <div
+          className="absolute top-[50px] left-[calc(50%-3px)] w-[6px] opacity-0 liquid-animate"
+          style={{
+            height: '63px',
+            backgroundColor: '#5B9A99'
+          }}
         />
-      </>
-    )}
-  </svg>
+      )}
+
+      {/* Steam/Smoke */}
+      {isAnimating && (
+        <>
+          <div
+            className="absolute left-[102px] w-[8px] h-[20px] rounded-[5px] opacity-0 smoke-one"
+            style={{
+              bottom: '50px',
+              backgroundColor: '#b3aeae'
+            }}
+          />
+          <div
+            className="absolute left-[118px] w-[8px] h-[20px] rounded-[5px] opacity-0 smoke-two"
+            style={{
+              bottom: '70px',
+              backgroundColor: '#b3aeae'
+            }}
+          />
+          <div
+            className="absolute right-[118px] w-[8px] h-[20px] rounded-[5px] opacity-0 smoke-three"
+            style={{
+              bottom: '65px',
+              backgroundColor: '#b3aeae'
+            }}
+          />
+          <div
+            className="absolute right-[102px] w-[8px] h-[20px] rounded-[5px] opacity-0 smoke-four"
+            style={{
+              bottom: '50px',
+              backgroundColor: '#b3aeae'
+            }}
+          />
+        </>
+      )}
+    </div>
+
+    {/* Coffee Footer - Teal accent */}
+    <div
+      className="absolute bottom-[25px] left-[calc(50%-47.5%)] w-[95%] h-[15px] rounded-[10px]"
+      style={{ backgroundColor: '#41bdad' }}
+    >
+      <div
+        className="absolute bottom-[-25px] left-[-8px] w-[106%] h-[26px]"
+        style={{ backgroundColor: '#000' }}
+      />
+    </div>
+  </div>
 )
 
 export default function ExtractionAnimation({ status, elapsedTime }: ExtractionAnimationProps) {
@@ -117,13 +226,13 @@ export default function ExtractionAnimation({ status, elapsedTime }: ExtractionA
 
       {/* Main content */}
       <div className="text-center space-y-6">
-        {/* Beaker illustration or error icon */}
+        {/* Coffee Machine illustration or error icon */}
         {isError ? (
           <div className="text-6xl mb-4" aria-label="Error">
             ⚠️
           </div>
         ) : (
-          <BeakerSVG isAnimating={isRunning} />
+          <CoffeeMachineAnimation isAnimating={isRunning} />
         )}
 
         {/* Status text */}

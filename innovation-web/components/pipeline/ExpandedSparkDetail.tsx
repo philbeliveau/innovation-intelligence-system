@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
@@ -10,6 +10,7 @@ import { Spark } from './CollapsedSidebar'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import { useWillChange } from '@/hooks/useWillChange'
 import { DURATION, EASING_FUNCTION } from '@/lib/transitions'
+import { getCardColorGradient } from '@/lib/card-colors'
 
 export interface ExpandedSparkDetailProps {
   spark: Spark
@@ -21,6 +22,8 @@ export interface ExpandedSparkDetailProps {
   onNext?: () => void
   /** Callback fired when entrance animation completes */
   onAnimationComplete?: () => void
+  /** Card number for gradient color (1-based index) */
+  cardNumber?: number
 }
 
 /**
@@ -80,12 +83,17 @@ export default function ExpandedSparkDetail({
   onPrev,
   onNext,
   onAnimationComplete,
+  cardNumber,
 }: ExpandedSparkDetailProps) {
   const hasMobileNav = currentIndex !== undefined && totalSparks !== undefined && onPrev && onNext
   const reducedMotion = useReducedMotion()
   const containerRef = useWillChange(true) // Animating on mount
 
   const duration = reducedMotion ? 0 : DURATION.SIDEBAR
+
+  // Get gradient class for header image (use currentIndex + 1 if cardNumber not provided)
+  const displayNumber = cardNumber ?? (currentIndex !== undefined ? currentIndex + 1 : 1)
+  const gradientClass = getCardColorGradient(displayNumber)
 
   // Trigger animation complete callback
   useEffect(() => {
@@ -100,7 +108,7 @@ export default function ExpandedSparkDetail({
     if (containerRef.current) {
       containerRef.current.focus()
     }
-  }, [spark.id])
+  }, [spark.id, containerRef])
 
   return (
     <div
@@ -127,58 +135,52 @@ export default function ExpandedSparkDetail({
         />
       )}
 
-      {/* Desktop Sticky Header with Back Button */}
-      <div className="hidden md:block sticky top-0 z-10 bg-white border-b border-gray-200 px-12 py-4">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-[#5B9A99] hover:text-[#4A7F7E] transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">Back to Grid</span>
-        </button>
+      {/* Hero Image - Full width at top */}
+      <div className="relative w-full h-48">
+        {spark.heroImageUrl ? (
+          <Image
+            src={spark.heroImageUrl}
+            alt={spark.title}
+            fill
+            className="object-cover"
+          />
+        ) : (
+          <div className={`w-full h-full bg-gradient-to-br ${gradientClass} flex items-center justify-center`}>
+            <span className="text-white/20 text-6xl font-bold">{displayNumber}</span>
+          </div>
+        )}
       </div>
 
       {/* Content */}
       <div className="px-6 md:px-12 py-8 max-w-4xl mx-auto">
-        {/* Hero Image */}
-        {spark.heroImageUrl && (
-          <div className="relative aspect-video mb-8 rounded-lg overflow-hidden">
-            <Image
-              src={spark.heroImageUrl}
-              alt={spark.title}
-              fill
-              className="object-cover"
-            />
-          </div>
-        )}
 
         {/* Markdown Content */}
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           rehypePlugins={[rehypeSanitize]}
           components={{
-            h1: ({ node, ...props }) => (
+            h1: ({ ...props }) => (
               <h1 className="text-4xl font-bold mb-4 text-gray-900" {...props} />
             ),
-            h2: ({ node, ...props }) => (
+            h2: ({ ...props }) => (
               <h2 className="text-3xl font-semibold mb-3 mt-8 text-gray-900" {...props} />
             ),
-            h3: ({ node, ...props }) => (
+            h3: ({ ...props }) => (
               <h3 className="text-2xl font-semibold mb-2 mt-6 text-gray-900" {...props} />
             ),
-            h4: ({ node, ...props }) => (
+            h4: ({ ...props }) => (
               <h4 className="text-xl font-semibold mb-2 mt-4 text-gray-900" {...props} />
             ),
-            h5: ({ node, ...props }) => (
+            h5: ({ ...props }) => (
               <h5 className="text-lg font-semibold mb-2 mt-3 text-gray-900" {...props} />
             ),
-            h6: ({ node, ...props }) => (
+            h6: ({ ...props }) => (
               <h6 className="text-base font-semibold mb-2 mt-2 text-gray-900" {...props} />
             ),
-            p: ({ node, ...props }) => (
+            p: ({ ...props }) => (
               <p className="mb-4 leading-7 text-gray-700" {...props} />
             ),
-            a: ({ node, ...props }) => (
+            a: ({ ...props }) => (
               <a
                 className="text-[#5B9A99] underline hover:text-[#4A7F7E] transition-colors"
                 target="_blank"
@@ -186,7 +188,7 @@ export default function ExpandedSparkDetail({
                 {...props}
               />
             ),
-            img: ({ node, ...props }: any) => {
+            img: ({ ...props }: React.ImgHTMLAttributes<HTMLImageElement>) => {
               const src = typeof props.src === 'string' ? props.src : ''
               const alt = typeof props.alt === 'string' ? props.alt : ''
               return (
@@ -201,7 +203,7 @@ export default function ExpandedSparkDetail({
                 </div>
               )
             },
-            code: ({ inline, ...props }: any) =>
+            code: ({ inline, ...props }: React.HTMLAttributes<HTMLElement> & { inline?: boolean }) =>
               inline ? (
                 <code
                   className="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono"
@@ -212,30 +214,30 @@ export default function ExpandedSparkDetail({
                   <code className="font-mono text-sm" {...props} />
                 </pre>
               ),
-            ul: ({ node, ...props }: any) => (
+            ul: ({ ...props }) => (
               <ul className="list-disc list-inside mb-4 space-y-1" {...props} />
             ),
-            ol: ({ node, ...props }: any) => (
+            ol: ({ ...props }) => (
               <ol className="list-decimal list-inside mb-4 space-y-1" {...props} />
             ),
-            li: ({ node, ...props }: any) => (
+            li: ({ ...props }) => (
               <li className="text-gray-700 leading-7" {...props} />
             ),
-            blockquote: ({ node, ...props }: any) => (
+            blockquote: ({ ...props }) => (
               <blockquote
                 className="border-l-4 border-[#5B9A99] pl-4 italic my-4 text-gray-600"
                 {...props}
               />
             ),
-            table: ({ node, ...props }) => (
+            table: ({ ...props }) => (
               <div className="overflow-x-auto my-4">
                 <table className="min-w-full border-collapse border border-gray-300" {...props} />
               </div>
             ),
-            th: ({ node, ...props }) => (
+            th: ({ ...props }) => (
               <th className="border border-gray-300 px-4 py-2 bg-gray-100 font-semibold" {...props} />
             ),
-            td: ({ node, ...props }) => (
+            td: ({ ...props }) => (
               <td className="border border-gray-300 px-4 py-2" {...props} />
             ),
           }}

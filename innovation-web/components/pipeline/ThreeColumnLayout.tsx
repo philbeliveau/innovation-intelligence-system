@@ -11,10 +11,11 @@ export const ThreeColumnLayout: React.FC<ThreeColumnLayoutProps> = ({
 }) => {
   return (
     <div className={cn(
-      "grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3",
+      "flex flex-col md:flex-row",
       "gap-4 md:gap-4 lg:gap-6",
       "bg-gray-50 p-6",
       "transition-all duration-800 ease-in-out",
+      "items-start",
       className
     )}>
       {children}

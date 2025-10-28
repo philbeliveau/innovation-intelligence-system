@@ -6,15 +6,16 @@ interface SignalsColumnProps {
   trendImage?: string
   trendTitle: string
   trendDescription?: string
+  onClick?: () => void
 }
 
 export const SignalsColumn: React.FC<SignalsColumnProps> = ({
   trendImage,
   trendTitle,
-  trendDescription,
+  onClick,
 }) => {
   return (
-    <div className="flex flex-col h-full max-w-sm">
+    <div className="flex flex-col h-full flex-[0.7] min-w-[280px]">
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
         <SignalIcon />
@@ -22,7 +23,10 @@ export const SignalsColumn: React.FC<SignalsColumnProps> = ({
       </div>
 
       {/* Signal Card - Matches mockup page 3 design */}
-      <div className="relative bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex-1 min-h-[400px] flex flex-col">
+      <div
+        className={`relative bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden h-[350px] flex flex-col ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+        onClick={onClick}
+      >
         {/* Hero Image with overlay title */}
         <div className="relative w-full flex-1">
           {trendImage ? (

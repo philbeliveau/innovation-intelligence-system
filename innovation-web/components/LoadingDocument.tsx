@@ -3,7 +3,11 @@
 // Innovation Intelligence System - Document Loading Animation
 // Browser-style loading animation with animated trace flows
 
-export default function LoadingDocument() {
+interface LoadingDocumentProps {
+  message?: string
+}
+
+export default function LoadingDocument({ message = 'Analyzing document...' }: LoadingDocumentProps) {
   return (
     <div className="flex justify-center items-center h-full w-full overflow-hidden">
       <div className="w-full h-full">
@@ -95,7 +99,7 @@ export default function LoadingDocument() {
 
           {/* Loading Text */}
           <text className="loading-text" x="400" y="125" textAnchor="middle">
-            Analyzing document...
+            {message}
           </text>
 
           {/* Document Skeleton Content */}

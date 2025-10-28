@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import { DURATION, EASING_FUNCTION } from '@/lib/transitions'
 import { getCardColorGradient } from '@/lib/card-colors'
+import { SignalIcon, InsightsIcon, SparksIcon } from '@/components/icons'
 
 export interface Spark {
   id: string
@@ -20,6 +21,8 @@ export interface CollapsedSidebarProps {
   onSelectSpark: (id: string) => void
   /** Controls collapsed state animation (default: false = expanded) */
   isCollapsed?: boolean
+  /** Callback when user clicks Signal or Insights icons to go back */
+  onBackToColumns?: () => void
 }
 
 export default function CollapsedSidebar({
@@ -27,6 +30,7 @@ export default function CollapsedSidebar({
   selectedId,
   onSelectSpark,
   isCollapsed = false,
+  onBackToColumns,
 }: CollapsedSidebarProps) {
   const selectedRef = useRef<HTMLDivElement>(null)
   const reducedMotion = useReducedMotion()
@@ -43,53 +47,100 @@ export default function CollapsedSidebar({
 
   return (
     <div
-      className="bg-white border-r border-gray-200 overflow-y-auto h-full transition-all"
+      className="bg-gray-50 border-r border-gray-200 overflow-y-auto h-full transition-all"
       style={{
-        width: isCollapsed ? '120px' : '100%',
+        width: isCollapsed ? '240px' : '100%',
         transitionDuration: `${duration}ms`,
         transitionTimingFunction: EASING_FUNCTION,
         transitionProperty: 'width'
       }}
     >
-      <div className="flex flex-col gap-2 p-2">
-        {sparks.map((spark, index) => {
-          const gradientClass = getCardColorGradient(index + 1)
+      {/* Header with 3 icons in a row */}
+      <div className="flex gap-1 p-2 border-b border-gray-200">
+        <button
+          onClick={onBackToColumns}
+          className="flex-1 flex items-center justify-center h-8 opacity-40 hover:opacity-60 transition-opacity cursor-pointer"
+          title="Back to Signals"
+        >
+          <SignalIcon />
+        </button>
+        <button
+          onClick={onBackToColumns}
+          className="flex-1 flex items-center justify-center h-8 opacity-40 hover:opacity-60 transition-opacity cursor-pointer"
+          title="Back to Insights"
+        >
+          <InsightsIcon />
+        </button>
+        <div className="flex-1 flex items-center justify-center h-8">
+          <SparksIcon />
+        </div>
+      </div>
 
-          return (
-            <div
-              key={spark.id}
-              ref={spark.id === selectedId ? selectedRef : null}
-              onClick={() => onSelectSpark(spark.id)}
-              className={`
-                relative w-20 h-20 rounded-lg overflow-hidden cursor-pointer
-                transition-all
-                hover:shadow-md
-                ${spark.id === selectedId ? 'ring-2 ring-[#5B9A99]' : 'ring-1 ring-gray-200'}
-              `}
-              style={{
-                transform: isCollapsed ? 'scale(0.9)' : 'scale(1)',
-                transitionDuration: `${duration}ms`,
-                transitionTimingFunction: EASING_FUNCTION
-              }}
-            >
-              {spark.heroImageUrl ? (
-                <Image
-                  src={spark.heroImageUrl}
-                  alt={spark.title}
-                  fill
-                  className="object-cover"
-                />
-              ) : (
-                <div className={`w-full h-full bg-gradient-to-br ${gradientClass} flex items-center justify-center`}>
-                  <span className="text-white/20 text-2xl font-bold">{index + 1}</span>
+      {/* 3-column collapsed layout */}
+      <div className="flex h-full">
+        {/* Signal Column - Collapsed */}
+        <div className="flex-1 flex flex-col gap-1.5 p-1.5 border-r border-gray-200 opacity-40">
+          <div className="w-full aspect-square bg-white rounded flex items-center justify-center border border-gray-200">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <rect x="6" y="4" width="12" height="16" rx="2" stroke="currentColor" strokeWidth="2"/>
+            </svg>
+          </div>
+          <div className="w-full aspect-square bg-white rounded flex items-center justify-center border border-gray-200">
+            <span className="text-xl text-gray-600">+</span>
+          </div>
+        </div>
+
+        {/* Insights Column - Collapsed */}
+        <div className="flex-1 flex flex-col gap-1.5 p-1.5 border-r border-gray-200 opacity-40">
+          <div className="w-full aspect-square bg-white rounded flex items-center justify-center border border-gray-200">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="2"/>
+              <polyline points="14,2 14,8 20,8" stroke="currentColor" strokeWidth="2"/>
+            </svg>
+          </div>
+        </div>
+
+        {/* Sparks Column - Active with thumbnails */}
+        <div className="flex-1 flex flex-col gap-1.5 p-1.5">
+          {sparks.map((spark, index) => {
+            const gradientClass = getCardColorGradient(index + 1)
+
+            return (
+              <div
+                key={spark.id}
+                ref={spark.id === selectedId ? selectedRef : null}
+                onClick={() => onSelectSpark(spark.id)}
+                className={`
+                  relative w-full aspect-square rounded overflow-hidden cursor-pointer
+                  transition-all
+                  hover:shadow-md
+                  ${spark.id === selectedId ? 'ring-2 ring-[#5B9A99]' : 'ring-1 ring-gray-200'}
+                `}
+                style={{
+                  transform: isCollapsed ? 'scale(0.98)' : 'scale(1)',
+                  transitionDuration: `${duration}ms`,
+                  transitionTimingFunction: EASING_FUNCTION
+                }}
+              >
+                {spark.heroImageUrl ? (
+                  <Image
+                    src={spark.heroImageUrl}
+                    alt={spark.title}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className={`w-full h-full bg-gradient-to-br ${gradientClass} flex items-center justify-center`}>
+                    <span className="text-white/30 text-xl font-bold">{index + 1}</span>
+                  </div>
+                )}
+                <div className="absolute top-1 left-1 w-5 h-5 bg-white rounded-full flex items-center justify-center text-xs font-bold shadow-sm">
+                  {index + 1}
                 </div>
-              )}
-              <div className="absolute top-1 left-1 w-6 h-6 bg-white rounded-full flex items-center justify-center text-xs font-bold shadow-sm">
-                {index + 1}
               </div>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
     </div>
   )

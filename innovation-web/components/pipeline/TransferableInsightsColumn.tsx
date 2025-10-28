@@ -15,7 +15,7 @@ export const TransferableInsightsColumn: React.FC<TransferableInsightsColumnProp
   onDownload,
 }) => {
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 flex flex-col">
+    <div className="bg-white rounded-lg shadow-sm p-6 flex flex-col flex-1">
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
         <InsightsIcon />

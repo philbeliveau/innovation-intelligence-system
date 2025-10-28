@@ -20,13 +20,15 @@ interface PipelineViewerProps {
   onComplete?: (runId: string) => void
   onError?: (error: string) => void
   inlineMode?: boolean
+  onSignalCardClick?: () => void
 }
 
 export default function PipelineViewer({
   runId,
   onComplete,
   onError,
-  inlineMode = false
+  inlineMode = false,
+  onSignalCardClick
 }: PipelineViewerProps) {
   const [status, setStatus] = useState<'running' | 'completed' | 'error'>('running')
   const [currentStage, setCurrentStage] = useState<number>(0)
@@ -143,18 +145,48 @@ export default function PipelineViewer({
             completedAt: stageData.completed_at,
           }))
           setPipelineStages(stagesArray)
+
+          // Extract opportunities from Stage 5 output as soon as available
+          const stage5Data = data.stages['5']
+          if (stage5Data?.output) {
+            try {
+              // Parse Stage 5 output (handle both string and object)
+              const stage5Output = typeof stage5Data.output === 'string'
+                ? JSON.parse(stage5Data.output)
+                : stage5Data.output
+
+              // Extract opportunities array if present
+              if (stage5Output?.opportunities && Array.isArray(stage5Output.opportunities)) {
+                const cards = stage5Output.opportunities.map((opp: { number?: number; title?: string; description?: string; markdown?: string; content?: string }, idx: number) => ({
+                  id: `stage5-${opp.number || idx + 1}`,
+                  number: opp.number || idx + 1,
+                  title: opp.title || `Spark ${idx + 1}`,
+                  summary: (opp.description || opp.markdown || '').substring(0, 200),
+                  content: opp.markdown || opp.description || opp.content || '',
+                  markdown: opp.markdown,
+                }))
+                setOpportunityCards(cards)
+                console.log(`[PipelineViewer] Extracted ${cards.length} opportunities from Stage 5 output`)
+              }
+            } catch (parseError) {
+              console.warn('[PipelineViewer] Failed to parse Stage 5 output:', parseError)
+            }
+          }
         }
 
-        // Fetch opportunity cards if pipeline is completed
+        // Fetch opportunity cards from database if pipeline is completed (for persistent IDs)
         if (normalizedStatus === 'completed') {
           try {
             const cardsResponse = await fetch(`/api/pipeline/${runId}/opportunity-cards`)
             if (cardsResponse.ok) {
               const cardsData = await cardsResponse.json()
-              setOpportunityCards(cardsData.opportunityCards || [])
+              if (cardsData.opportunityCards && cardsData.opportunityCards.length > 0) {
+                setOpportunityCards(cardsData.opportunityCards)
+                console.log(`[PipelineViewer] Fetched ${cardsData.opportunityCards.length} opportunity cards from database`)
+              }
             }
           } catch (e) {
-            console.error('Failed to fetch opportunity cards:', e)
+            console.error('Failed to fetch opportunity cards from database:', e)
           }
         }
 
@@ -226,6 +258,7 @@ export default function PipelineViewer({
           opportunityCards,
           brandName,
         }}
+        onSignalCardClick={onSignalCardClick}
       />
     </div>
   )

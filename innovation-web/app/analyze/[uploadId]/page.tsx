@@ -234,56 +234,47 @@ export default function AnalyzePage() {
 
         {/* Document Preview Card - SignalsColumn Design */}
         {!isPipelineRunning && (
-          /* BEFORE LAUNCH: SignalsColumn card with integrated buttons below */
+          /* BEFORE LAUNCH: SignalsColumn card with Launch button below */
           <div className="flex justify-start px-4 sm:px-0 mb-8">
             <div className="w-full max-w-sm space-y-4">
-              {/* SignalsColumn Card */}
-              <SignalsColumn
-                trendImage={undefined} // Triggers teal gradient fallback
-                trendTitle={fileName.replace(/\.(pdf|txt|md)$/i, '')} // Remove file extension
-              />
-
-              {/* Action Buttons Below Card */}
-              <div className="space-y-3">
-                {blobUrl && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsPanelOpen(true)}
-                    className="w-full"
-                  >
-                    Preview Document
-                  </Button>
-                )}
-
-                {/* Launch Button */}
-                <Button
-                  size="lg"
-                  onClick={handleLaunch}
-                  disabled={launching}
-                  className="w-full"
-                >
-                  {launching && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {launching ? 'Launching Pipeline...' : 'Launch'}
-                </Button>
-
-                {/* Error Display */}
-                {launchError && (
-                  <Alert variant="destructive">
-                    <AlertDescription className="flex items-center justify-between">
-                      <span>{launchError}</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setLaunchError('')}
-                        className="ml-4"
-                      >
-                        Try Again
-                      </Button>
-                    </AlertDescription>
-                  </Alert>
-                )}
+              {/* SignalsColumn Card - Clickable to preview */}
+              <div
+                onClick={() => blobUrl && setIsPanelOpen(true)}
+                className={blobUrl ? 'cursor-pointer' : ''}
+              >
+                <SignalsColumn
+                  trendImage={undefined} // Triggers teal gradient fallback
+                  trendTitle={fileName.replace(/\.(pdf|txt|md)$/i, '')} // Remove file extension
+                />
               </div>
+
+              {/* Launch Button Directly Under Card */}
+              <Button
+                size="lg"
+                onClick={handleLaunch}
+                disabled={launching}
+                className="w-full"
+              >
+                {launching && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {launching ? 'Launching Pipeline...' : 'Launch'}
+              </Button>
+
+              {/* Error Display */}
+              {launchError && (
+                <Alert variant="destructive">
+                  <AlertDescription className="flex items-center justify-between">
+                    <span>{launchError}</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setLaunchError('')}
+                      className="ml-4"
+                    >
+                      Try Again
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           </div>
         )}
@@ -295,6 +286,7 @@ export default function AnalyzePage() {
               <PipelineViewer
                 runId={runId}
                 inlineMode={true}
+                onSignalCardClick={() => blobUrl && setIsPanelOpen(true)}
                 onComplete={(id) => {
                   console.log('[Analyze] Pipeline completed! State 3 (Sparks Grid) should now be visible')
                   // Don't redirect - let user see State 3/4 (Sparks Grid and Detail View)

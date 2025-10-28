@@ -42,4 +42,5 @@ export interface PipelineStateMachineProps {
   pipelineData: PipelineData
   selectedCardId?: string | null
   onCardSelect?: (cardId: string) => void
+  onSignalCardClick?: () => void
 }

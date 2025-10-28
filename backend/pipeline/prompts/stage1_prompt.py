@@ -25,7 +25,7 @@ Extract the PRIMARY MECHANISM from this document - the underlying pattern that m
 
 OUTPUT MUST BE VALID JSON following this exact structure:
 {{
-  "extractedText": "Full summary of the input document (200-500 words)",
+  "extractedText": "Concise summary of the input document (150-300 words max)",
   "trendTitle": "The main innovation/trend being analyzed",
   "trendImage": null,
   "coreMechanism": "The primary transferable pattern in one clear sentence",
@@ -88,6 +88,7 @@ EXTRACTION METHODOLOGY:
 
 CRITICAL REQUIREMENTS:
 - OUTPUT MUST BE VALID JSON (use double quotes, escape special characters)
+- BE CONCISE: Tight, focused prose - no redundancy or filler
 - Extract 1-3 mechanisms (quality over quantity)
 - Focus on HOW things work, not WHAT happened
 - Ensure mechanisms are truly transferable across industries

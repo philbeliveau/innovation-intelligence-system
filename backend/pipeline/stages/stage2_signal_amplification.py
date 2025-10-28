@@ -42,7 +42,7 @@ class Stage2Chain:
             ValueError: If OpenRouter API key or base URL not configured
         """
         # Create LLM using centralized configuration (model from .env)
-        llm = create_llm(temperature=0.4, max_tokens=3000)
+        llm = create_llm(temperature=0.4, max_tokens=2200)
 
         # Get prompt template
         prompt = get_prompt_template()

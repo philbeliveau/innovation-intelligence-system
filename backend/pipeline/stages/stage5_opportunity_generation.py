@@ -73,7 +73,7 @@ class Stage5Chain:
             ValueError: If OpenRouter API key or base URL not configured
         """
         # Create LLM with temperature=0.7 for creative opportunity generation
-        llm = create_llm(temperature=0.7, max_tokens=4000)
+        llm = create_llm(temperature=0.7, max_tokens=3200)
 
         # Get prompt template
         prompt = get_prompt_template()
