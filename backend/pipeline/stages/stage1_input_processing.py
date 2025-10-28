@@ -66,7 +66,7 @@ class Stage1Chain:
             input_text: Input document text content
 
         Returns:
-            Dictionary with stage1_output key containing analysis
+            Dictionary with stage1_output key containing structured JSON analysis
 
         Raises:
             Exception: If chain execution fails
@@ -76,8 +76,60 @@ class Stage1Chain:
 
         try:
             result = self.chain.invoke({"input_text": input_text})
-            logging.info("Stage 1 execution completed successfully")
-            return result
+
+            # Parse JSON output from LLM
+            raw_output = result.get(self.output_key, "")
+
+            # Try to extract JSON if wrapped in markdown code blocks
+            import re
+            json_match = re.search(r'```json\s*(\{.*?\})\s*```', raw_output, re.DOTALL)
+            if json_match:
+                raw_output = json_match.group(1)
+
+            # Parse JSON
+            try:
+                parsed_output = json.loads(raw_output)
+
+                # Ensure all required fields exist with defaults
+                enhanced_output = {
+                    "extractedText": parsed_output.get("extractedText", input_text[:500]),
+                    "trendTitle": parsed_output.get("trendTitle", "Innovation Analysis"),
+                    "trendImage": parsed_output.get("trendImage"),
+                    "coreMechanism": parsed_output.get("coreMechanism", ""),
+                    "businessImpact": parsed_output.get("businessImpact", ""),
+                    "patternTransfersTo": parsed_output.get("patternTransfersTo", []),
+                    "mechanisms": parsed_output.get("mechanisms", []),
+                    "abstractionTest": parsed_output.get("abstractionTest", ""),
+                    "evidenceStrength": parsed_output.get("evidenceStrength", "MEDIUM"),
+                    "cpgRelevance": parsed_output.get("cpgRelevance", "")
+                }
+
+                # Store both the structured data and raw text
+                result[self.output_key] = enhanced_output
+                result['raw_text'] = raw_output
+
+                logging.info("Stage 1 execution completed successfully with structured JSON")
+                return result
+
+            except json.JSONDecodeError as e:
+                logging.error(f"Failed to parse Stage 1 JSON output: {e}")
+                logging.error(f"Raw output: {raw_output[:500]}...")
+
+                # Fallback to raw text output
+                result[self.output_key] = {
+                    "extractedText": raw_output,
+                    "trendTitle": "Analysis",
+                    "trendImage": None,
+                    "coreMechanism": "",
+                    "businessImpact": "",
+                    "patternTransfersTo": [],
+                    "mechanisms": [],
+                    "abstractionTest": "",
+                    "evidenceStrength": "LOW",
+                    "cpgRelevance": "",
+                    "parse_error": str(e)
+                }
+                return result
 
         except Exception as e:
             logging.error(f"Stage 1 execution failed: {e}", exc_info=True)

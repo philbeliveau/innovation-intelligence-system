@@ -1,0 +1,127 @@
+# Quality Gate Decision
+# Story: 8.0 Backend API Endpoints Prerequisites
+
+schema: 1
+story: "8.0"
+story_title: "Backend API Endpoints Prerequisites"
+gate: CONCERNS
+status_reason: "All acceptance criteria implemented with high code quality, but limited automated test coverage presents medium risk for production deployment."
+reviewer: "Quinn (Test Architect)"
+updated: "2025-10-26T00:00:00Z"
+
+waiver: { active: false }
+
+top_issues:
+  - id: "TEST-001"
+    severity: medium
+    finding: "Download endpoints (/download/stage1, /download/all) have no automated tests"
+    suggested_action: "Add endpoint tests verifying PDF/ZIP generation, headers, and error cases"
+    refs:
+      - "innovation-web/app/api/pipeline/[runId]/download/stage1/route.ts"
+      - "innovation-web/app/api/pipeline/[runId]/download/all/route.ts"
+    suggested_owner: dev
+
+  - id: "TEST-002"
+    severity: medium
+    finding: "Enhanced Stage 1 output lacks validation tests for mechanism extraction fields"
+    suggested_action: "Add integration test with real PDF verifying all mechanism fields populated"
+    refs:
+      - "backend/pipeline/stages/stage1_input_processing.py:94-105"
+    suggested_owner: dev
+
+  - id: "TEST-003"
+    severity: medium
+    finding: "Error classification logic untested for all 7 error code scenarios"
+    suggested_action: "Add unit tests for classify_error() covering each error type"
+    refs:
+      - "backend/app/pipeline_errors.py:81-115"
+    suggested_owner: dev
+
+  - id: "TECH-001"
+    severity: low
+    finding: "Archiver dependency installed but import commented out in code"
+    suggested_action: "Uncomment import after verifying build succeeds with static import"
+    refs:
+      - "innovation-web/app/api/pipeline/[runId]/download/all/route.ts:13"
+    suggested_owner: dev
+
+  - id: "OPS-001"
+    severity: low
+    finding: "Manual Railway deployment verification pending"
+    suggested_action: "Deploy to Railway and verify all endpoints work in production"
+    refs: []
+    suggested_owner: sm
+
+risk_summary:
+  totals:
+    critical: 0
+    high: 0
+    medium: 3  # TEST-001, TEST-002, TEST-003
+    low: 2     # TECH-001, OPS-001
+  highest: medium
+  recommendations:
+    must_fix:
+      - "Add smoke tests for download endpoints before production"
+      - "Manual validation of Railway deployment"
+    monitor:
+      - "Test coverage metrics - add tests incrementally"
+      - "ZIP generation performance with >20 opportunities"
+      - "Webhook failure rate in production"
+
+quality_score: 70
+# Calculation: 100 - (10 × 3 medium issues) = 70
+
+expires: "2025-11-09T00:00:00Z"  # 2 weeks from review
+
+evidence:
+  tests_reviewed: 4  # Existing backend and frontend test files
+  risks_identified: 5  # All top_issues
+  trace:
+    ac_covered: [5, 6, 7]  # Webhook retry, stage output webhook, error payloads (partial)
+    ac_gaps: [1, 2, 3, 4]  # Stage 1 output, download endpoints, partial opportunities
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: "Webhook auth, Prisma ORM, sanitized filenames, no code execution in PDFs"
+  performance:
+    status: PASS
+    notes: "Exponential backoff, partial opportunities, ZIP compression, stage output in webhook"
+  reliability:
+    status: CONCERNS
+    notes: "Webhook retry implemented, but no health check, monitoring, or large ZIP testing"
+  maintainability:
+    status: PASS
+    notes: "Comprehensive docstrings, error module separation, TypeScript types, user-friendly messages"
+
+recommendations:
+  immediate:
+    - action: "Uncomment archiver import if build succeeds"
+      refs: ["innovation-web/app/api/pipeline/[runId]/download/all/route.ts:13"]
+    - action: "Add smoke tests for download endpoints (basic functionality)"
+      refs:
+        - "innovation-web/app/api/pipeline/[runId]/download/stage1/route.ts"
+        - "innovation-web/app/api/pipeline/[runId]/download/all/route.ts"
+    - action: "Manual Railway deployment verification with real pipeline run"
+      refs: []
+
+  future:
+    - action: "Comprehensive integration test suite for full pipeline with enhanced Stage 1"
+      refs: ["backend/pipeline/stages/stage1_input_processing.py"]
+    - action: "Test ZIP generation performance with 20+ opportunities"
+      refs: ["innovation-web/app/api/pipeline/[runId]/download/all/route.ts"]
+    - action: "Add health check endpoint for Railway backend monitoring"
+      refs: ["backend/app/main.py"]
+    - action: "Implement webhook failure alerting/monitoring"
+      refs: ["backend/app/pipeline_runner.py"]
+    - action: "Document error codes in README or API reference"
+      refs: ["backend/app/pipeline_errors.py"]
+    - action: "Consider rate limiting on download endpoints"
+      refs:
+        - "innovation-web/app/api/pipeline/[runId]/download/stage1/route.ts"
+        - "innovation-web/app/api/pipeline/[runId]/download/all/route.ts"
+
+history:
+  - at: "2025-10-26T00:00:00Z"
+    gate: CONCERNS
+    note: "Initial review - all ACs implemented, high code quality, but test coverage gaps present medium risk"

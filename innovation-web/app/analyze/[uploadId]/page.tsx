@@ -5,30 +5,9 @@ import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2 } from 'lucide-react'
-import DocumentCard from '@/components/DocumentCard'
 import { FileViewerPanel } from '@/components/FileViewerPanel'
 import PipelineViewer from '@/components/pipeline/PipelineViewer'
 import LoadingDocument from '@/components/LoadingDocument'
-
-interface LatentFactor {
-  mechanismTitle: string
-  mechanismType: string
-  constraintEliminated: string
-}
-
-interface AnalysisData {
-  upload_id: string
-  analysis: {
-    title: string
-    summary: string
-    industry: string
-    theme: string
-    sources: string[]
-    latentFactors?: LatentFactor[]
-  }
-  blob_url: string
-  analyzed_at: string
-}
 
 export default function AnalyzePage() {
   const params = useParams()
@@ -37,7 +16,6 @@ export default function AnalyzePage() {
 
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string>('')
-  const [analysis, setAnalysis] = useState<AnalysisData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [launching, setLaunching] = useState(false)
@@ -59,11 +37,13 @@ export default function AnalyzePage() {
           const url = uploadData.blobUrl || storedData // Fallback to old format (plain string)
           setBlobUrl(url)
           setFileName(uploadData.fileName || 'document.pdf')
+          setLoading(false)
           return
         } catch {
           // Fallback for old format (plain string blob URL)
           setBlobUrl(storedData)
           setFileName('document.pdf')
+          setLoading(false)
           return
         }
       }
@@ -87,6 +67,7 @@ export default function AnalyzePage() {
               // Found in localStorage history
               setBlobUrl(upload.blob_url)
               setFileName(upload.filename || 'document.pdf')
+              setLoading(false)
               return
             }
           }
@@ -117,6 +98,7 @@ export default function AnalyzePage() {
 
         setBlobUrl(documentData.blobUrl)
         setFileName(documentData.fileName)
+        setLoading(false)
       } catch (err) {
         console.error('Failed to retrieve document from database:', err)
         setError('Failed to load document. Please upload a file first.')
@@ -126,36 +108,6 @@ export default function AnalyzePage() {
 
     loadDocumentData()
   }, [uploadId])
-
-  // Separate effect to trigger analysis once blobUrl is loaded
-  useEffect(() => {
-    if (!blobUrl || analysis) return
-
-    const analyzeDocument = async () => {
-      try {
-        const response = await fetch('/api/analyze-document', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ blob_url: blobUrl }),
-        })
-
-        if (!response.ok) {
-          throw new Error('Failed to analyze document')
-        }
-
-        const data = await response.json()
-        setAnalysis(data)
-        setLoading(false)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to analyze document')
-        setLoading(false)
-      }
-    }
-
-    analyzeDocument()
-  }, [blobUrl, analysis])
 
   const getErrorMessage = (status: number, defaultMessage: string): string => {
     const errorMap: Record<number, string> = {
@@ -167,7 +119,7 @@ export default function AnalyzePage() {
   }
 
   const handleLaunch = async () => {
-    if (!blobUrl || !analysis) return
+    if (!blobUrl) return
 
     setLaunching(true)
     setLaunchError('') // Clear previous errors
@@ -280,22 +232,27 @@ export default function AnalyzePage() {
         </h1>
 
         {!isPipelineRunning ? (
-          /* BEFORE LAUNCH: Document card and launch button */
+          /* BEFORE LAUNCH: Document info and launch button */
           <>
             <div className="flex justify-center px-4 sm:px-0">
-              {analysis && blobUrl && (
-                <DocumentCard
-                  title={analysis.analysis.title}
-                  summary={analysis.analysis.summary}
-                  industry={analysis.analysis.industry}
-                  theme={analysis.analysis.theme}
-                  sources={analysis.analysis.sources}
-                  latentFactors={analysis.analysis.latentFactors}
-                  onClick={() => setIsPanelOpen(true)}
-                  blobUrl={blobUrl}
-                  fileName={fileName}
-                />
-              )}
+              <div className="max-w-md text-center space-y-4">
+                <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2">{fileName}</h2>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Ready to analyze this document with your Board of Ideators
+                  </p>
+                  {blobUrl && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsPanelOpen(true)}
+                      className="w-full"
+                    >
+                      Preview Document
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Launch Button */}
@@ -329,71 +286,51 @@ export default function AnalyzePage() {
             </div>
           </>
         ) : (
-          /* AFTER LAUNCH: Single column mobile, 2-column desktop with document + pipeline */
-          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[minmax(320px,480px)_1fr]">
-            {/* Left: Document card - Responsive sizing */}
-            <div className="flex justify-center lg:justify-start px-4 sm:px-0">
-              {analysis && blobUrl && (
-                <DocumentCard
-                  title={analysis.analysis.title}
-                  summary={analysis.analysis.summary}
-                  industry={analysis.analysis.industry}
-                  theme={analysis.analysis.theme}
-                  sources={analysis.analysis.sources}
-                  latentFactors={analysis.analysis.latentFactors}
-                  onClick={() => setIsPanelOpen(true)}
-                  blobUrl={blobUrl}
-                  fileName={fileName}
-                />
-              )}
-            </div>
+          /* AFTER LAUNCH: Pipeline viewer */
+          <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
+            {runId ? (
+              <PipelineViewer
+                runId={runId}
+                inlineMode={true}
+                onComplete={(id) => {
+                  console.log('[Analyze] Pipeline completed, redirecting to results:', id)
+                  router.push(`/results/${id}`)
+                }}
+                onError={(err) => {
+                  console.error('[Analyze] Pipeline error callback:', err)
+                  setLaunchError(err)
+                  setIsPipelineRunning(false)
+                }}
+              />
+            ) : null}
 
-            {/* Right: Pipeline viewer - Responsive spacing */}
-            <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
-              {runId ? (
-                <PipelineViewer
-                  runId={runId}
-                  inlineMode={true}
-                  onComplete={(id) => {
-                    console.log('[Analyze] Pipeline completed, redirecting to results:', id)
-                    router.push(`/results/${id}`)
-                  }}
-                  onError={(err) => {
-                    console.error('[Analyze] Pipeline error callback:', err)
-                    setLaunchError(err)
-                    setIsPipelineRunning(false)
-                  }}
-                />
-              ) : null}
-
-              {/* Error Recovery UI */}
-              {launchError && !launching && (
-                <Alert variant="destructive" className="max-w-md">
-                  <AlertDescription>
-                    <p className="mb-3">{launchError}</p>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          setLaunchError('')
-                          setIsPipelineRunning(false)
-                          setRunId(null)
-                        }}
-                      >
-                        Retry Pipeline
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => router.push('/upload')}
-                      >
-                        Return to Upload
-                      </Button>
-                    </div>
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
+            {/* Error Recovery UI */}
+            {launchError && !launching && (
+              <Alert variant="destructive" className="max-w-md mx-auto">
+                <AlertDescription>
+                  <p className="mb-3">{launchError}</p>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setLaunchError('')
+                        setIsPipelineRunning(false)
+                        setRunId(null)
+                      }}
+                    >
+                      Retry Pipeline
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => router.push('/upload')}
+                    >
+                      Return to Upload
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
         )}
       </div>

@@ -21,7 +21,31 @@ INPUT DOCUMENT:
 {input_text}
 
 TASK:
-Extract the 2-3 most important MECHANISMS from this document - the underlying patterns that make innovations work, not just surface observations.
+Extract the PRIMARY MECHANISM from this document - the underlying pattern that makes innovations work, not just surface observations. Then identify 1-2 additional mechanisms if they are truly distinct.
+
+OUTPUT MUST BE VALID JSON following this exact structure:
+{{
+  "extractedText": "Full summary of the input document (200-500 words)",
+  "trendTitle": "The main innovation/trend being analyzed",
+  "trendImage": null,
+  "coreMechanism": "The primary transferable pattern in one clear sentence",
+  "businessImpact": "Quantified business value (include metrics if available)",
+  "patternTransfersTo": ["Industry 1", "Industry 2", "Industry 3", "Industry 4"],
+  "mechanisms": [
+    {{
+      "title": "Descriptive title of mechanism 1",
+      "concreteExample": "Specific company/product and what they did (1-2 sentences)",
+      "underlyingMechanism": "The transferable pattern explained",
+      "mechanismType": "One of: UNBUNDLED, COMBINED, REMOVED_FRICTION, CHANGED_MODEL, REFRAMED, DEMOCRATIZED, PREMIUMIZED, DIGITIZED_ANALOG, HUMANIZED_DIGITAL, TIME_SHIFTED",
+      "constraintEliminated": "Specific quantified constraint removed",
+      "whyItWorks": "Fundamental principle across industries",
+      "structuralPattern": "Abstract formula"
+    }}
+  ],
+  "abstractionTest": "Can these mechanisms be explained to someone in a different industry? (Yes/No with explanation)",
+  "evidenceStrength": "HIGH/MEDIUM/LOW with rationale",
+  "cpgRelevance": "Assessment of applicability to consumer packaged goods"
+}}
 
 CRITICAL: BANNED WORDS
 Never use: "interesting," "innovative," "unique," "creative," "inspiring," "better," "improved," "disruptive," "revolutionary"
@@ -42,68 +66,35 @@ EXTRACTION METHODOLOGY:
    - Level 4: What is the universal principle that ANY industry could apply?
 
 3. IDENTIFY THE MECHANISM TYPE
-   Which specific innovation mechanism was used?
-   □ UNBUNDLED - Separated and served only the most valuable part
-   □ COMBINED - Merged two previously separate categories/solutions
-   □ REMOVED FRICTION - Eliminated specific steps in customer journey
-   □ CHANGED MODEL - Altered business model rather than product
-   □ REFRAMED - Repositioned the category or value proposition
-   □ DEMOCRATIZED - Made exclusive/expensive accessible to masses
-   □ PREMIUMIZED - Added layers of value to justify higher price
-   □ DIGITIZED ANALOG - Moved physical process to digital
-   □ HUMANIZED DIGITAL - Added human touch to digital experience
-   □ TIME-SHIFTED - Changed when/how often consumption happens
+   Choose from:
+   - UNBUNDLED - Separated and served only the most valuable part
+   - COMBINED - Merged two previously separate categories/solutions
+   - REMOVED_FRICTION - Eliminated specific steps in customer journey
+   - CHANGED_MODEL - Altered business model rather than product
+   - REFRAMED - Repositioned the category or value proposition
+   - DEMOCRATIZED - Made exclusive/expensive accessible to masses
+   - PREMIUMIZED - Added layers of value to justify higher price
+   - DIGITIZED_ANALOG - Moved physical process to digital
+   - HUMANIZED_DIGITAL - Added human touch to digital experience
+   - TIME_SHIFTED - Changed when/how often consumption happens
 
 4. QUANTIFY THE CONSTRAINT ELIMINATED
-   Be specific about what constraint was removed:
-   - TIME: Reduced from X to Y (be specific)
+   Be specific:
+   - TIME: Reduced from X to Y
    - COST: Decreased by X% or $Y amount
    - KNOWLEDGE: Eliminated need for [specific expertise]
    - ACCESS: Made available where/when it wasn't
    - EFFORT: Reduced steps from X to Y
 
-OUTPUT FORMAT:
-Extract exactly 2-3 mechanisms (quality over quantity):
-
-## Mechanism 1: [Descriptive Title of the Pattern]
-
-**Concrete Example:** [Specific company/product and what they did - 1-2 sentences]
-
-**The Underlying Mechanism:** [The transferable pattern in abstract terms - explain HOW it works structurally, not what was done specifically]
-
-**Mechanism Type:** [One from the list above]
-
-**Constraint Eliminated:** [Specific, quantified constraint that was removed]
-
-**Why It Works:** [The fundamental psychological, economic, or strategic principle that makes this mechanism effective across industries]
-
-**Structural Pattern:** [Abstract formula: "When [condition X exists], eliminating [constraint Y] by [mechanism Z] creates [value type]"]
-
----
-
-## Mechanism 2: [Descriptive Title of the Pattern]
-
-[Same structure as above]
-
----
-
-[Optional Mechanism 3 if truly distinct and valuable]
-
-## Extraction Quality Check
-
-**Abstraction Test:** [Can these mechanisms be explained to someone in a completely different industry? Yes/No with explanation]
-
-**Evidence Strength:** [Rate the quality of evidence in the document: HIGH/MEDIUM/LOW with rationale]
-
-**CPG Relevance:** [Initial assessment of how these mechanisms might apply to consumer packaged goods]
-
-IMPORTANT:
-- Extract mechanisms, not observations
+CRITICAL REQUIREMENTS:
+- OUTPUT MUST BE VALID JSON (use double quotes, escape special characters)
+- Extract 1-3 mechanisms (quality over quantity)
 - Focus on HOW things work, not WHAT happened
-- Ensure each mechanism is truly transferable (could work in multiple industries)
+- Ensure mechanisms are truly transferable across industries
 - Quantify constraints wherever possible
 - Be ruthlessly specific while maintaining abstraction
-- If you can't extract 2 strong mechanisms, state why and extract what you can
+
+Return ONLY the JSON object, no additional text before or after.
 """
 
     return PromptTemplate(

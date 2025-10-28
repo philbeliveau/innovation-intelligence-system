@@ -23,6 +23,11 @@ from pipeline.stages.stage4_brand_contextualization import Stage4Chain
 from pipeline.stages.stage5_opportunity_generation import Stage5Chain
 from pipeline.utils import load_research_data
 from app.prisma_client import PrismaAPIClient
+from app.pipeline_errors import (
+    PipelineErrorCode,
+    create_error_payload,
+    classify_error
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +42,7 @@ def extract_text_from_pdf(pdf_path: str) -> str:
         Extracted text content
 
     Raises:
-        Exception: If PDF reading fails
+        Exception: If PDF reading fails (wrapped with PipelineErrorCode context)
     """
     try:
         reader = PdfReader(pdf_path)
@@ -50,7 +55,8 @@ def extract_text_from_pdf(pdf_path: str) -> str:
 
     except Exception as e:
         logger.error(f"Failed to extract text from PDF: {e}")
-        raise
+        # Re-raise with context so it can be classified as PDF_PARSE_ERROR
+        raise Exception(f"PDF parsing failed: {str(e)}") from e
 
 
 def get_output_dir(run_id: str) -> Path:
@@ -191,12 +197,12 @@ def call_completion_webhook(
     stage4_result: Dict[str, Any],
     stage5_result: Dict[str, Any]
 ) -> None:
-    """Call frontend webhook to notify pipeline completion.
+    """Call frontend webhook to notify pipeline completion with retry logic.
 
     Args:
         run_id: Run identifier
         start_time: Pipeline start timestamp (from time.time())
-        opportunities: List of opportunity cards with markdown
+        opportunities: List of opportunity cards with markdown and all required fields
         stage1_result: Stage 1 output dictionary
         stage2_result: Stage 2 output dictionary
         stage3_result: Stage 3 output dictionary
@@ -206,12 +212,26 @@ def call_completion_webhook(
     frontend_url = os.getenv("FRONTEND_WEBHOOK_URL", "https://innovation-web-rho.vercel.app")
     webhook_secret = os.getenv("WEBHOOK_SECRET", "dev-secret-123")
 
+    # Ensure opportunities have all required fields
+    # Field mapping: 'markdown' → 'fullContent' for frontend
+    enhanced_opportunities = []
+    for opp in opportunities:
+        enhanced_opp = {
+            "id": opp.get("id", ""),
+            "number": opp.get("number", 0),
+            "title": opp.get("title", ""),
+            "summary": opp.get("description", "")[:200],  # First 200 chars as summary
+            "fullContent": opp.get("markdown", ""),  # Rename markdown → fullContent
+            "heroImageUrl": opp.get("heroImageUrl"),  # May be None
+        }
+        enhanced_opportunities.append(enhanced_opp)
+
     # Prepare completion payload
     completion_data = {
         "status": "COMPLETED",
         "completedAt": datetime.utcnow().isoformat() + "Z",
         "duration": int((time.time() - start_time) * 1000),  # milliseconds
-        "opportunities": opportunities,
+        "opportunities": enhanced_opportunities,
         "stageOutputs": {
             "stage1": stage1_result,
             "stage2": stage2_result,
@@ -221,29 +241,49 @@ def call_completion_webhook(
         }
     }
 
-    try:
-        logger.info(f"[{run_id}] Calling completion webhook: {frontend_url}/api/pipeline/{run_id}/complete")
-
-        response = requests.post(
-            f"{frontend_url}/api/pipeline/{run_id}/complete",
-            json=completion_data,
-            headers={"X-Webhook-Secret": webhook_secret},
-            timeout=30
-        )
-
-        if response.ok:
-            logger.info(f"[{run_id}] Successfully notified frontend of completion")
-        else:
-            logger.error(
-                f"[{run_id}] Webhook failed: {response.status_code} - {response.text}"
+    # Retry logic with exponential backoff
+    max_attempts = 3
+    for attempt in range(1, max_attempts + 1):
+        try:
+            logger.info(
+                f"[{run_id}] Calling completion webhook (attempt {attempt}/{max_attempts}): "
+                f"{frontend_url}/api/pipeline/{run_id}/complete"
             )
 
-    except requests.exceptions.Timeout:
-        logger.error(f"[{run_id}] Webhook timeout after 30s")
-    except requests.exceptions.RequestException as e:
-        logger.error(f"[{run_id}] Failed to call completion webhook: {e}")
-    except Exception as e:
-        logger.error(f"[{run_id}] Unexpected error calling webhook: {e}")
+            response = requests.post(
+                f"{frontend_url}/api/pipeline/{run_id}/complete",
+                json=completion_data,
+                headers={"X-Webhook-Secret": webhook_secret},
+                timeout=30
+            )
+
+            if response.ok:
+                logger.info(f"[{run_id}] Successfully notified frontend of completion")
+                return  # Success, exit function
+
+            logger.warning(
+                f"[{run_id}] Webhook attempt {attempt} failed: "
+                f"{response.status_code} - {response.text}"
+            )
+
+        except requests.exceptions.Timeout:
+            logger.warning(f"[{run_id}] Webhook attempt {attempt} timeout after 30s")
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"[{run_id}] Webhook attempt {attempt} error: {e}")
+        except Exception as e:
+            logger.warning(f"[{run_id}] Webhook attempt {attempt} unexpected error: {e}")
+
+        # Exponential backoff: 1s, 2s, 4s
+        if attempt < max_attempts:
+            wait_time = 2 ** (attempt - 1)
+            logger.info(f"[{run_id}] Waiting {wait_time}s before retry...")
+            time.sleep(wait_time)
+
+    # All attempts failed
+    logger.error(
+        f"[{run_id}] Failed to notify frontend after {max_attempts} attempts. "
+        "Opportunities are saved in database but frontend may not be updated."
+    )
 
 
 def execute_pipeline_background(
@@ -383,8 +423,26 @@ def execute_pipeline_background(
     except Exception as e:
         logger.error(f"Pipeline execution failed for run {run_id}: {str(e)}", exc_info=True)
 
-        # Mark current stage as failed in Prisma (auto-marks PipelineRun as FAILED)
-        prisma_client.mark_stage_failed(run_id, current_stage, str(e))
+        # Classify error and create standardized error payload
+        error_code = classify_error(e, current_stage)
+        error_payload = create_error_payload(
+            run_id=run_id,
+            stage=current_stage,
+            error_code=error_code,
+            error_message=str(e),
+            exception=e
+        )
+
+        # Log standardized error
+        logger.error(f"[{run_id}] Error classified as {error_code.value}: {error_payload}")
+
+        # Mark current stage as failed in Prisma with detailed error info
+        import json
+        prisma_client.mark_stage_failed(
+            run_id,
+            current_stage,
+            json.dumps(error_payload["error"], indent=2)
+        )
 
     finally:
         # Cleanup PDF

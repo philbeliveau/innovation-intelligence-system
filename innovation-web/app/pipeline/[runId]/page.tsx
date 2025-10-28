@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import StageBox from '@/components/pipeline/StageBox'
 import PipelineTrackCard from '@/components/pipeline/PipelineTrackCard'
 import IdeationTracksSidebar from '@/components/pipeline/IdeationTracksSidebar'
-import DetailPanel from '@/components/pipeline/DetailPanel'
+import PipelineStateMachine from '@/components/pipeline/PipelineStateMachine'
 import { calculateStageStatus } from '@/lib/stageStatus'
 
 interface Stage1Data {
@@ -57,6 +57,9 @@ export default function PipelinePage() {
   const [brandName, setBrandName] = useState<string>()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [pipelineStages, setPipelineStages] = useState<Array<{ stageNumber: number; output?: string }>>([])
+  const [opportunityCards, setOpportunityCards] = useState<Array<any>>([])
+
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | undefined
@@ -110,6 +113,28 @@ export default function PipelinePage() {
           }
         } else {
           setStage1Data(null)
+        }
+
+        // Convert stages object to array for PipelineStateMachine
+        if (data.stages) {
+          const stagesArray = Object.entries(data.stages).map(([stageNum, stageData]) => ({
+            stageNumber: parseInt(stageNum),
+            output: stageData.output,
+          }))
+          setPipelineStages(stagesArray)
+        }
+
+        // Fetch opportunity cards if pipeline is completed
+        if (data.status === 'completed') {
+          try {
+            const cardsResponse = await fetch(`/api/pipeline/${runId}/opportunity-cards`)
+            if (cardsResponse.ok) {
+              const cardsData = await cardsResponse.json()
+              setOpportunityCards(cardsData.opportunityCards || [])
+            }
+          } catch (e) {
+            console.error('Failed to fetch opportunity cards:', e)
+          }
         }
 
         setBrandName(data.brand_name)
@@ -277,12 +302,16 @@ export default function PipelinePage() {
               </div>
             )}
 
-            {/* Current Stage Detail Panel */}
-            <DetailPanel
+            {/* New Pipeline State Machine UI (Epic 8) */}
+            <PipelineStateMachine
               currentStage={currentStage}
-              status={status === 'completed' ? 'complete' : status}
-              runId={runId}
-              brandName={brandName}
+              status={status === 'completed' ? 'COMPLETED' : status === 'running' ? 'PROCESSING' : 'FAILED'}
+              pipelineData={{
+                runId,
+                stages: pipelineStages,
+                opportunityCards,
+                brandName,
+              }}
             />
           </div>
         </div>

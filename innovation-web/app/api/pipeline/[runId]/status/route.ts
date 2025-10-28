@@ -41,12 +41,15 @@ export async function GET(
 
     console.log(`[API /pipeline/status] Fetching status for run: ${sanitizedRunId}`)
 
-    // Fetch run with all stage outputs from Prisma
+    // Fetch run with all stage outputs and opportunity cards from Prisma
     const run = await prisma.pipelineRun.findUnique({
       where: { id: sanitizedRunId },
       include: {
         stageOutputs: {
           orderBy: { stageNumber: 'asc' }
+        },
+        opportunityCards: {
+          orderBy: { number: 'asc' }
         }
       }
     })
@@ -98,13 +101,37 @@ export async function GET(
       currentStage = 0
     }
 
+    // Build partial opportunities array for Stage 5
+    let partialOpportunities: Array<{
+      id: string
+      number: number
+      title: string
+      summary: string
+      heroImageUrl: string | null
+      isComplete: boolean
+    }> | undefined
+
+    // Include partial opportunities if Stage 5 is processing or completed
+    const stage5 = run.stageOutputs.find(s => s.stageNumber === 5)
+    if (stage5 && run.opportunityCards.length > 0) {
+      partialOpportunities = run.opportunityCards.map(card => ({
+        id: card.id,
+        number: card.number,
+        title: card.title,
+        summary: card.content.substring(0, 200) + (card.content.length > 200 ? '...' : ''),
+        heroImageUrl: null, // TODO: Add hero image support in future
+        isComplete: run.status === 'COMPLETED'
+      }))
+    }
+
     // Build response matching Railway backend format
     const response = {
       run_id: run.id,
       status: run.status.toLowerCase(), // "PROCESSING" → "processing"
       current_stage: currentStage,
       stages,
-      brand_name: run.companyName
+      brand_name: run.companyName,
+      ...(partialOpportunities && { partialOpportunities })
     }
 
     console.log(`[API /pipeline/status] Returning status: ${run.status}, current_stage: ${currentStage}`)

@@ -191,6 +191,32 @@ innovation-web/
 │   ├── layout.tsx                # Root layout
 │   └── page.tsx                  # Homepage (upload)
 ├── components/
+│   ├── animations/               # Epic 8 - Story 8.6
+│   │   ├── FadeTransition.tsx
+│   │   ├── SlideUpTransition.tsx
+│   │   ├── ColorPulse.tsx
+│   │   └── StateAnnouncer.tsx
+│   ├── error/                    # Epic 8 - Story 8.9
+│   │   ├── ErrorBanner.tsx
+│   │   ├── ErrorPlaceholder.tsx
+│   │   ├── EmptyState.tsx
+│   │   └── RetryButton.tsx
+│   ├── pipeline/                 # Epic 8 - Stories 8.1-8.5
+│   │   ├── PipelineStateMachine.tsx      # State orchestrator (8.1)
+│   │   ├── ExtractionAnimation.tsx       # State 1 (8.2)
+│   │   ├── WorkflowIllustration.tsx      # State 1 (8.2)
+│   │   ├── BOIBadge.tsx                  # State 2-3 (8.2)
+│   │   ├── ThreeColumnLayout.tsx         # State 2 (8.3)
+│   │   ├── SignalsColumn.tsx             # State 2 (8.3)
+│   │   ├── TransferableInsightsColumn.tsx # State 2 (8.3)
+│   │   ├── SparksPreviewColumn.tsx       # State 2 (8.3)
+│   │   ├── IconNavigation.tsx            # State 3-4 (8.4)
+│   │   ├── SparksGrid.tsx                # State 3 (8.4)
+│   │   ├── SparkCard.tsx                 # State 3 (8.4)
+│   │   ├── ActionBar.tsx                 # State 3 (8.4)
+│   │   ├── CollapsedSidebar.tsx          # State 4 (8.5)
+│   │   ├── ExpandedSparkDetail.tsx       # State 4 (8.5)
+│   │   └── LoadingSkeletons.tsx          # All states
 │   ├── ui/                       # shadcn/ui components
 │   │   ├── badge.tsx
 │   │   ├── button.tsx
@@ -202,8 +228,19 @@ innovation-web/
 │   ├── InspirationTrack.tsx      # Stage 1 inspiration card
 │   ├── LeftSidebar.tsx           # Collapsible home menu
 │   └── StageBox.tsx              # Stages 2-5 status box
+├── hooks/                        # Epic 8 - Story 8.6
+│   ├── useReducedMotion.ts
+│   ├── useWillChange.ts
+│   └── usePipelinePolling.ts
 ├── lib/
+│   ├── schemas.ts                # Zod validation (Story 8.9)
+│   ├── errorMessages.ts          # User-friendly error copy (Story 8.9)
+│   ├── logger.ts                 # Frontend error logging (Story 8.9)
+│   ├── transitions.ts            # Animation config (Story 8.6)
 │   └── utils.ts                  # Utility functions
+├── types/
+│   ├── pipeline.ts               # Pipeline types (Epic 8)
+│   └── spark.ts                  # Spark/OpportunityCard types (Epic 8)
 ├── public/
 │   └── images/                   # Static images
 ├── .env.local                    # Environment variables
@@ -294,44 +331,65 @@ data/
 └─────────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│ PIPELINE VIEWER: Real-time Execution                            │
+│ PIPELINE VIEWER: Real-time Execution (Epic 8 - 4 UI States)    │
 │                                                                  │
-│ ┌─────────────────────────────────────────────────────────────┐ │
-│ │ Stage 1: Extracting Inspirations                            │ │
-│ │ ┌─────────────────────┐  ┌─────────────────────┐           │ │
-│ │ │ Inspiration Track 1 │  │ Inspiration Track 2 │           │ │
-│ │ │ "Experience Theater"│  │ "Community Building"│           │ │
-│ │ │ Loading...          │  │ Loading...          │           │ │
-│ │ └─────────────────────┘  └─────────────────────┘           │ │
-│ └─────────────────────────────────────────────────────────────┘ │
+│ STATE 1: Stage 1 Running (Extraction Animation)                 │
+│ ┌─────────────────────┐  ┌─────────────────────┐               │
+│ │ Left: Extraction    │  │ Right: Workflow     │               │
+│ │ Animation           │  │ Illustration        │               │
+│ │ (Beaker/Flask)      │  │ (5 stage flow)      │               │
+│ └─────────────────────┘  └─────────────────────┘               │
 │                                                                  │
-│ ┌─────────────────────────────────────────────────────────────┐ │
-│ │ Stage 2: Amplifying Signals                                 │ │
-│ │ Status: Waiting...                                          │ │
-│ └─────────────────────────────────────────────────────────────┘ │
+│ STATE 2: Stage 1 Complete + Stages 2-5 Running                  │
+│ ┌──────────────────────────────────────────────────────────────┐│
+│ │ 3-Column Layout (Real-time Transformation Visualization)     ││
+│ │ ┌─────────┐  ┌──────────────┐  ┌─────────────┐              ││
+│ │ │ Signals │→ │ Transferable │→ │ Sparks      │              ││
+│ │ │ Column  │  │ Insights Col │  │ Preview Col │              ││
+│ │ │         │  │              │  │             │              ││
+│ │ │ (Stage2)│  │   (Stage3)   │  │ (Stage4-5)  │              ││
+│ │ └─────────┘  └──────────────┘  └─────────────┘              ││
+│ │ "My Board of Ideators" Badge (BOI Branding)                  ││
+│ └──────────────────────────────────────────────────────────────┘│
 │                                                                  │
-│ ┌─────────────────────────────────────────────────────────────┐ │
-│ │ Stage 3: Translating to Lessons                             │ │
-│ │ Status: Pending                                             │ │
-│ └─────────────────────────────────────────────────────────────┘ │
+│ STATE 3: All Complete - Sparks Grid                             │
+│ ┌──────────────────────────────────────────────────────────────┐│
+│ │ Top Bar: [Download All] [New Pipeline] [Icons: S|I|Sp]      ││
+│ │                                                               ││
+│ │ 2-Column Grid of Spark Cards:                                ││
+│ │ ┌────────────┐  ┌────────────┐                              ││
+│ │ │ Spark #1   │  │ Spark #2   │  <- Numbered Overlays        ││
+│ │ │ Title+Hero │  │ Title+Hero │                              ││
+│ │ └────────────┘  └────────────┘                              ││
+│ │ ┌────────────┐  ┌────────────┐                              ││
+│ │ │ Spark #3   │  │ Spark #4   │                              ││
+│ │ └────────────┘  └────────────┘                              ││
+│ │ ┌────────────┐                                               ││
+│ │ │ Spark #5   │                                               ││
+│ │ └────────────┘                                               ││
+│ └──────────────────────────────────────────────────────────────┘│
 │                                                                  │
-│ ┌─────────────────────────────────────────────────────────────┐ │
-│ │ Stage 4: Brand Contextualization                            │ │
-│ │ Status: Pending                                             │ │
-│ └─────────────────────────────────────────────────────────────┘ │
-│                                                                  │
-│ ┌─────────────────────────────────────────────────────────────┐ │
-│ │ Stage 5: Generating Opportunities                           │ │
-│ │ Status: Pending                                             │ │
-│ └─────────────────────────────────────────────────────────────┘ │
+│ STATE 4: Card Detail View                                       │
+│ ┌──────────────────────────────────────────────────────────────┐│
+│ │ ┌────────┐ ┌──────────────────────────────────────────────┐ ││
+│ │ │Sidebar │ │ Expanded Spark Detail                        │ ││
+│ │ │120px   │ │ - Full markdown content                      │ ││
+│ │ │        │ │ - Hero image                                 │ ││
+│ │ │Thumb 1 │ │ - Rich typography                            │ ││
+│ │ │Thumb 2 │ │ - Code blocks, tables, lists                 │ ││
+│ │ │Thumb 3 │ │ - Sanitized HTML (rehype-sanitize)           │ ││
+│ │ │Thumb 4 │ │                                              │ ││
+│ │ │Thumb 5 │ │ [Back to Grid] button                        │ ││
+│ │ └────────┘ └──────────────────────────────────────────────┘ ││
+│ └──────────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────────┐
-│ RESULTS: Opportunity Cards                                       │
-│ - 5 opportunity cards (markdown rendered)                       │
-│ - Download all as PDF                                           │
-│ - Start new pipeline run                                        │
-└─────────────────────────────────────────────────────────────────┘
+
+**State Transitions (Story 8.6):**
+- State 1 → 2: 600ms fade
+- State 2 → 3: 800ms slide-up with stagger
+- State 3 ↔ 4: 400ms sidebar collapse/expand
+- GPU-accelerated (transform + opacity only)
+- Respects prefers-reduced-motion
 ```
 
 ### Detailed Steps
@@ -747,6 +805,32 @@ Each stage in the horizontal row shows:
 - `Accordion` - Collapsible sections
 - `Button` - Download/New actions
 - `Badge` - Timeline/Investment tags
+
+---
+
+## 5.10 Epic 8: Pipeline Visualization Refactor
+
+**Status:** ✅ Implemented (Stories 8.0-8.9)
+**Architecture Pattern:** 4-State Progressive UI with Real-Time Updates
+**Reference:** See `docs/stories/8.0-8.9` for implementation details
+
+### Key Architectural Changes
+
+**State Machine Architecture:** Replaced linear pipeline visualization with 4-state progressive UI (`PipelineStateMachine.tsx`) that transitions based on backend pipeline progress: (1) Extraction Animation → (2) 3-Column Transformation View → (3) Sparks Grid → (4) Detail View.
+
+**Real-Time Updates:** Webhook-based architecture where Railway backend pushes updates via `POST /api/pipeline/[runId]/stage-update`, frontend polls `GET /api/pipeline/[runId]/status` every 5 seconds. Prisma + PostgreSQL replaces file-based storage.
+
+**Performance:** GPU-accelerated animations using `transform` and `opacity` only. Respects `prefers-reduced-motion` with color pulse fallback. Custom hooks `useReducedMotion`, `useWillChange` optimize animation performance.
+
+**Error Handling:** Zod validation for all API responses, exponential backoff retry (5s→40s), graceful degradation for malformed data, user-friendly error messages via `lib/errorMessages.ts`.
+
+**Download Functionality:** Server-side PDF generation with `@react-pdf/renderer` for individual sparks and full pipeline results.
+
+**Component Architecture:** 14 new pipeline components in `components/pipeline/`, 4 animation components in `components/animations/`, 4 error components in `components/error/`. See directory structure in Section 3 for details.
+
+**Mobile Responsiveness:** Breakpoints at 768px, 1024px, 1440px with state-specific adaptations (collapsible sidebar, touch gestures, mobile nav bar).
+
+**Branding Update:** "Opportunity Cards" → "Sparks", "My Board of Ideators" badge integration.
 
 ---
 
@@ -1209,6 +1293,25 @@ function detectStageFromLog(logContent: string): number {
   "completed_at": "2025-01-15T14:45:30Z"
 }
 ```
+
+---
+
+### 6.2 Epic 8 API Additions
+
+**Reference:** See `docs/stories/8.0.backend-api-endpoints-prerequisites.md` for full specifications
+
+**New Endpoints:**
+- `POST /api/pipeline/[runId]/stage-update` - Webhook for backend stage updates (X-Webhook-Secret auth)
+- `POST /api/pipeline/[runId]/complete` - Webhook to save opportunity cards (Prisma OpportunityCard model)
+- `GET /api/pipeline/[runId]/status` - Enhanced polling with Zod validation
+- `GET /api/pipeline/[runId]/download/all` - PDF generation (@react-pdf/renderer)
+- `GET /api/pipeline/[runId]/download/spark/[sparkId]` - Single spark PDF
+
+**Architecture Changes:**
+- Webhook-based state updates replace file polling
+- Prisma + PostgreSQL replaces file-based storage
+- Zod validation (`lib/schemas.ts`) ensures type safety
+- Exponential backoff retry for network errors
 
 ---
 
