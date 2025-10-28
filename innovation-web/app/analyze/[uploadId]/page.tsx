@@ -8,6 +8,7 @@ import { Loader2 } from 'lucide-react'
 import { FileViewerPanel } from '@/components/FileViewerPanel'
 import PipelineViewer from '@/components/pipeline/PipelineViewer'
 import LoadingDocument from '@/components/LoadingDocument'
+import { SignalsColumn } from '@/components/pipeline/SignalsColumn'
 
 export default function AnalyzePage() {
   const params = useParams()
@@ -231,16 +232,19 @@ export default function AnalyzePage() {
           <span className="italic text-[#4A9B8E]">My</span> Board of Ideators
         </h1>
 
-        {/* Document Preview Card - Always Visible */}
+        {/* Document Preview Card - SignalsColumn Design */}
         {!isPipelineRunning && (
-          /* BEFORE LAUNCH: Left-aligned document card with integrated Launch button */
+          /* BEFORE LAUNCH: SignalsColumn card with integrated buttons below */
           <div className="flex justify-start px-4 sm:px-0 mb-8">
-            <div className="w-full max-w-sm">
-              <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-4">
-                <h2 className="text-xl font-semibold text-gray-900">{fileName}</h2>
-                <p className="text-sm text-gray-600">
-                  Ready to analyze this document with your Board of Ideators
-                </p>
+            <div className="w-full max-w-sm space-y-4">
+              {/* SignalsColumn Card */}
+              <SignalsColumn
+                trendImage={undefined} // Triggers teal gradient fallback
+                trendTitle={fileName.replace(/\.(pdf|txt|md)$/i, '')} // Remove file extension
+              />
+
+              {/* Action Buttons Below Card */}
+              <div className="space-y-3">
                 {blobUrl && (
                   <Button
                     variant="outline"
@@ -252,7 +256,7 @@ export default function AnalyzePage() {
                   </Button>
                 )}
 
-                {/* Launch Button - Integrated into card */}
+                {/* Launch Button */}
                 <Button
                   size="lg"
                   onClick={handleLaunch}

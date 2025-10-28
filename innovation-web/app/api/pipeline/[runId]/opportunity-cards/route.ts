@@ -15,9 +15,8 @@ import { prisma } from '@/lib/prisma'
  *       number: number
  *       title: string
  *       summary: string
- *       content?: string
- *       markdown?: string
- *       createdAt?: string
+ *       content: string
+ *       createdAt: string
  *     }
  *   ]
  * }
@@ -62,7 +61,6 @@ export async function GET(
         number: true,
         title: true,
         content: true,
-        markdown: true,
         createdAt: true
       }
     })
@@ -76,7 +74,6 @@ export async function GET(
       title: card.title,
       summary: card.content.substring(0, 200) + (card.content.length > 200 ? '...' : ''),
       content: card.content,
-      markdown: card.markdown || undefined,
       createdAt: card.createdAt.toISOString()
     }))
 
