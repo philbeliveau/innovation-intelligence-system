@@ -2,29 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import StageBox from '@/components/pipeline/StageBox'
-import PipelineTrackCard from '@/components/pipeline/PipelineTrackCard'
-import IdeationTracksSidebar from '@/components/pipeline/IdeationTracksSidebar'
 import PipelineStateMachine from '@/components/pipeline/PipelineStateMachine'
-import { calculateStageStatus } from '@/lib/stageStatus'
-
-interface Stage1Data {
-  selected_track: 1 | 2
-  track_1: {
-    title: string
-    summary: string
-    icon_url: string
-  }
-  track_2: {
-    title: string
-    summary: string
-    icon_url: string
-  }
-  completed_at: string
-}
 
 interface PipelineStatus {
   run_id: string
@@ -38,14 +18,6 @@ interface PipelineStatus {
   brand_name?: string
 }
 
-const stages = [
-  { number: 1, name: 'Tracks', description: 'Track Division - Selected 2 inspiration tracks' },
-  { number: 2, name: 'Signals', description: 'Signal Amplification - Extracting broader trends' },
-  { number: 3, name: 'Lessons', description: 'Universal Translation - Converting to brand-agnostic lessons' },
-  { number: 4, name: 'Context', description: 'Brand Contextualization - Applying to brand' },
-  { number: 5, name: 'Opport.', description: 'Opportunity Generation - Creating 5 actionable innovations' }
-]
-
 export default function PipelinePage() {
   const params = useParams()
   const router = useRouter()
@@ -53,12 +25,24 @@ export default function PipelinePage() {
 
   const [status, setStatus] = useState<'running' | 'completed' | 'error'>('running')
   const [currentStage, setCurrentStage] = useState<number>(0)
-  const [stage1Data, setStage1Data] = useState<Stage1Data | null>(null)
   const [brandName, setBrandName] = useState<string>()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [pipelineStages, setPipelineStages] = useState<Array<{ stageNumber: number; output?: string }>>([])
-  const [opportunityCards, setOpportunityCards] = useState<Array<any>>([])
+  const [pipelineStages, setPipelineStages] = useState<Array<{
+    stageNumber: number
+    status: 'pending' | 'processing' | 'completed' | 'failed'
+    output?: string
+    completedAt?: string
+  }>>([])
+  const [opportunityCards, setOpportunityCards] = useState<Array<{
+    id: string
+    number: number
+    title: string
+    summary: string
+    content?: string
+    markdown?: string
+    createdAt?: string
+  }>>([])
 
 
   useEffect(() => {
@@ -102,24 +86,13 @@ export default function PipelinePage() {
         setStatus(data.status)
         setCurrentStage(data.current_stage)
 
-        // Parse stage1_data from Prisma stages output
-        if (data.stages?.["1"]?.status === "completed" && data.stages["1"].output) {
-          try {
-            const stage1Output = JSON.parse(data.stages["1"].output)
-            setStage1Data(stage1Output)
-          } catch (e) {
-            console.error("Failed to parse Stage 1 output:", e)
-            setStage1Data(null)
-          }
-        } else {
-          setStage1Data(null)
-        }
-
         // Convert stages object to array for PipelineStateMachine
         if (data.stages) {
           const stagesArray = Object.entries(data.stages).map(([stageNum, stageData]) => ({
             stageNumber: parseInt(stageNum),
+            status: stageData.status as 'pending' | 'processing' | 'completed' | 'failed',
             output: stageData.output,
+            completedAt: stageData.completed_at,
           }))
           setPipelineStages(stagesArray)
         }
@@ -213,13 +186,6 @@ export default function PipelinePage() {
     )
   }
 
-
-  // Get selected and non-selected tracks
-  const selectedTrack = stage1Data ? (stage1Data.selected_track === 1 ? stage1Data.track_1 : stage1Data.track_2) : null
-  const nonSelectedTrack = stage1Data ? (stage1Data.selected_track === 1 ? stage1Data.track_2 : stage1Data.track_1) : null
-  const selectedTrackNumber = stage1Data?.selected_track
-  const nonSelectedTrackNumber = stage1Data ? (stage1Data.selected_track === 1 ? 2 : 1) : null
-
   return (
     <div className="min-h-screen bg-[#F5F5F5]">
       {/* Header with Back button and Company name - Mobile responsive */}
@@ -246,75 +212,18 @@ export default function PipelinePage() {
         </div>
       </div>
 
+      {/* Main Content: PipelineStateMachine (Epic 8) */}
       <div className="container mx-auto px-4 md:px-6 py-4 sm:py-8 md:py-12 max-w-7xl">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 md:gap-8 lg:gap-12">
-          {/* Left Sidebar: Stage Boxes + Non-selected Track */}
-          <div className="lg:col-span-3 flex-shrink-0 space-y-3 sm:space-y-4 md:space-y-6">
-            {/* Stage Boxes - Scrollable Container - Reduced height on mobile */}
-            <div className="bg-white rounded-xl shadow-md p-3 sm:p-4 md:p-6 max-h-[400px] sm:max-h-[500px] md:max-h-[700px] overflow-y-auto scrollbar-thin scrollbar-thumb-teal-200 scrollbar-track-gray-100">
-              <h2 className="text-sm sm:text-base md:text-lg font-semibold mb-3 sm:mb-4 md:mb-6 text-gray-900">Pipeline Stages</h2>
-              <div className="flex flex-col gap-4">
-                {stages.map((stage, index) => (
-                  <div key={stage.number}>
-                    <StageBox
-                      stageNumber={stage.number}
-                      stageName={stage.name}
-                      status={calculateStageStatus(stage.number, currentStage)}
-                    />
-                    {index < stages.length - 1 && (
-                      <div className="flex justify-center py-2">
-                        <div className="text-[#5B9A99] text-xl opacity-30">↓</div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Ideation Tracks - Non-selected track - Hidden on mobile to save space */}
-            {currentStage >= 1 && nonSelectedTrack && nonSelectedTrackNumber && (
-              <div className="hidden lg:block flex-shrink-0">
-                <h3 className="text-sm font-semibold text-gray-600 mb-3 px-1">Ideation Tracks</h3>
-                <IdeationTracksSidebar
-                  trackNumber={nonSelectedTrackNumber}
-                  title={nonSelectedTrack.title}
-                  summary={nonSelectedTrack.summary}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Main Content: Selected Track & Detail Panel */}
-          <div className="lg:col-span-9">
-            {/* Selected Track Card (only one, main content area) */}
-            {currentStage >= 1 && (
-              <div className="mb-4 sm:mb-6">
-                <h2 className="text-base sm:text-lg md:text-xl font-semibold mb-3 sm:mb-4">Selected Inspiration Track</h2>
-                {selectedTrack && selectedTrackNumber ? (
-                  <PipelineTrackCard
-                    trackNumber={selectedTrackNumber}
-                    title={selectedTrack.title}
-                    summary={selectedTrack.summary}
-                  />
-                ) : currentStage === 1 ? (
-                  <Skeleton className="h-48" />
-                ) : null}
-              </div>
-            )}
-
-            {/* New Pipeline State Machine UI (Epic 8) */}
-            <PipelineStateMachine
-              currentStage={currentStage}
-              status={status === 'completed' ? 'COMPLETED' : status === 'running' ? 'PROCESSING' : 'FAILED'}
-              pipelineData={{
-                runId,
-                stages: pipelineStages,
-                opportunityCards,
-                brandName,
-              }}
-            />
-          </div>
-        </div>
+        <PipelineStateMachine
+          currentStage={currentStage}
+          status={status === 'completed' ? 'COMPLETED' : status === 'running' ? 'PROCESSING' : 'FAILED'}
+          pipelineData={{
+            runId,
+            stages: pipelineStages,
+            opportunityCards,
+            brandName,
+          }}
+        />
       </div>
     </div>
   )

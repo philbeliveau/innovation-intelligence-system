@@ -186,9 +186,9 @@ export default function ExpandedSparkDetail({
                 {...props}
               />
             ),
-            img: ({ node, ...props }) => {
-              const src = props.src || ''
-              const alt = props.alt || ''
+            img: ({ node, ...props }: any) => {
+              const src = typeof props.src === 'string' ? props.src : ''
+              const alt = typeof props.alt === 'string' ? props.alt : ''
               return (
                 <div className="my-4 rounded-lg overflow-hidden">
                   <Image
@@ -201,7 +201,7 @@ export default function ExpandedSparkDetail({
                 </div>
               )
             },
-            code: ({ inline, ...props }: { inline?: boolean; [key: string]: unknown }) =>
+            code: ({ inline, ...props }: any) =>
               inline ? (
                 <code
                   className="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono"
@@ -212,16 +212,16 @@ export default function ExpandedSparkDetail({
                   <code className="font-mono text-sm" {...props} />
                 </pre>
               ),
-            ul: ({ node, ...props }) => (
+            ul: ({ node, ...props }: any) => (
               <ul className="list-disc list-inside mb-4 space-y-1" {...props} />
             ),
-            ol: ({ node, ...props }) => (
+            ol: ({ node, ...props }: any) => (
               <ol className="list-decimal list-inside mb-4 space-y-1" {...props} />
             ),
-            li: ({ node, ...props }) => (
+            li: ({ node, ...props }: any) => (
               <li className="text-gray-700 leading-7" {...props} />
             ),
-            blockquote: ({ node, ...props }) => (
+            blockquote: ({ node, ...props }: any) => (
               <blockquote
                 className="border-l-4 border-[#5B9A99] pl-4 italic my-4 text-gray-600"
                 {...props}

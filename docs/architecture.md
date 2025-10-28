@@ -136,14 +136,21 @@ graph TB
 | **State Management** | React useState | built-in | Local component state |
 | **File Upload** | react-dropzone | 14.3+ | Drag & drop PDF upload |
 | **Markdown Rendering** | react-markdown | 9.0+ | Display opportunity cards |
+| **Markdown Plugins** | remark-gfm, rehype-sanitize | latest | GFM support + XSS protection (Epic 8) |
+| **PDF Generation** | @react-pdf/renderer | latest | Download sparks as PDF (Epic 8) |
 | **PDF Parsing** | pdf-parse | 1.1.1 | Extract text from PDFs |
 | **YAML Parser** | yaml | 2.3.4 | Load brand profiles |
 | **API Client** | Native fetch | built-in | Server/client data fetching |
+| **Validation** | Zod | 3.22+ | API response validation (Epic 8) |
+| **Database ORM** | Prisma | 5.8+ | PostgreSQL integration (Epic 8) |
+| **Database** | PostgreSQL | latest | Production data storage (Epic 8) |
 | **Backend Runtime** | Python | 3.11 | Existing pipeline (unchanged) |
+| **Backend Framework** | FastAPI | latest | Railway backend (Epic 8) |
 | **Pipeline Framework** | LangChain | 0.1.0 | Existing implementation |
 | **LLM Provider** | OpenRouter | latest | Claude Sonnet 4.5 via existing setup |
 | **File Storage** | Vercel Blob | 0.23+ | PDF storage with public URLs |
-| **Deployment** | Vercel | latest | One-click deploy |
+| **Deployment (Frontend)** | Vercel | latest | Next.js deployment |
+| **Deployment (Backend)** | Railway | latest | Python FastAPI deployment (Epic 8) |
 | **Environment** | Node.js | 20+ | API routes runtime |
 
 ### Why This Stack?
@@ -151,7 +158,10 @@ graph TB
 - ✅ **Next.js 15**: React Server Components reduce client bundle size
 - ✅ **shadcn/ui MCP**: Generate components via MCP tool (`mcp__magic__21st_magic_component_builder`)
 - ✅ **Vercel Blob**: Simple API for file storage without S3 complexity
-- ✅ **No Database**: Avoid Postgres/Drizzle setup overhead
+- ✅ **Prisma + PostgreSQL**: Type-safe database access, replaced file-based storage (Epic 8)
+- ✅ **Zod**: Runtime validation ensures type safety for API responses (Epic 8)
+- ✅ **Railway**: Scalable Python backend deployment with webhook support (Epic 8)
+- ✅ **@react-pdf/renderer**: Server-side PDF generation without external dependencies (Epic 8)
 - ✅ **React Dropzone**: Proven drag & drop library
 - ✅ **Existing Python Pipeline**: Zero refactoring needed
 
@@ -170,11 +180,25 @@ innovation-web/
 │   │   │   │   └── route.ts      # Get current company from cookie
 │   │   │   └── set-company/
 │   │   │       └── route.ts      # Set company cookie
+│   │   ├── pipeline/             # Epic 8 - Story 8.0
+│   │   │   └── [runId]/
+│   │   │       ├── complete/
+│   │   │       │   └── route.ts  # Save opportunity cards webhook
+│   │   │       ├── download/
+│   │   │       │   ├── all/
+│   │   │       │   │   └── route.ts  # Download all sparks PDF
+│   │   │       │   └── spark/
+│   │   │       │       └── [sparkId]/
+│   │   │       │           └── route.ts  # Download single spark PDF
+│   │   │       ├── stage-update/
+│   │   │       │   └── route.ts  # Stage progress webhook
+│   │   │       └── status/
+│   │   │           └── route.ts  # Poll pipeline status
 │   │   ├── run/
 │   │   │   └── route.ts          # Execute pipeline
 │   │   ├── status/
 │   │   │   └── [runId]/
-│   │   │       └── route.ts      # Poll pipeline status
+│   │   │       └── route.ts      # Poll pipeline status (deprecated)
 │   │   └── upload/
 │   │       └── route.ts          # Upload to Vercel Blob
 │   ├── analyze/
