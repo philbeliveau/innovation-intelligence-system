@@ -16,17 +16,25 @@ interface FadeTransitionProps {
 }
 
 /**
- * FadeTransition - Smooth opacity transition wrapper
+ * FadeTransition - Smooth opacity transition wrapper with absolute positioning
  *
  * Used for State 1 ↔ State 2 transitions. Respects user's reduced motion
  * preference by setting duration to 0ms when enabled.
  *
+ * IMPORTANT: Uses absolute positioning to create overlay effect.
+ * Parent container MUST have `position: relative` and defined height.
+ *
  * Performance: Uses only opacity (GPU-accelerated property)
  *
  * @example
- * <FadeTransition isVisible={stage === 2}>
- *   <StateContent />
- * </FadeTransition>
+ * <div className="relative min-h-screen">
+ *   <FadeTransition isVisible={stage === 1}>
+ *     <State1Content />
+ *   </FadeTransition>
+ *   <FadeTransition isVisible={stage === 2}>
+ *     <State2Content />
+ *   </FadeTransition>
+ * </div>
  */
 export const FadeTransition = ({
   isVisible,
@@ -40,13 +48,15 @@ export const FadeTransition = ({
 
   return (
     <div
-      className={`transition-opacity ${className}`}
+      className={`absolute inset-0 transition-opacity ${className}`}
       style={{
         opacity: isVisible ? 1 : 0,
         transitionDuration: `${actualDuration}ms`,
         transitionTimingFunction: EASING_FUNCTION,
-        // Only show in DOM when visible or transitioning
-        display: isVisible || actualDuration > 0 ? 'block' : 'none'
+        // Prevent interaction when not visible
+        pointerEvents: isVisible ? 'auto' : 'none',
+        // Keep in DOM for transition but hide when invisible AND transition done
+        visibility: isVisible || actualDuration > 0 ? 'visible' : 'hidden'
       }}
       onTransitionEnd={onTransitionEnd}
       aria-hidden={!isVisible}

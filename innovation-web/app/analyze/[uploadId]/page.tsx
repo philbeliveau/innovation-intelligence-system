@@ -231,63 +231,62 @@ export default function AnalyzePage() {
           <span className="italic text-[#4A9B8E]">My</span> Board of Ideators
         </h1>
 
-        {!isPipelineRunning ? (
-          /* BEFORE LAUNCH: Document info and launch button */
-          <>
-            <div className="flex justify-center px-4 sm:px-0">
-              <div className="max-w-md text-center space-y-4">
-                <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-2">{fileName}</h2>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Ready to analyze this document with your Board of Ideators
-                  </p>
-                  {blobUrl && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsPanelOpen(true)}
-                      className="w-full"
-                    >
-                      Preview Document
-                    </Button>
-                  )}
-                </div>
+        {/* Document Preview Card - Always Visible */}
+        {!isPipelineRunning && (
+          /* BEFORE LAUNCH: Left-aligned document card with integrated Launch button */
+          <div className="flex justify-start px-4 sm:px-0 mb-8">
+            <div className="w-full max-w-sm">
+              <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-4">
+                <h2 className="text-xl font-semibold text-gray-900">{fileName}</h2>
+                <p className="text-sm text-gray-600">
+                  Ready to analyze this document with your Board of Ideators
+                </p>
+                {blobUrl && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsPanelOpen(true)}
+                    className="w-full"
+                  >
+                    Preview Document
+                  </Button>
+                )}
+
+                {/* Launch Button - Integrated into card */}
+                <Button
+                  size="lg"
+                  onClick={handleLaunch}
+                  disabled={launching}
+                  className="w-full"
+                >
+                  {launching && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {launching ? 'Launching Pipeline...' : 'Launch'}
+                </Button>
+
+                {/* Error Display */}
+                {launchError && (
+                  <Alert variant="destructive">
+                    <AlertDescription className="flex items-center justify-between">
+                      <span>{launchError}</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setLaunchError('')}
+                        className="ml-4"
+                      >
+                        Try Again
+                      </Button>
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
             </div>
+          </div>
+        )}
 
-            {/* Launch Button */}
-            <div className="mt-8 flex flex-col items-center gap-4">
-              <Button
-                size="lg"
-                onClick={handleLaunch}
-                disabled={launching}
-                className="min-w-[200px]"
-              >
-                {launching && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {launching ? 'Launching Pipeline...' : 'Launch'}
-              </Button>
-
-              {/* Error Display */}
-              {launchError && (
-                <Alert variant="destructive" className="max-w-md">
-                  <AlertDescription className="flex items-center justify-between">
-                    <span>{launchError}</span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setLaunchError('')}
-                      className="ml-4"
-                    >
-                      Try Again
-                    </Button>
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-          </>
-        ) : (
+        {isPipelineRunning && (
           /* AFTER LAUNCH: Pipeline viewer */
-          <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
+          <div className="px-4 sm:px-0">
             {runId ? (
               <PipelineViewer
                 runId={runId}

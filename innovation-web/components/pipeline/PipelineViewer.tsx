@@ -216,7 +216,7 @@ export default function PipelineViewer({
   }
 
   return (
-    <div className={inlineMode ? 'space-y-6' : ''}>
+    <div className={inlineMode ? '' : ''}>
       <PipelineStateMachine
         currentStage={currentStage}
         status={status === 'completed' ? 'COMPLETED' : status === 'running' ? 'PROCESSING' : 'FAILED'}

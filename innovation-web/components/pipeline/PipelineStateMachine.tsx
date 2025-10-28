@@ -46,16 +46,20 @@ const determineCurrentState = (
   status: PipelineStatus,
   selectedCardId: string | null | undefined
 ): PipelineState => {
+  // State 4: Detail view (spark selected)
   if (status === 'COMPLETED' && selectedCardId !== null && selectedCardId !== undefined) {
-    return PipelineState.State4 // Detail view
+    return PipelineState.State4
   }
+  // State 3: Grid view (pipeline complete, no selection)
   if (status === 'COMPLETED') {
-    return PipelineState.State3 // Grid view
+    return PipelineState.State3
   }
+  // State 2: Processing stages 2-5
   if (currentStage >= 2 && status === 'PROCESSING') {
-    return PipelineState.State2 // 3-column progress
+    return PipelineState.State2
   }
-  return PipelineState.State1 // Extraction animation
+  // State 1: Extraction animation
+  return PipelineState.State1
 }
 
 export default function PipelineStateMachine({
@@ -120,14 +124,14 @@ export default function PipelineStateMachine({
         [PipelineState.State1]: 'Extracting trend data from document',
         [PipelineState.State2]: 'Processing insights and generating sparks',
         [PipelineState.State3]: `Pipeline complete. Displaying ${pipelineData.opportunityCards?.length || 0} sparks.`,
-        [PipelineState.State4]: 'Viewing spark detail',
+        [PipelineState.State4]: `Viewing spark ${(pipelineData.opportunityCards?.findIndex(c => c.id === activeCardId) || 0) + 1} of ${pipelineData.opportunityCards?.length || 0}`,
       }
       setAnnounceMessage(messages[currentState] || '')
     }
     setPreviousState(currentState)
-  }, [currentState, previousState, pipelineData.opportunityCards?.length])
+  }, [currentState, previousState, pipelineData.opportunityCards?.length, activeCardId])
 
-  // Keyboard navigation for State 4
+  // Keyboard navigation for State 4 (detail view)
   useEffect(() => {
     if (currentState !== PipelineState.State4 || !activeCardId || !pipelineData.opportunityCards) {
       return
@@ -159,7 +163,8 @@ export default function PipelineStateMachine({
       {/* Screen reader announcements */}
       {announceMessage && <StateAnnouncer message={announceMessage} />}
 
-      <div className="relative">
+      {/* State Container: Fixed height with relative positioning for absolute overlays */}
+      <div className="relative min-h-screen">
         {/* State 1: Extraction Animation */}
         <FadeTransition isVisible={currentState === PipelineState.State1}>
           <div
@@ -190,11 +195,12 @@ export default function PipelineStateMachine({
             const hasStage1Data = stage1Data && Object.keys(stage1Data).length > 0
 
             // Extract data for columns with fallbacks for missing structured data
-            const trendTitle = stage1Data?.trend_title || stage1Data?.inspiration_1_title || 'Analyzing Document Signal...'
-            const trendImage = stage1Data?.trend_image || undefined
-            const coreMechanism = stage1Data?.core_mechanism || stage1Data?.inspiration_1_content?.substring(0, 200) || 'Extracting transferable patterns...'
-            const businessImpact = stage1Data?.business_impact || 'Analyzing brand relevance...'
-            const patternTransfersTo = stage1Data?.pattern_transfers_to || []
+            // Backend returns camelCase field names (trendTitle, coreMechanism, etc.)
+            const trendTitle = stage1Data?.trendTitle || stage1Data?.trend_title || 'Analyzing Document Signal...'
+            const trendImage = stage1Data?.trendImage || stage1Data?.trend_image || undefined
+            const coreMechanism = stage1Data?.coreMechanism || stage1Data?.core_mechanism || 'Extracting transferable patterns...'
+            const businessImpact = stage1Data?.businessImpact || stage1Data?.business_impact || 'Analyzing brand relevance...'
+            const patternTransfersTo = stage1Data?.patternTransfersTo || stage1Data?.pattern_transfers_to || []
 
             // Convert opportunity cards to spark previews
             const sparks =
@@ -239,39 +245,38 @@ export default function PipelineStateMachine({
           </div>
         </FadeTransition>
 
-        {/* State 3: Sparks Grid with Slide-Up Animation */}
+        {/* State 3: Sparks Grid View */}
         <FadeTransition isVisible={currentState === PipelineState.State3}>
           <div data-testid="state-3">
-          {/* State 3: All Complete - Sparks Grid View */}
-          <IconNavigation activeSection="sparks" />
-          <SparksGrid
-            sparks={
-              pipelineData.opportunityCards?.map((card) => ({
-                id: card.id,
-                title: card.title,
-                summary: card.summary || '',
-                heroImageUrl: undefined, // TODO: Add hero images
-                content: card.content || card.markdown || '',
-              })) || []
-            }
-            onCardClick={handleCardSelect}
-          />
-          <ActionBar
-            onDownloadAll={handleDownloadAll}
-            onNewPipeline={handleNewPipeline}
-            isDownloading={isDownloading}
-            sparkCount={pipelineData.opportunityCards?.length || 0}
-          />
+            <IconNavigation activeSection="sparks" />
+            <SparksGrid
+              sparks={
+                pipelineData.opportunityCards?.map((card) => ({
+                  id: card.id,
+                  title: card.title,
+                  summary: card.summary || '',
+                  heroImageUrl: undefined, // TODO: Add hero images
+                  content: card.content || card.markdown || '',
+                })) || []
+              }
+              onCardClick={handleCardSelect}
+            />
+            <ActionBar
+              onDownloadAll={handleDownloadAll}
+              onNewPipeline={handleNewPipeline}
+              isDownloading={isDownloading}
+              sparkCount={pipelineData.opportunityCards?.length || 0}
+            />
           </div>
         </FadeTransition>
 
-        {/* State 4: Detail View with Sidebar Collapse Animation */}
-        {currentState === PipelineState.State4 && activeCardId && (
+        {/* State 4: Detail View with Collapsed Sidebar */}
+        <FadeTransition isVisible={currentState === PipelineState.State4 && !!activeCardId}>
           <div
             className="flex flex-row h-full"
             data-testid="state-4"
           >
-            {/* State 4: Collapsed Sidebar + Expanded Detail View */}
+            {/* Collapsed Sidebar */}
             <div className="hidden md:block">
               <CollapsedSidebar
                 sparks={
@@ -329,7 +334,7 @@ export default function PipelineStateMachine({
             )
           })()}
           </div>
-        )}
+        </FadeTransition>
       </div>
     </>
   )
