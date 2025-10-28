@@ -182,16 +182,18 @@ export default function PipelineStateMachine({
         <FadeTransition isVisible={currentState === PipelineState.State2}>
           <div data-testid="state-2">
           {(() => {
-            // Parse stage outputs
-            const stage1Data = parseStageOutput(
-              pipelineData.stages.find((s) => s.stageNumber === 1)?.output
-            )
+            // Parse stage outputs - handle both JSON object and string formats
+            const stage1Output = pipelineData.stages.find((s) => s.stageNumber === 1)?.output
+            const stage1Data = typeof stage1Output === 'string' ? parseStageOutput(stage1Output) : stage1Output
 
-            // Extract data for columns
-            const trendTitle = stage1Data?.trend_title || 'Processing trend data...'
-            const trendImage = stage1Data?.trend_image
-            const coreMechanism = stage1Data?.core_mechanism || 'Extracting mechanisms...'
-            const businessImpact = stage1Data?.business_impact || 'Analyzing business impact...'
+            // Stage 1 is COMPLETED if we have any data at all
+            const hasStage1Data = stage1Data && Object.keys(stage1Data).length > 0
+
+            // Extract data for columns with fallbacks for missing structured data
+            const trendTitle = stage1Data?.trend_title || stage1Data?.inspiration_1_title || 'Analyzing Document Signal...'
+            const trendImage = stage1Data?.trend_image || undefined
+            const coreMechanism = stage1Data?.core_mechanism || stage1Data?.inspiration_1_content?.substring(0, 200) || 'Extracting transferable patterns...'
+            const businessImpact = stage1Data?.business_impact || 'Analyzing brand relevance...'
             const patternTransfersTo = stage1Data?.pattern_transfers_to || []
 
             // Convert opportunity cards to spark previews
@@ -205,13 +207,13 @@ export default function PipelineStateMachine({
 
             return (
               <ThreeColumnLayout>
-                {stage1Data ? (
+                {hasStage1Data ? (
                   <SignalsColumn trendImage={trendImage} trendTitle={trendTitle} />
                 ) : (
                   <SignalsColumnSkeleton />
                 )}
 
-                {stage1Data ? (
+                {hasStage1Data ? (
                   <TransferableInsightsColumn
                     coreMechanism={coreMechanism}
                     businessImpact={businessImpact}

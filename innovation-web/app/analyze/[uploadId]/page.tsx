@@ -293,8 +293,9 @@ export default function AnalyzePage() {
                 runId={runId}
                 inlineMode={true}
                 onComplete={(id) => {
-                  console.log('[Analyze] Pipeline completed, redirecting to results:', id)
-                  router.push(`/results/${id}`)
+                  console.log('[Analyze] Pipeline completed! State 3 (Sparks Grid) should now be visible')
+                  // Don't redirect - let user see State 3/4 (Sparks Grid and Detail View)
+                  // User can manually navigate via "NEW PIPELINE" button if desired
                 }}
                 onError={(err) => {
                   console.error('[Analyze] Pipeline error callback:', err)
