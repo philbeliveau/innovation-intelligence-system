@@ -4,7 +4,8 @@ import { prisma } from '@/lib/prisma'
 interface OpportunityPayload {
   number?: number
   title: string
-  markdown: string
+  markdown?: string
+  fullContent?: string  // Backend sends this field name
   content?: string
 }
 
@@ -102,8 +103,9 @@ export async function POST(
           console.warn(`[Webhook] Skipping opportunity ${opp.number || 'unknown'} - missing title`)
           return false
         }
-        if (!opp.markdown && !opp.content) {
-          console.warn(`[Webhook] Skipping opportunity ${opp.number || 'unknown'} "${opp.title}" - missing markdown/content`)
+        // Check for content in any of the three possible field names
+        if (!opp.markdown && !opp.fullContent && !opp.content) {
+          console.warn(`[Webhook] Skipping opportunity ${opp.number || 'unknown'} "${opp.title}" - missing markdown/fullContent/content`)
           return false
         }
         return true
@@ -112,7 +114,7 @@ export async function POST(
         runId,
         number: opp.number || index + 1,
         title: opp.title,
-        content: opp.markdown || opp.content || '',
+        content: opp.fullContent || opp.markdown || opp.content || '',  // Try fullContent first (backend's field name)
         isStarred: false
       }))
 
