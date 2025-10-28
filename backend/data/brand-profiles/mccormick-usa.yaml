@@ -1,9 +1,9 @@
-brand_name: McCormick USA
+company_name: McCormick USA
 country: United States
 industry: Food & Beverage / Spices & Seasonings
 positioning: "World's leading manufacturer, marketer, and distributor of spices, seasoning mixes, condiments, and flavorful products, operating in a $150 billion global flavor market with a 'more and faster' innovation strategy reducing time-to-market by 50%."
 
-product_portfolio:
+portfolio:
   - "McCormick - Flagship spices, seasonings, extracts, and food colors"
   - "French's - Premium mustard and condiments leader"
   - "Frank's RedHot - Iconic hot sauce brand ('I put that $#!t on everything')"

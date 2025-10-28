@@ -1,9 +1,9 @@
-brand_name: Decathlon
+company_name: Decathlon
 country: France (Global)
 industry: Sporting Goods Retail
 positioning: "World's largest sporting goods retailer with 1,817 stores across 79 countries operating a vertically integrated model controlling research, design, production, logistics, and distribution to make sport accessible to all through affordable, high-quality equipment for 70+ sports categories."
 
-product_portfolio:
+portfolio:
   - "Quechua - Mountain sports including hiking, camping, and trekking equipment and apparel"
   - "Kalenji - Running and trail running shoes, apparel, and accessories"
   - "Domyos - Fitness and gym equipment, weights, yoga mats, and fitness apparel"
