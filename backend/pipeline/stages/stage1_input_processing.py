@@ -112,28 +112,150 @@ class Stage1Chain:
                 return result
 
             except json.JSONDecodeError as e:
-                logging.error(f"Failed to parse Stage 1 JSON output: {e}")
-                logging.error(f"Raw output: {raw_output[:500]}...")
+                logging.warning(f"Failed to parse Stage 1 JSON output: {e}")
+                logging.info("Attempting to extract structured data from markdown output...")
 
-                # Fallback to raw text output
-                result[self.output_key] = {
-                    "extractedText": raw_output,
-                    "trendTitle": "Analysis",
-                    "trendImage": None,
-                    "coreMechanism": "",
-                    "businessImpact": "",
-                    "patternTransfersTo": [],
-                    "mechanisms": [],
-                    "abstractionTest": "",
-                    "evidenceStrength": "LOW",
-                    "cpgRelevance": "",
-                    "parse_error": str(e)
-                }
+                # Try to extract structured fields from markdown format
+                parsed_data = self._parse_markdown_output(raw_output, input_text)
+
+                result[self.output_key] = parsed_data
+                result['raw_text'] = raw_output
+
+                logging.info("Stage 1 completed with markdown parsing fallback")
                 return result
 
         except Exception as e:
             logging.error(f"Stage 1 execution failed: {e}", exc_info=True)
             raise
+
+    def _parse_markdown_output(self, markdown_text: str, input_text: str) -> Dict[str, Any]:
+        """Parse structured fields from markdown-formatted Stage 1 output.
+
+        This handles cases where the LLM returns markdown instead of JSON.
+
+        Args:
+            markdown_text: Markdown output from LLM
+            input_text: Original input text for fallback
+
+        Returns:
+            Dictionary with extracted structured fields
+        """
+        import re
+
+        # Initialize with defaults
+        extracted = {
+            "extractedText": input_text[:500],
+            "trendTitle": None,
+            "trendImage": None,
+            "coreMechanism": "",
+            "businessImpact": "",
+            "patternTransfersTo": [],
+            "mechanisms": [],
+            "abstractionTest": "",
+            "evidenceStrength": "MEDIUM",
+            "cpgRelevance": "",
+            "stage1_output": markdown_text  # Store full markdown
+        }
+
+        # Extract trend title from document
+        # Look for title patterns in the input text (first few lines of all-caps text)
+        title_lines = []
+        for line in input_text.split('\n')[:5]:
+            line = line.strip()
+            if line and line.isupper() and len(line.split()) <= 4:
+                title_lines.append(line)
+            elif title_lines:  # Stop after title ends
+                break
+
+        if title_lines:
+            extracted["trendTitle"] = ' '.join(title_lines)
+
+        # Extract core mechanism from markdown
+        # Pattern: Look for "The Underlying Mechanism:" section
+        mechanism_match = re.search(
+            r'\*\*The Underlying Mechanism:\*\*\s*(.+?)(?=\n\n|\*\*|$)',
+            markdown_text,
+            re.DOTALL
+        )
+        if mechanism_match:
+            extracted["coreMechanism"] = mechanism_match.group(1).strip()
+        else:
+            # Fallback: Try first mechanism section
+            mech_fallback = re.search(
+                r'## Mechanism \d+:.*?\n\n(.+?)(?=\n\n|\*\*)',
+                markdown_text,
+                re.DOTALL
+            )
+            if mech_fallback:
+                extracted["coreMechanism"] = mech_fallback.group(1).strip()[:500]
+
+        # Extract business impact
+        # Pattern: Look for "Why It Works:" section
+        impact_match = re.search(
+            r'\*\*Why It Works:\*\*\s*(.+?)(?=\n\n|\*\*|$)',
+            markdown_text,
+            re.DOTALL
+        )
+        if impact_match:
+            extracted["businessImpact"] = impact_match.group(1).strip()
+
+        # Extract CPG relevance
+        cpg_match = re.search(
+            r'\*\*CPG Relevance:\*\*\s*(.+?)(?=\n\n|$)',
+            markdown_text,
+            re.DOTALL
+        )
+        if cpg_match:
+            extracted["cpgRelevance"] = cpg_match.group(1).strip()
+
+        # Extract evidence strength
+        evidence_match = re.search(
+            r'\*\*Evidence Strength:\*\*\s*(HIGH|MEDIUM|LOW)',
+            markdown_text
+        )
+        if evidence_match:
+            extracted["evidenceStrength"] = evidence_match.group(1)
+
+        # Extract pattern transfers to (look in CPG Relevance or application sections)
+        # First try to find applications mentioned in CPG Relevance
+        if extracted["cpgRelevance"]:
+            # Look for phrases like "could apply to", "could be applied to", mentions of product types
+            app_items = re.findall(
+                r'(?:apply|applies|applying|relevant)\s+to\s+([a-z\s,]+?)(?:\.|,\s*while|\s+or\s+)',
+                extracted["cpgRelevance"],
+                re.IGNORECASE
+            )
+            if app_items:
+                # Split comma-separated items
+                all_items = []
+                for item in app_items:
+                    all_items.extend([x.strip() for x in item.split(',') if x.strip()])
+                extracted["patternTransfersTo"] = all_items[:6]
+            else:
+                # Fallback: Extract key product/category nouns
+                product_items = re.findall(
+                    r'\b(apps?|kits?|brands?|products?|lines?|launches?|wellness\s+\w+|fitness\s+\w+|food\s+\w+)\b',
+                    extracted["cpgRelevance"],
+                    re.IGNORECASE
+                )
+                extracted["patternTransfersTo"] = list(set(product_items))[:6] if product_items else []
+
+        # If still empty, search broadly in the document
+        if not extracted["patternTransfersTo"]:
+            transfers_section = re.search(
+                r'(?:could\s+)?(?:apply|transfer|relevant)\s+to[:\s]+(.+?)(?=\n\n|##|$)',
+                markdown_text,
+                re.DOTALL | re.IGNORECASE
+            )
+            if transfers_section:
+                items = re.findall(r'(?:[-•]\s*)?([a-z\s]+)(?:,|\n|$)', transfers_section.group(1), re.IGNORECASE)
+                extracted["patternTransfersTo"] = [item.strip() for item in items if item.strip() and len(item.strip()) > 3][:6]
+
+        logging.info(f"Extracted structured data: trendTitle={extracted['trendTitle']}, "
+                    f"coreMechanism length={len(extracted['coreMechanism'])}, "
+                    f"businessImpact length={len(extracted['businessImpact'])}")
+
+        return extracted
 
     def save_output(self, output: str, output_dir: Path, selected_track: int = 1) -> Path:
         """Save Stage 1 output to markdown and JSON files.
