@@ -209,7 +209,21 @@ export default function PipelineStateMachine({
                 title: card.title,
                 summary: card.summary,
                 heroImageUrl: undefined, // TODO: Add hero image to opportunity cards
+                isPlaceholder: false,
               })) || []
+
+            // Show placeholder cards when stage >= 2 and no real sparks yet
+            const displaySparks = sparks.length > 0
+              ? sparks
+              : (currentStage >= 2 && currentStage < 5)
+                ? Array.from({ length: 2 }, (_, i) => ({
+                    number: i + 1,
+                    title: "Generating spark...",
+                    summary: "Innovation opportunity being created based on your insights",
+                    heroImageUrl: undefined,
+                    isPlaceholder: true,
+                  }))
+                : []
 
             return (
               <ThreeColumnLayout>
@@ -234,8 +248,8 @@ export default function PipelineStateMachine({
                   <TransferableInsightsColumnSkeleton />
                 )}
 
-                {sparks.length > 0 ? (
-                  <SparksPreviewColumn sparks={sparks} isGenerating={currentStage < 5} />
+                {displaySparks.length > 0 ? (
+                  <SparksPreviewColumn sparks={displaySparks} isGenerating={currentStage < 5} />
                 ) : (
                   <SparksPreviewColumnSkeleton />
                 )}
