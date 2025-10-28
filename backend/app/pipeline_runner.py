@@ -343,7 +343,16 @@ def execute_pipeline_background(
         prisma_client.mark_stage_complete(run_id, 1, flattened_output)
 
         # Extract stage1 output text for Stage 2
-        stage1_output_text = stage1_result.get("stage1_output", "")
+        # Stage 2 needs the raw LLM output (JSON string or markdown text)
+        stage1_output_for_stage2 = stage1_result.get("stage1_output")
+
+        if isinstance(stage1_output_for_stage2, dict):
+            # If it's a dict (structured fields), convert back to JSON string for Stage 2
+            import json
+            stage1_output_text = json.dumps(stage1_output_for_stage2, indent=2)
+        else:
+            # If it's already a string, use as-is
+            stage1_output_text = stage1_output_for_stage2 or ""
 
         # Stage 2: Signal Amplification
         logger.info(f"[{run_id}] Starting Stage 2: Signal Amplification")
