@@ -143,21 +143,48 @@ export async function POST(
 
     console.log(`[Webhook] Created ${cardsCreated}/${opportunities.length} opportunity cards`)
 
-    // 7. Save stage outputs as InspirationReport
-    const stages = body.stageOutputs || {}
-
+    // 7. Fetch stage outputs from StageOutput table and create InspirationReport
     try {
+      // Get all stage outputs from database (already saved by backend during pipeline execution)
+      const stageOutputs = await prisma.stageOutput.findMany({
+        where: { runId },
+        orderBy: { stageNumber: 'asc' }
+      })
+
+      console.log(`[Webhook] Found ${stageOutputs.length} stage outputs in database`)
+
+      // Map stage outputs by stage number
+      const stageMap = new Map<number, string>()
+      stageOutputs.forEach(stage => {
+        stageMap.set(stage.stageNumber, stage.output)
+      })
+
+      // Extract track titles from stage 1 if available
+      let selectedTrack = ""
+      let nonSelectedTrack = ""
+
+      const stage1Output = stageMap.get(1)
+      if (stage1Output) {
+        try {
+          const stage1Data = JSON.parse(stage1Output)
+          selectedTrack = stage1Data.inspirations?.[0]?.title || stage1Data.trendTitle || ""
+          nonSelectedTrack = stage1Data.inspirations?.[1]?.title || ""
+        } catch (e) {
+          console.warn(`[Webhook] Could not parse stage 1 output for track titles`)
+        }
+      }
+
+      // Create inspiration report with stage outputs from database
       await prisma.inspirationReport.create({
         data: {
           runId,
-          selectedTrack: stages.stage1?.inspirations?.[0]?.title || "",
-          nonSelectedTrack: stages.stage1?.inspirations?.[1]?.title || "",
-          // Extract markdown output from each stage's result object
-          stage1Output: stages.stage1?.stage1_output || JSON.stringify(stages.stage1 || {}),
-          stage2Output: stages.stage2?.stage2_output || JSON.stringify(stages.stage2 || {}),
-          stage3Output: stages.stage3?.stage3_output || JSON.stringify(stages.stage3 || {}),
-          stage4Output: stages.stage4?.stage4_output || JSON.stringify(stages.stage4 || {}),
-          stage5Output: stages.stage5?.stage5_output || JSON.stringify(stages.stage5 || {})
+          selectedTrack,
+          nonSelectedTrack,
+          stage1Output: stageMap.get(1) || "",
+          stage2Output: stageMap.get(2) || "",
+          stage3Output: stageMap.get(3) || "",
+          stage4Output: stageMap.get(4) || "",
+          stage5Output: stageMap.get(5) || ""
         }
       })
       console.log(`[Webhook] Created inspiration report for run ${runId}`)
