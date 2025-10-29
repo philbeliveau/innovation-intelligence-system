@@ -269,6 +269,7 @@ function hashString(str: string): number {
 export function UploadHistoryCard({ upload, onDelete }: UploadHistoryCardProps) {
   const router = useRouter()
   const [relativeTime, setRelativeTime] = useState('')
+  const [pdfThumbnail, setPdfThumbnail] = useState<string | null>(null)
 
   // Generate consistent color scheme and content based on filename
   const { colorScheme, category, description } = useMemo(() => {
@@ -281,6 +282,63 @@ export function UploadHistoryCard({ upload, onDelete }: UploadHistoryCardProps) 
       description: generateDescription(upload.filename),
     }
   }, [upload.filename])
+
+  // Generate PDF thumbnail for background
+  useEffect(() => {
+    if (!upload.blob_url) {
+      console.log('[UploadHistoryCard] No blob_url provided')
+      return
+    }
+
+    console.log('[UploadHistoryCard] Loading PDF thumbnail from:', upload.blob_url)
+
+    const loadPdfThumbnail = async () => {
+      try {
+        // Dynamically import pdf.js - use webpack build for Next.js
+        const pdfjsLib = await import('pdfjs-dist/webpack.mjs')
+        console.log('[UploadHistoryCard] PDF.js loaded, version:', pdfjsLib.version)
+
+        const loadingTask = pdfjsLib.getDocument(upload.blob_url)
+        console.log('[UploadHistoryCard] Loading document...')
+
+        const pdf = await loadingTask.promise
+        console.log('[UploadHistoryCard] PDF loaded, pages:', pdf.numPages)
+
+        const page = await pdf.getPage(1)
+        console.log('[UploadHistoryCard] First page loaded')
+
+        const viewport = page.getViewport({ scale: 0.5 })
+        const canvas = document.createElement('canvas')
+        const context = canvas.getContext('2d')
+
+        if (!context) {
+          console.error('[UploadHistoryCard] Failed to get canvas context')
+          return
+        }
+
+        canvas.height = viewport.height
+        canvas.width = viewport.width
+        console.log('[UploadHistoryCard] Canvas size:', canvas.width, 'x', canvas.height)
+
+        await page.render({
+          canvasContext: context,
+          viewport: viewport,
+        }).promise
+
+        console.log('[UploadHistoryCard] Page rendered to canvas')
+
+        const dataUrl = canvas.toDataURL()
+        console.log('[UploadHistoryCard] Thumbnail generated, length:', dataUrl.length)
+        setPdfThumbnail(dataUrl)
+      } catch (error) {
+        console.error('[UploadHistoryCard] Failed to generate PDF thumbnail:', error)
+        // Fallback to just gradient
+        setPdfThumbnail(null)
+      }
+    }
+
+    loadPdfThumbnail()
+  }, [upload.blob_url])
 
   // Update relative time on mount and every minute
   useEffect(() => {
@@ -371,63 +429,54 @@ export function UploadHistoryCard({ upload, onDelete }: UploadHistoryCardProps) 
         </button>
       )}
 
-      {/* Decorative background graphic */}
-      <div
-        className="relative overflow-hidden h-[200px]"
-        style={{
-          background: `linear-gradient(to bottom right, ${colorScheme.from}, ${colorScheme.via}, ${colorScheme.to})`
-        }}
-      >
-        {/* Abstract wave shapes */}
-        <div className="absolute inset-0">
-          <svg className="absolute w-full h-full" viewBox="0 0 300 200" preserveAspectRatio="none">
-            <defs>
-              <linearGradient id={`grad1-${upload.upload_id}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style={{stopColor: colorScheme.grad1Start, stopOpacity: 1}} />
-                <stop offset="100%" style={{stopColor: colorScheme.grad1End, stopOpacity: 1}} />
-              </linearGradient>
-              <linearGradient id={`grad2-${upload.upload_id}`} x1="0%" y1="100%" x2="100%" y2="0%">
-                <stop offset="0%" style={{stopColor: colorScheme.grad2Start, stopOpacity: 0.8}} />
-                <stop offset="100%" style={{stopColor: colorScheme.grad2End, stopOpacity: 0.6}} />
-              </linearGradient>
-            </defs>
-
-            {/* Wave shapes */}
-            <ellipse cx="250" cy="80" rx="120" ry="100" fill={`url(#grad1-${upload.upload_id})`} opacity="0.7" />
-            <ellipse cx="80" cy="150" rx="100" ry="80" fill={`url(#grad2-${upload.upload_id})`} opacity="0.6" />
-            <circle cx="200" cy="160" r="60" fill={colorScheme.circle} opacity="0.5" />
-          </svg>
+      {/* Hero Image with PDF thumbnail */}
+      <div className="relative w-full h-[200px]">
+        <div className="relative w-full h-full overflow-hidden bg-gray-100">
+          {/* PDF thumbnail - extremely light blur */}
+          {pdfThumbnail ? (
+            <>
+              <div className="absolute inset-0">
+                <img
+                  src={pdfThumbnail}
+                  alt="Document preview"
+                  className="w-full h-full object-cover blur-sm"
+                />
+              </div>
+              {console.log('[UploadHistoryCard] Rendering PDF thumbnail in UI')}
+            </>
+          ) : (
+            <>
+              {/* Fallback gradient when no PDF */}
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: `linear-gradient(to bottom right, ${colorScheme.from}, ${colorScheme.to})`
+                }}
+              />
+              {console.log('[UploadHistoryCard] No thumbnail to render, showing gradient only')}
+            </>
+          )}
         </div>
 
-        {/* Content overlay */}
-        <div className="relative p-5 h-full flex flex-col">
-          {/* Top section */}
-          <div className="mb-auto">
-            <div className="text-xs font-bold text-black/70 mb-2">
-              {monthYear}
-            </div>
-            <div className="text-lg font-black text-black uppercase mb-1">
+        {/* Title overlay at bottom with category badge */}
+        <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm p-4 z-20">
+          <div className="mb-1.5">
+            <span className="inline-block text-xs font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
               {category}
-            </div>
-            <div className="flex items-center gap-1 text-xs font-bold text-black/60">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V9.99h7V2.95l8 3.98v7.06h-8z"/>
-              </svg>
-              <span className="uppercase tracking-wide">Document Analysis</span>
-            </div>
+            </span>
           </div>
+          <p className="text-sm text-gray-900 font-medium leading-relaxed">
+            {displayFilename}
+          </p>
         </div>
       </div>
 
       {/* Bottom white section */}
       <div className="p-5 bg-white border-t-[3px] border-black">
-        <h3 className="text-base font-black text-black uppercase mb-2 leading-tight">
-          {displayFilename}
-        </h3>
-        <p className="text-sm text-black/70 line-clamp-2">
+        <p className="text-sm text-black/70 line-clamp-2 mb-3">
           {description}
         </p>
-        <div className="mt-3 text-xs text-black/50 font-medium">
+        <div className="text-xs text-black/50 font-medium">
           {relativeTime}
         </div>
       </div>
