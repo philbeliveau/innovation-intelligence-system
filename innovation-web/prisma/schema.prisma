@@ -62,6 +62,16 @@ model PipelineRun {
   createdAt         DateTime           @default(now())
   completedAt       DateTime?
   duration          Int?
+
+  // Stage Outputs - JSON storage for pipeline analysis data
+  stage1Output       Json?              // { extractedText: string, mechanisms: array }
+  stage2Output       Json?              // { signals: array }
+  stage3Output       Json?              // { insights: array }
+  stage4Output       Json?              // { preliminary: array }
+
+  // Full Report - Complete markdown report
+  fullReportMarkdown String?            @db.Text
+
   inspirationReport InspirationReport?
   opportunityCards  OpportunityCard[]
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
