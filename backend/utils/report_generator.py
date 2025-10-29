@@ -206,7 +206,11 @@ def _build_insights_section(insights: List[Dict[str, Any]]) -> str:
 
 
 def _build_opportunity_cards_section(opportunity_cards: List[Dict[str, Any]]) -> str:
-    """Build opportunity cards section"""
+    """Build opportunity cards section
+
+    Note: Content is NOT sanitized because it's already formatted markdown
+    from the opportunity generation stage.
+    """
     section = "## Opportunity Cards\n\n"
 
     if not opportunity_cards:
@@ -215,11 +219,12 @@ def _build_opportunity_cards_section(opportunity_cards: List[Dict[str, Any]]) ->
 
     for i, card in enumerate(opportunity_cards, 1):
         title = card.get('title', 'Untitled')
+        # Get content/markdown - already formatted, don't sanitize
         content = card.get('content', card.get('markdown', 'No content'))
 
         section += f"""### Opportunity {i}: {sanitize_markdown(title)}
 
-{sanitize_markdown(content)}
+{content}
 
 ---
 
