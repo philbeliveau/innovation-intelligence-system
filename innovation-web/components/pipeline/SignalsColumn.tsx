@@ -108,9 +108,8 @@ export const SignalsColumn: React.FC<SignalsColumnProps> = ({
 
     const loadPdfThumbnail = async () => {
       try {
-        // Dynamically import pdf.js to avoid SSR issues
-        const pdfjsLib = await import('pdfjs-dist')
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+        // Dynamically import pdf.js - use webpack build for Next.js
+        const pdfjsLib = await import('pdfjs-dist/webpack.mjs')
 
         const pdf = await pdfjsLib.getDocument(blobUrl).promise
         const page = await pdf.getPage(1)
