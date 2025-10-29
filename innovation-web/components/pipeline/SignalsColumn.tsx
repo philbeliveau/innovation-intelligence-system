@@ -7,6 +7,7 @@ interface SignalsColumnProps {
   trendTitle: string
   trendDescription?: string
   onClick?: () => void
+  blobUrl?: string // Optional PDF URL for blurred preview background
 }
 
 // Color schemes for random assignment (same as UploadHistoryCard)
@@ -86,6 +87,7 @@ export const SignalsColumn: React.FC<SignalsColumnProps> = ({
   trendImage,
   trendTitle,
   onClick,
+  blobUrl,
 }) => {
   // Generate consistent color scheme and category based on title
   const { colorScheme, category } = useMemo(() => {
@@ -123,16 +125,31 @@ export const SignalsColumn: React.FC<SignalsColumnProps> = ({
               />
             </div>
           ) : (
-            <div
-              className="w-full h-full"
-              style={{
-                background: `linear-gradient(to bottom right, ${colorScheme.from}, ${colorScheme.to})`
-              }}
-            />
+            <div className="relative w-full h-full overflow-hidden">
+              {/* Gradient background layer */}
+              <div
+                className="absolute inset-0 z-10"
+                style={{
+                  background: `linear-gradient(to bottom right, ${colorScheme.from}, ${colorScheme.to})`
+                }}
+              />
+
+              {/* Blurred PDF preview layer (if available) */}
+              {blobUrl && (
+                <div className="absolute inset-0 z-0">
+                  <iframe
+                    src={`${blobUrl}#view=FitH`}
+                    className="w-full h-full blur-3xl scale-110 opacity-30"
+                    title="Document preview background"
+                    style={{ pointerEvents: 'none' }}
+                  />
+                </div>
+              )}
+            </div>
           )}
 
           {/* Title overlay at bottom with category badge */}
-          <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm p-4">
+          <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm p-4 z-20">
             <div className="mb-1.5">
               <span className="inline-block text-xs font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
                 {category}

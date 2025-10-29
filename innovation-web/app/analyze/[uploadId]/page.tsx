@@ -243,8 +243,9 @@ export default function AnalyzePage() {
                 className={blobUrl ? 'cursor-pointer' : ''}
               >
                 <SignalsColumn
-                  trendImage={undefined} // Triggers teal gradient fallback
+                  trendImage={undefined} // Triggers gradient with blurred PDF preview
                   trendTitle={fileName.replace(/\.(pdf|txt|md)$/i, '')} // Remove file extension
+                  blobUrl={blobUrl || undefined} // Pass blob URL for blurred preview background
                 />
               </div>
 
