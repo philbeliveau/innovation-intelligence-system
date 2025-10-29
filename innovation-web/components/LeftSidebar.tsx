@@ -165,22 +165,18 @@ export function LeftSidebar() {
               <button
                 onClick={() => setIsSticky(!isSticky)}
                 className="ml-auto p-1.5 hover:bg-teal-50 rounded-full transition-all"
-                title={isSticky ? 'Unstick sidebar' : 'Stick sidebar'}
-                aria-label={isSticky ? 'Unstick sidebar' : 'Stick sidebar'}
+                title={isSticky ? 'Collapse sidebar' : 'Keep sidebar visible'}
+                aria-label={isSticky ? 'Collapse sidebar' : 'Keep sidebar visible'}
               >
                 {isSticky ? (
-                  // Locked icon
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <rect x="5" y="11" width="14" height="10" rx="2" stroke="#5B9A99" strokeWidth="2"/>
-                    <path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="#5B9A99" strokeWidth="2" strokeLinecap="round"/>
-                    <circle cx="12" cy="16" r="1.5" fill="#5B9A99"/>
+                  // Left arrow (collapse) - solid teal
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5B9A99" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M15 18l-6-6 6-6" />
                   </svg>
                 ) : (
-                  // Unlocked icon
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <rect x="5" y="11" width="14" height="10" rx="2" stroke="#9CA3AF" strokeWidth="2"/>
-                    <path d="M8 11V7a4 4 0 0 1 8 0v3" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"/>
-                    <circle cx="12" cy="16" r="1.5" fill="#9CA3AF"/>
+                  // Left arrow (collapsed) - light gray
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M15 18l-6-6 6-6" />
                   </svg>
                 )}
               </button>
