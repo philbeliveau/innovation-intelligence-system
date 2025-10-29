@@ -18,7 +18,7 @@ export function useSidebarContext() {
 }
 
 export function LayoutWithSidebar({ children }: { children: ReactNode }) {
-  const [isSidebarSticky, setIsSidebarSticky] = useState(false)
+  const [isSidebarSticky, setIsSidebarSticky] = useState(true)
 
   return (
     <SidebarContext.Provider value={{ isSidebarSticky, setIsSidebarSticky }}>
