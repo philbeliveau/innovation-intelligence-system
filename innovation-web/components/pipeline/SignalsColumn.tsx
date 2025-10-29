@@ -110,7 +110,7 @@ export const SignalsColumn: React.FC<SignalsColumnProps> = ({
       try {
         // Dynamically import pdf.js to avoid SSR issues
         const pdfjsLib = await import('pdfjs-dist')
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
 
         const pdf = await pdfjsLib.getDocument(blobUrl).promise
         const page = await pdf.getPage(1)
