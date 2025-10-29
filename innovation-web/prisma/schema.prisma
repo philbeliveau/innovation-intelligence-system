@@ -8,16 +8,19 @@ datasource db {
 }
 
 model Document {
-  id         String   @id @default(uuid())
-  userId     String
-  fileName   String
-  fileSize   Int
-  blobUrl    String
-  uploadedAt DateTime
-  createdAt  DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String   @id @default(uuid())
+  userId      String
+  fileName    String
+  fileSize    Int
+  blobUrl     String
+  contentHash String?  // SHA-256 hash of file content for duplicate detection
+  uploadedAt  DateTime
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, contentHash]) // Prevent duplicate uploads per user
   @@index([userId, createdAt])
+  @@index([contentHash]) // Fast lookup for duplicate checks
 }
 
 model InspirationReport {

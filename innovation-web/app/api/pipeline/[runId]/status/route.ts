@@ -20,6 +20,12 @@ import { prisma } from '@/lib/prisma'
  *     ...
  *   }
  *   brand_name?: string (companyName from run)
+ *   // NEW FIELDS (Story 10.5)
+ *   stage1Output?: { extractedText: string, mechanisms: array } | null
+ *   stage2Output?: { signals: array } | null
+ *   stage3Output?: { insights: array } | null
+ *   stage4Output?: { preliminary: array } | null
+ *   hasFullReport: boolean
  * }
  */
 export async function GET(
@@ -42,9 +48,20 @@ export async function GET(
     console.log(`[API /pipeline/status] Fetching status for run: ${sanitizedRunId}`)
 
     // Fetch run with all stage outputs and opportunity cards from Prisma
+    // Story 10.5: Added stage JSON fields and fullReportMarkdown for retrospective mode
     const run = await prisma.pipelineRun.findUnique({
       where: { id: sanitizedRunId },
-      include: {
+      select: {
+        id: true,
+        status: true,
+        companyName: true,
+        // NEW FIELDS (Story 10.5) - JSON stage outputs for retrospective mode
+        stage1Output: true,
+        stage2Output: true,
+        stage3Output: true,
+        stage4Output: true,
+        fullReportMarkdown: true,
+        // Relations
         stageOutputs: {
           orderBy: { stageNumber: 'asc' }
         },
@@ -125,16 +142,23 @@ export async function GET(
     }
 
     // Build response matching Railway backend format
+    // Story 10.5: Added stage output JSON fields and hasFullReport flag
     const response = {
       run_id: run.id,
       status: run.status.toLowerCase(), // "PROCESSING" → "processing"
       current_stage: currentStage,
       stages,
       brand_name: run.companyName,
-      ...(partialOpportunities && { partialOpportunities })
+      ...(partialOpportunities && { partialOpportunities }),
+      // NEW FIELDS (Story 10.5) - Retrospective mode support
+      stage1Output: run.stage1Output,
+      stage2Output: run.stage2Output,
+      stage3Output: run.stage3Output,
+      stage4Output: run.stage4Output,
+      hasFullReport: !!run.fullReportMarkdown
     }
 
-    console.log(`[API /pipeline/status] Returning status: ${run.status}, current_stage: ${currentStage}`)
+    console.log(`[API /pipeline/status] Returning status: ${run.status}, current_stage: ${currentStage}, hasFullReport: ${!!run.fullReportMarkdown}`)
 
     return NextResponse.json(response)
 

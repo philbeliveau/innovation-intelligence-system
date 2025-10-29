@@ -68,9 +68,10 @@ export async function POST(request: Request): Promise<NextResponse> {
       );
     }
 
-    // Extract file from form data
+    // Extract file and content hash from form data
     const formData = await request.formData();
     const fileEntry = formData.get('file');
+    const contentHash = formData.get('content_hash') as string | null;
 
     // Validate file exists and is a File object
     if (!fileEntry) {
@@ -114,6 +115,51 @@ export async function POST(request: Request): Promise<NextResponse> {
       );
     }
 
+    // Check for duplicate uploads (if contentHash provided)
+    if (contentHash) {
+      try {
+        // Find or create Prisma user from Clerk userId for duplicate check
+        const user = await prisma.user.upsert({
+          where: { clerkId: userId },
+          update: {},
+          create: {
+            clerkId: userId,
+            email: '', // Email can be populated from Clerk user object if needed
+          }
+        });
+
+        // Check if document with same content hash already exists for this user
+        const existingDocument = await prisma.document.findFirst({
+          where: {
+            userId: user.id,
+            contentHash: contentHash,
+          },
+        });
+
+        if (existingDocument) {
+          console.log('Duplicate document detected:', {
+            userId: user.id,
+            contentHash,
+            existingDocumentId: existingDocument.id,
+          });
+
+          return NextResponse.json(
+            {
+              error: 'Document already uploaded',
+              duplicate: true,
+              existing_upload_id: `upload-${existingDocument.uploadedAt.getTime()}`,
+              existing_blob_url: existingDocument.blobUrl,
+              uploaded_at: existingDocument.uploadedAt.toISOString(),
+            },
+            { status: 409 } // Conflict
+          );
+        }
+      } catch (dbError) {
+        // Log error but continue with upload (don't block on duplicate check failure)
+        console.error('Duplicate check failed:', dbError);
+      }
+    }
+
     // Generate upload path with sanitized filename
     const timestamp = Date.now();
     const sanitizedName = sanitizeFilename(file.name);
@@ -146,13 +192,14 @@ export async function POST(request: Request): Promise<NextResponse> {
         }
       });
 
-      // Create document record
+      // Create document record with content hash
       await prisma.document.create({
         data: {
           userId: user.id,
           fileName: file.name,
           fileSize: file.size,
           blobUrl: blob.url,
+          contentHash: contentHash || null,
           uploadedAt: new Date(),
         }
       });

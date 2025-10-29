@@ -7,7 +7,9 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Card } from '@/components/ui/card'
 import { UploadHistorySection } from '@/components/upload/UploadHistorySection'
-import { addUploadToHistory } from '@/lib/upload-history'
+import { DuplicateUploadDialog } from '@/components/upload/DuplicateUploadDialog'
+import { addUploadToHistory, findDuplicateUpload, type UploadMetadata } from '@/lib/upload-history'
+import { calculateFileHash } from '@/lib/file-hash'
 
 export default function UploadPage() {
   const router = useRouter()
@@ -21,6 +23,13 @@ export default function UploadPage() {
   const [uploadSuccess, setUploadSuccess] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const [historyKey, setHistoryKey] = useState(0) // Key to force re-render of history section
+
+  // Duplicate detection state
+  const [checkingDuplicate, setCheckingDuplicate] = useState(false)
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false)
+  const [duplicateUpload, setDuplicateUpload] = useState<UploadMetadata | null>(null)
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const [pendingFileHash, setPendingFileHash] = useState<string>('')
 
   // Fetch company context on mount
   useEffect(() => {
@@ -50,15 +59,47 @@ export default function UploadPage() {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
   }
 
-  // Handle file upload
+  // Handle file upload with duplicate detection
   const onDrop = async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0]
     if (!file) return
 
     setFileName(file.name)
     setFileSize(file.size)
-    setUploading(true)
     setError('')
+
+    // Step 1: Calculate file hash and check for duplicates
+    setCheckingDuplicate(true)
+    try {
+      const contentHash = await calculateFileHash(file)
+
+      // Check localStorage for duplicate
+      const duplicate = findDuplicateUpload(companyId, contentHash)
+
+      if (duplicate) {
+        // Duplicate found - show dialog
+        setCheckingDuplicate(false)
+        setDuplicateUpload(duplicate)
+        setPendingFile(file)
+        setPendingFileHash(contentHash)
+        setDuplicateDialogOpen(true)
+        return
+      }
+
+      // No duplicate - proceed with upload
+      setCheckingDuplicate(false)
+      await performUpload(file, contentHash)
+    } catch (err) {
+      setCheckingDuplicate(false)
+      console.error('File hashing failed:', err)
+      // Proceed without hash if hashing fails
+      await performUpload(file, '')
+    }
+  }
+
+  // Perform the actual upload
+  const performUpload = async (file: File, contentHash: string) => {
+    setUploading(true)
     setUploadProgress(0)
 
     // Simulate progress
@@ -75,6 +116,9 @@ export default function UploadPage() {
     try {
       const formData = new FormData()
       formData.append('file', file)
+      if (contentHash) {
+        formData.append('content_hash', contentHash)
+      }
 
       const response = await fetch('/api/upload', {
         method: 'POST',
@@ -85,6 +129,14 @@ export default function UploadPage() {
 
       if (!response.ok) {
         const errorData = await response.json()
+
+        // Handle duplicate error from backend
+        if (response.status === 409) {
+          setUploading(false)
+          setError('This document has already been uploaded.')
+          return
+        }
+
         throw new Error(errorData.error || 'Upload failed')
       }
 
@@ -100,13 +152,14 @@ export default function UploadPage() {
       }
       sessionStorage.setItem(`upload_${data.upload_id}`, JSON.stringify(uploadData))
 
-      // Add to upload history (Story 1.4)
+      // Add to upload history (Story 1.4) with content hash
       addUploadToHistory(companyId, {
         upload_id: data.upload_id,
         filename: file.name,
         uploaded_at: Date.now(),
         blob_url: data.blob_url,
-        company_id: companyId
+        company_id: companyId,
+        content_hash: contentHash || undefined
       })
 
       // Show success state
@@ -146,6 +199,16 @@ export default function UploadPage() {
     }
   }
 
+  // Handle "Upload Anyway" from duplicate dialog
+  const handleUploadAnyway = async () => {
+    if (pendingFile) {
+      await performUpload(pendingFile, pendingFileHash)
+      setPendingFile(null)
+      setPendingFileHash('')
+      setDuplicateUpload(null)
+    }
+  }
+
   // Dropzone configuration
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
@@ -156,7 +219,7 @@ export default function UploadPage() {
     },
     maxSize: 25 * 1024 * 1024, // 25MB
     multiple: false,
-    disabled: uploading,
+    disabled: uploading || checkingDuplicate,
     noClick: true, // Disable default click to handle manually with keyboard
   })
 
@@ -214,7 +277,7 @@ export default function UploadPage() {
 
         {/* Upload Zone - Responsive sizing */}
         <Card className="w-full max-w-full sm:max-w-xl p-4 sm:p-8 bg-white shadow-lg border-0">
-          {!uploading && !uploadSuccess && (
+          {!uploading && !uploadSuccess && !checkingDuplicate && (
             <>
               <div
                 {...getRootProps()}
@@ -315,6 +378,23 @@ export default function UploadPage() {
             </>
           )}
 
+          {/* Checking Duplicate State */}
+          {checkingDuplicate && (
+            <div className="space-y-5 text-center py-12">
+              <div className="flex justify-center">
+                <div className="w-16 h-16 rounded-full bg-[#5B9A99]/10 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-10 w-10 border-4 border-teal-100 border-t-[#5B9A99]"></div>
+                </div>
+              </div>
+              <div className="text-lg font-medium text-gray-800">
+                Checking for duplicates...
+              </div>
+              <div className="text-sm text-gray-600" aria-live="polite">
+                {fileName} ({formatFileSize(fileSize)})
+              </div>
+            </div>
+          )}
+
           {/* Uploading State */}
           {uploading && !uploadSuccess && (
             <div className="space-y-5 text-center py-12">
@@ -392,6 +472,14 @@ export default function UploadPage() {
           </div>
         )}
       </div>
+
+      {/* Duplicate Upload Dialog */}
+      <DuplicateUploadDialog
+        open={duplicateDialogOpen}
+        onOpenChange={setDuplicateDialogOpen}
+        duplicateUpload={duplicateUpload}
+        onUploadAnyway={handleUploadAnyway}
+      />
     </div>
   )
 }

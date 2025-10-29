@@ -270,6 +270,7 @@ export function UploadHistoryCard({ upload, onDelete }: UploadHistoryCardProps) 
   const router = useRouter()
   const [relativeTime, setRelativeTime] = useState('')
   const [pdfThumbnail, setPdfThumbnail] = useState<string | null>(null)
+  const [isLoadingPdf, setIsLoadingPdf] = useState(true)
 
   // Generate consistent color scheme and content based on filename
   const { colorScheme, category, description } = useMemo(() => {
@@ -313,6 +314,7 @@ export function UploadHistoryCard({ upload, onDelete }: UploadHistoryCardProps) 
 
         if (!context) {
           console.error('[UploadHistoryCard] Failed to get canvas context')
+          setIsLoadingPdf(false)
           return
         }
 
@@ -320,20 +322,23 @@ export function UploadHistoryCard({ upload, onDelete }: UploadHistoryCardProps) 
         canvas.width = viewport.width
         console.log('[UploadHistoryCard] Canvas size:', canvas.width, 'x', canvas.height)
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await page.render({
           canvasContext: context,
           viewport: viewport,
-        }).promise
+        } as any).promise
 
         console.log('[UploadHistoryCard] Page rendered to canvas')
 
         const dataUrl = canvas.toDataURL()
         console.log('[UploadHistoryCard] Thumbnail generated, length:', dataUrl.length)
         setPdfThumbnail(dataUrl)
+        setIsLoadingPdf(false)
       } catch (error) {
         console.error('[UploadHistoryCard] Failed to generate PDF thumbnail:', error)
         // Fallback to just gradient
         setPdfThumbnail(null)
+        setIsLoadingPdf(false)
       }
     }
 
@@ -392,17 +397,17 @@ export function UploadHistoryCard({ upload, onDelete }: UploadHistoryCardProps) 
       className="
         group
         relative
-        flex-shrink-0
-        w-[300px]
         bg-white
-        border-[6px] border-black
-        shadow-[12px_12px_0_0_#000]
+        rounded-lg
+        shadow-sm
+        border border-gray-200
+        overflow-hidden
+        h-[400px]
+        flex flex-col
         cursor-pointer
-        transition-all duration-300
-        hover:-translate-x-[5px] hover:-translate-y-[5px]
-        hover:shadow-[17px_17px_0_0_#000]
-        focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-offset-2
-        select-none
+        hover:shadow-md
+        transition-shadow
+        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
       "
     >
       {/* Optional delete button */}
@@ -411,74 +416,99 @@ export function UploadHistoryCard({ upload, onDelete }: UploadHistoryCardProps) 
           onClick={handleDelete}
           aria-label="Remove from history"
           className="
-            absolute top-3 left-3
+            absolute top-3 right-3
             w-8 h-8
             flex items-center justify-center
-            bg-white
+            bg-white/90
+            backdrop-blur-sm
             rounded-full
-            border-2 border-black
-            text-black
-            hover:bg-black hover:text-white
+            border border-gray-300
+            text-gray-600
+            hover:bg-red-50 hover:text-red-600 hover:border-red-300
             transition-colors
-            focus:outline-none focus:ring-2 focus:ring-black z-10
+            focus:outline-none focus:ring-2 focus:ring-red-500 z-10
           "
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       )}
 
-      {/* Hero Image with PDF thumbnail */}
-      <div className="relative w-full h-[200px]">
-        <div className="relative w-full h-full overflow-hidden bg-gray-100">
-          {/* PDF thumbnail - extremely light blur */}
-          {pdfThumbnail ? (
-            <>
-              <div className="absolute inset-0">
-                <img
-                  src={pdfThumbnail}
-                  alt="Document preview"
-                  className="w-full h-full object-cover blur-sm"
-                />
+      {/* Hero Image with PDF thumbnail or loading skeleton */}
+      <div className="relative w-full flex-1">
+        {isLoadingPdf ? (
+          /* Loading skeleton while PDF is being processed */
+          <div className="relative w-full h-full bg-gray-100 animate-pulse">
+            <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300" />
+            <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm p-4 z-20">
+              <div className="mb-1.5">
+                <div className="inline-block h-4 w-24 bg-gray-200 rounded" />
               </div>
-              {console.log('[UploadHistoryCard] Rendering PDF thumbnail in UI')}
-            </>
-          ) : (
-            <>
-              {/* Fallback gradient when no PDF */}
-              <div
-                className="absolute inset-0"
-                style={{
-                  background: `linear-gradient(to bottom right, ${colorScheme.from}, ${colorScheme.to})`
-                }}
-              />
-              {console.log('[UploadHistoryCard] No thumbnail to render, showing gradient only')}
-            </>
-          )}
-        </div>
-
-        {/* Title overlay at bottom with category badge */}
-        <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm p-4 z-20">
-          <div className="mb-1.5">
-            <span className="inline-block text-xs font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
-              {category}
-            </span>
+              <div className="h-4 w-3/4 bg-gray-200 rounded" />
+            </div>
           </div>
-          <p className="text-sm text-gray-900 font-medium leading-relaxed">
-            {displayFilename}
-          </p>
-        </div>
+        ) : (
+          <div className="relative w-full h-full overflow-hidden bg-gray-100">
+            {/* PDF thumbnail - extremely light blur */}
+            {pdfThumbnail ? (
+              <>
+                <div className="absolute inset-0">
+                  <img
+                    src={pdfThumbnail}
+                    alt="Document preview"
+                    className="w-full h-full object-cover blur-sm"
+                  />
+                </div>
+                {console.log('[UploadHistoryCard] Rendering PDF thumbnail in UI')}
+              </>
+            ) : (
+              <>
+                {/* Fallback gradient when no PDF */}
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: `linear-gradient(to bottom right, ${colorScheme.from}, ${colorScheme.to})`
+                  }}
+                />
+                {console.log('[UploadHistoryCard] No thumbnail to render, showing gradient only')}
+              </>
+            )}
+
+            {/* Title overlay at bottom with category badge */}
+            <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm p-4 z-20">
+              <div className="mb-1.5">
+                <span className="inline-block text-xs font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
+                  {category}
+                </span>
+              </div>
+              <p className="text-sm text-gray-900 font-medium leading-relaxed">
+                {displayFilename}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Bottom white section */}
-      <div className="p-5 bg-white border-t-[3px] border-black">
-        <p className="text-sm text-black/70 line-clamp-2 mb-3">
-          {description}
-        </p>
-        <div className="text-xs text-black/50 font-medium">
-          {relativeTime}
-        </div>
+      <div className="p-4 bg-white border-t border-gray-100">
+        {isLoadingPdf ? (
+          /* Loading skeleton for bottom section */
+          <div className="animate-pulse">
+            <div className="h-3 w-full bg-gray-200 rounded mb-1" />
+            <div className="h-3 w-4/5 bg-gray-200 rounded mb-2" />
+            <div className="h-3 w-16 bg-gray-200 rounded" />
+          </div>
+        ) : (
+          <>
+            <p className="text-sm text-gray-700 line-clamp-2 mb-2">
+              {description}
+            </p>
+            <div className="text-xs text-gray-500 font-medium">
+              {relativeTime}
+            </div>
+          </>
+        )}
       </div>
     </article>
   )
