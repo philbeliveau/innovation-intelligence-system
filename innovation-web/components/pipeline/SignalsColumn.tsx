@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import Image from 'next/image'
 import { SignalIcon } from '../icons'
 
@@ -89,6 +89,8 @@ export const SignalsColumn: React.FC<SignalsColumnProps> = ({
   onClick,
   blobUrl,
 }) => {
+  const [pdfThumbnail, setPdfThumbnail] = useState<string | null>(null)
+
   // Generate consistent color scheme and category based on title
   const { colorScheme, category } = useMemo(() => {
     const hash = hashString(trendTitle)
@@ -99,6 +101,44 @@ export const SignalsColumn: React.FC<SignalsColumnProps> = ({
       category: extractCategory(trendTitle),
     }
   }, [trendTitle])
+
+  // Generate PDF thumbnail for background
+  useEffect(() => {
+    if (!blobUrl) return
+
+    const loadPdfThumbnail = async () => {
+      try {
+        // Dynamically import pdf.js to avoid SSR issues
+        const pdfjsLib = await import('pdfjs-dist')
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+
+        const pdf = await pdfjsLib.getDocument(blobUrl).promise
+        const page = await pdf.getPage(1)
+
+        const viewport = page.getViewport({ scale: 0.5 })
+        const canvas = document.createElement('canvas')
+        const context = canvas.getContext('2d')
+
+        if (!context) return
+
+        canvas.height = viewport.height
+        canvas.width = viewport.width
+
+        await page.render({
+          canvasContext: context,
+          viewport: viewport,
+        }).promise
+
+        setPdfThumbnail(canvas.toDataURL())
+      } catch (error) {
+        console.error('Failed to generate PDF thumbnail:', error)
+        // Fallback to just gradient
+        setPdfThumbnail(null)
+      }
+    }
+
+    loadPdfThumbnail()
+  }, [blobUrl])
 
   return (
     <div className="flex flex-col h-full flex-[0.7] min-w-[280px]">
@@ -126,25 +166,26 @@ export const SignalsColumn: React.FC<SignalsColumnProps> = ({
             </div>
           ) : (
             <div className="relative w-full h-full overflow-hidden">
-              {/* Gradient background layer */}
-              <div
-                className="absolute inset-0 z-10"
-                style={{
-                  background: `linear-gradient(to bottom right, ${colorScheme.from}, ${colorScheme.to})`
-                }}
-              />
-
-              {/* Blurred PDF preview layer (if available) */}
-              {blobUrl && (
+              {/* PDF thumbnail layer (blurred) */}
+              {pdfThumbnail && (
                 <div className="absolute inset-0 z-0">
-                  <iframe
-                    src={`${blobUrl}#view=FitH`}
-                    className="w-full h-full blur-3xl scale-110 opacity-30"
-                    title="Document preview background"
-                    style={{ pointerEvents: 'none' }}
+                  <Image
+                    src={pdfThumbnail}
+                    alt="Document preview"
+                    fill
+                    className="object-cover blur-3xl scale-110 opacity-40"
+                    unoptimized
                   />
                 </div>
               )}
+
+              {/* Gradient overlay layer */}
+              <div
+                className="absolute inset-0 z-10"
+                style={{
+                  background: `linear-gradient(to bottom right, ${colorScheme.from}CC, ${colorScheme.to}CC)`
+                }}
+              />
             </div>
           )}
 
