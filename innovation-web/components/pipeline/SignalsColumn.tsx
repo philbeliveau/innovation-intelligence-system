@@ -185,14 +185,14 @@ export const SignalsColumn: React.FC<SignalsColumnProps> = ({
             </div>
           ) : (
             <div className="relative w-full h-full overflow-hidden bg-gray-100">
-              {/* PDF thumbnail - no blur, as-is */}
+              {/* PDF thumbnail - extremely light blur */}
               {pdfThumbnail ? (
                 <>
                   <div className="absolute inset-0">
                     <img
                       src={pdfThumbnail}
                       alt="Document preview"
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover blur-sm"
                     />
                   </div>
                   {console.log('[SignalsColumn] Rendering PDF thumbnail in UI')}
