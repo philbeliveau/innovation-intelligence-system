@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import PipelineStateMachine from './PipelineStateMachine'
+import CoffeeMachineLoader from '../CoffeeMachineLoader'
 
 interface PipelineStatus {
   run_id: string
@@ -239,10 +240,7 @@ export default function PipelineViewer({
   if (loading) {
     return (
       <div className={inlineMode ? 'space-y-4' : 'min-h-screen bg-[#F5F5F5] flex items-center justify-center'}>
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-teal-100 border-t-[#5B9A99] mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">Loading pipeline status...</p>
-        </div>
+        <CoffeeMachineLoader />
       </div>
     )
   }

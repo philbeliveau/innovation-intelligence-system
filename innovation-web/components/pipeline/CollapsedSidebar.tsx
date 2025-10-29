@@ -23,10 +23,6 @@ export interface CollapsedSidebarProps {
   isCollapsed?: boolean
   /** Callback when user clicks Signal or Insights icons to go back */
   onBackToColumns?: () => void
-  /** Controls sticky positioning (default: true) */
-  isSticky?: boolean
-  /** Callback to toggle sticky state */
-  onToggleSticky?: () => void
 }
 
 export default function CollapsedSidebar({
@@ -35,8 +31,6 @@ export default function CollapsedSidebar({
   onSelectSpark,
   isCollapsed = false,
   onBackToColumns,
-  isSticky = true,
-  onToggleSticky,
 }: CollapsedSidebarProps) {
   const selectedRef = useRef<HTMLDivElement>(null)
   const reducedMotion = useReducedMotion()
@@ -53,17 +47,15 @@ export default function CollapsedSidebar({
 
   return (
     <div
-      className="bg-gray-50 border-r border-gray-200 overflow-y-auto h-screen transition-all"
+      className="bg-gray-50 border-r border-gray-200 overflow-y-auto h-screen transition-all sticky top-0"
       style={{
         width: isCollapsed ? '240px' : '100%',
-        position: isSticky ? 'sticky' : 'relative',
-        top: isSticky ? '0' : 'auto',
         transitionDuration: `${duration}ms`,
         transitionTimingFunction: EASING_FUNCTION,
-        transitionProperty: 'width, position, top'
+        transitionProperty: 'width'
       }}
     >
-      {/* Header with 3 icons in a row + sticky toggle */}
+      {/* Header with 3 icons in a row */}
       <div className="flex gap-1 p-2 border-b border-gray-200">
         <button
           onClick={onBackToColumns}
@@ -82,29 +74,6 @@ export default function CollapsedSidebar({
         <div className="flex-1 flex items-center justify-center h-8">
           <SparksIcon />
         </div>
-        <button
-          onClick={onToggleSticky || (() => {})}
-          className="flex items-center justify-center h-8 w-8 hover:bg-teal-50 rounded-full transition-all"
-          title={isSticky ? 'Unstick sidebar (scroll with page)' : 'Stick sidebar (fixed position)'}
-          aria-label={isSticky ? 'Unstick sidebar' : 'Stick sidebar'}
-          data-testid="sticky-toggle"
-        >
-          {isSticky ? (
-            // Locked icon
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <rect x="5" y="11" width="14" height="10" rx="2" stroke="#5B9A99" strokeWidth="2"/>
-              <path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="#5B9A99" strokeWidth="2" strokeLinecap="round"/>
-              <circle cx="12" cy="16" r="1.5" fill="#5B9A99"/>
-            </svg>
-          ) : (
-            // Unlocked icon
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <rect x="5" y="11" width="14" height="10" rx="2" stroke="#9CA3AF" strokeWidth="2"/>
-              <path d="M8 11V7a4 4 0 0 1 8 0v3" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"/>
-              <circle cx="12" cy="16" r="1.5" fill="#9CA3AF"/>
-            </svg>
-          )}
-        </button>
       </div>
 
       {/* 3-column collapsed layout */}

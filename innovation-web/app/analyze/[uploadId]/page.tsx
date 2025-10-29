@@ -9,6 +9,7 @@ import { FileViewerPanel } from '@/components/FileViewerPanel'
 import PipelineViewer from '@/components/pipeline/PipelineViewer'
 import LoadingDocument from '@/components/LoadingDocument'
 import { SignalsColumn } from '@/components/pipeline/SignalsColumn'
+import CoffeeMachineLoader from '@/components/CoffeeMachineLoader'
 
 export default function AnalyzePage() {
   const params = useParams()
@@ -233,7 +234,7 @@ export default function AnalyzePage() {
         </h1>
 
         {/* Document Preview Card - SignalsColumn Design */}
-        {!isPipelineRunning && (
+        {!isPipelineRunning && !launching && (
           /* BEFORE LAUNCH: SignalsColumn card with Launch button below */
           <div className="flex justify-start px-4 sm:px-0 mb-8">
             <div className="w-full max-w-sm space-y-4">
@@ -256,8 +257,7 @@ export default function AnalyzePage() {
                 disabled={launching}
                 className="w-full"
               >
-                {launching && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {launching ? 'Launching Pipeline...' : 'Launch'}
+                Launch
               </Button>
 
               {/* Error Display */}
@@ -277,6 +277,13 @@ export default function AnalyzePage() {
                 </Alert>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Coffee Machine Loading State */}
+        {launching && (
+          <div className="flex justify-center px-4 sm:px-0 mb-8">
+            <CoffeeMachineLoader />
           </div>
         )}
 

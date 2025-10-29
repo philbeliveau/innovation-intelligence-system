@@ -1,9 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -14,7 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { SidebarRun } from '@/app/api/pipeline/route'
-import { Eye, Play, Trash2 } from 'lucide-react'
+import { Play, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface RunCardProps {
@@ -23,30 +21,116 @@ interface RunCardProps {
   onRerun: (id: string) => void
 }
 
+// Color schemes for random assignment (matching UploadHistoryCard)
+const COLOR_SCHEMES = [
+  { from: '#FFB6C1', to: '#FF6B6B' }, // Pink to Red
+  { from: '#A7C7E7', to: '#4682B4' }, // Light Blue to Steel Blue
+  { from: '#DDA0DD', to: '#BA55D3' }, // Plum to Medium Orchid
+  { from: '#98FB98', to: '#3CB371' }, // Pale Green to Medium Sea Green
+  { from: '#FFD700', to: '#FF8C00' }, // Gold to Dark Orange
+  { from: '#F0E68C', to: '#BDB76B' }, // Khaki to Dark Khaki
+]
+
+// Simple hash function to generate consistent index from string
+function hashString(str: string): number {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash
+  }
+  return Math.abs(hash)
+}
+
 export default function RunCard({ run, onDelete, onRerun }: RunCardProps) {
   const router = useRouter()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showRerunDialog, setShowRerunDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isRerunning, setIsRerunning] = useState(false)
+  const [pdfThumbnail, setPdfThumbnail] = useState<string | null>(null)
+  const [isLoadingPdf, setIsLoadingPdf] = useState(true)
 
-  const getStatusColor = (status: SidebarRun['status']) => {
-    switch (status) {
-      case 'COMPLETED':
-        return 'bg-green-500'
-      case 'PROCESSING':
-        return 'bg-blue-500'
-      case 'FAILED':
-        return 'bg-red-500'
-      case 'CANCELLED':
-        return 'bg-gray-500'
-      default:
-        return 'bg-gray-500'
+  // Generate consistent color scheme based on document name
+  const colorScheme = useMemo(() => {
+    const hash = hashString(run.documentName)
+    const colorIndex = hash % COLOR_SCHEMES.length
+    return COLOR_SCHEMES[colorIndex]
+  }, [run.documentName])
+
+  // Generate PDF thumbnail if blob URL is available
+  useEffect(() => {
+    if (!run.blobUrl) {
+      console.log('[RunCard] No blobUrl provided for:', run.documentName)
+      setIsLoadingPdf(false)
+      return
     }
-  }
 
-  const getStatusLabel = (status: SidebarRun['status']) => {
-    return status.charAt(0) + status.slice(1).toLowerCase()
+    console.log('[RunCard] Loading PDF thumbnail from:', run.blobUrl)
+
+    const loadPdfThumbnail = async () => {
+      try {
+        // Dynamically import pdf.js - use webpack build for Next.js
+        const pdfjsLib = await import('pdfjs-dist/webpack.mjs')
+        console.log('[RunCard] PDF.js loaded, version:', pdfjsLib.version)
+
+        const loadingTask = pdfjsLib.getDocument(run.blobUrl!)
+        console.log('[RunCard] Loading document...')
+
+        const pdf = await loadingTask.promise
+        console.log('[RunCard] PDF loaded, pages:', pdf.numPages)
+
+        const page = await pdf.getPage(1)
+        console.log('[RunCard] First page loaded')
+
+        const viewport = page.getViewport({ scale: 0.5 })
+        const canvas = document.createElement('canvas')
+        const context = canvas.getContext('2d')
+
+        if (!context) {
+          console.error('[RunCard] Failed to get canvas context')
+          setIsLoadingPdf(false)
+          return
+        }
+
+        canvas.height = viewport.height
+        canvas.width = viewport.width
+        console.log('[RunCard] Canvas size:', canvas.width, 'x', canvas.height)
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await page.render({
+          canvasContext: context,
+          viewport: viewport,
+        } as any).promise
+
+        console.log('[RunCard] Page rendered to canvas')
+
+        const dataUrl = canvas.toDataURL()
+        console.log('[RunCard] Thumbnail generated, length:', dataUrl.length)
+        setPdfThumbnail(dataUrl)
+        setIsLoadingPdf(false)
+      } catch (error) {
+        console.error('[RunCard] Failed to generate PDF thumbnail:', error)
+        // Fallback to white background
+        setPdfThumbnail(null)
+        setIsLoadingPdf(false)
+      }
+    }
+
+    loadPdfThumbnail()
+  }, [run.blobUrl, run.documentName])
+
+  const getStatusBadge = (status: SidebarRun['status']) => {
+    const styles = {
+      COMPLETED: 'bg-green-100 text-green-800 border-green-300',
+      PROCESSING: 'bg-blue-100 text-blue-800 border-blue-300',
+      FAILED: 'bg-red-100 text-red-800 border-red-300',
+      CANCELLED: 'bg-gray-100 text-gray-800 border-gray-300',
+    }
+    return {
+      style: styles[status] || styles.CANCELLED,
+      label: status.charAt(0) + status.slice(1).toLowerCase(),
+    }
   }
 
   const getRelativeDate = (dateString: string) => {
@@ -67,6 +151,13 @@ export default function RunCard({ run, onDelete, onRerun }: RunCardProps) {
   const handleView = () => {
     router.push(`/runs/${run.id}`)
   }
+
+  // Truncate document name for display
+  const displayName = run.documentName.length > 35
+    ? `${run.documentName.substring(0, 35)}...`
+    : run.documentName
+
+  const statusBadge = getStatusBadge(run.status)
 
   const handleDeleteConfirm = async () => {
     setIsDeleting(true)
@@ -116,72 +207,123 @@ export default function RunCard({ run, onDelete, onRerun }: RunCardProps) {
 
   return (
     <>
-      <Card
-        className="border-[5px] border-[#5B9A99] shadow-[8px_8px_0px_0px_rgba(91,154,153,1)] transition-all duration-200 hover:-translate-x-[3px] hover:-translate-y-[3px] hover:shadow-[11px_11px_0px_0px_rgba(91,154,153,1)] cursor-pointer"
+      <article
+        role="button"
+        tabIndex={0}
         onClick={handleView}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            handleView()
+          }
+        }}
+        aria-label={`View run for ${run.documentName}, ${statusBadge.label}`}
+        className="
+          group
+          relative
+          bg-white
+          rounded-lg
+          shadow-sm
+          border border-gray-200
+          overflow-hidden
+          h-[400px]
+          flex flex-col
+          cursor-pointer
+          hover:shadow-md
+          transition-shadow
+          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+        "
       >
-        <CardContent className="p-6 space-y-4">
-          {/* Document Name */}
-          <h3 className="font-bold text-lg truncate text-[#5B9A99]">{run.documentName}</h3>
+        {/* Delete button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            setShowDeleteDialog(true)
+          }}
+          aria-label="Delete run"
+          className="
+            absolute top-3 right-3
+            w-8 h-8
+            flex items-center justify-center
+            bg-white/90
+            backdrop-blur-sm
+            rounded-full
+            border border-gray-300
+            text-gray-600
+            hover:bg-red-50 hover:text-red-600 hover:border-red-300
+            transition-colors
+            focus:outline-none focus:ring-2 focus:ring-red-500 z-10
+          "
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
 
-          {/* Company Badge */}
-          <Badge className="bg-white border-2 border-[#5B9A99] text-[#5B9A99] font-semibold px-3 py-1">
-            {run.companyName}
-          </Badge>
-
-          {/* Status and Date Row */}
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${getStatusColor(run.status)}`} />
-              <span className="text-gray-700">{getStatusLabel(run.status)}</span>
+        {/* Hero Image with PDF thumbnail */}
+        <div className="relative w-full flex-1">
+          {(isLoadingPdf || !pdfThumbnail) ? (
+            /* Loading skeleton - stay white until thumbnail is ready */
+            <div className="relative w-full h-full bg-white animate-pulse">
+              <div className="absolute inset-0 bg-white" />
+              <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm p-4 z-20">
+                <div className="mb-1.5">
+                  <div className="inline-block h-4 w-24 bg-gray-200 rounded" />
+                </div>
+                <div className="h-4 w-3/4 bg-gray-200 rounded" />
+              </div>
             </div>
-            <span className="text-gray-500">{getRelativeDate(run.createdAt)}</span>
-          </div>
+          ) : (
+            <div className="relative w-full h-full overflow-hidden bg-white">
+              {/* PDF thumbnail - extremely light blur */}
+              <div className="absolute inset-0">
+                <img
+                  src={pdfThumbnail}
+                  alt="Document preview"
+                  className="w-full h-full object-cover blur-sm"
+                />
+              </div>
 
-          {/* Metrics Row */}
-          {run.status === 'COMPLETED' && (
-            <div className="text-sm text-gray-600">
-              {run.cardCount} cards
+              {/* Title overlay with status badge and category */}
+              <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm p-4 z-20">
+                <div className="mb-1.5 flex items-center gap-2 flex-wrap">
+                  <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded border ${statusBadge.style}`}>
+                    {statusBadge.label}
+                  </span>
+                  {run.status === 'COMPLETED' && run.cardCount > 0 && (
+                    <span className="inline-block text-xs text-gray-600">
+                      {run.cardCount} cards
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-900 font-medium leading-relaxed">
+                  {displayName}
+                </p>
+              </div>
             </div>
           )}
+        </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-2 pt-2" onClick={(e) => e.stopPropagation()}>
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 border-2 border-[#5B9A99] hover:bg-[#5B9A99] hover:text-white"
-              onClick={handleView}
-            >
-              <Eye className="w-4 h-4 mr-1" />
-              View
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 border-2 border-[#5B9A99] hover:bg-[#4A8988] hover:text-white hover:border-[#4A8988]"
-              onClick={(e) => {
-                e.stopPropagation()
-                setShowRerunDialog(true)
-              }}
-            >
-              <Play className="w-4 h-4 mr-1" />
-              Rerun
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-2 border-[#5B9A99] hover:bg-red-500 hover:text-white hover:border-red-500"
-              onClick={(e) => {
-                e.stopPropagation()
-                setShowDeleteDialog(true)
-              }}
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
+        {/* Bottom info section */}
+        <div className="p-4 bg-white border-t border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-gray-900">{run.companyName}</p>
+            <span className="text-xs text-gray-500">
+              {getRelativeDate(run.createdAt)}
+            </span>
           </div>
-        </CardContent>
-      </Card>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowRerunDialog(true)
+            }}
+            className="w-full border-gray-300 hover:bg-gray-50"
+          >
+            <Play className="w-3 h-3 mr-2" />
+            Rerun Pipeline
+          </Button>
+        </div>
+      </article>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

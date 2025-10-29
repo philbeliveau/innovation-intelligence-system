@@ -139,10 +139,11 @@ export const SignalsColumn: React.FC<SignalsColumnProps> = ({
         canvas.width = viewport.width
         console.log('[SignalsColumn] Canvas size:', canvas.width, 'x', canvas.height)
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await page.render({
           canvasContext: context,
           viewport: viewport,
-        }).promise
+        } as any).promise
 
         console.log('[SignalsColumn] Page rendered to canvas')
 

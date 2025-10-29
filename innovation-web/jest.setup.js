@@ -1,4 +1,9 @@
 import '@testing-library/jest-dom'
+import { TextEncoder, TextDecoder } from 'util'
+
+// Polyfill for jsPDF (requires TextEncoder/TextDecoder)
+global.TextEncoder = TextEncoder
+global.TextDecoder = TextDecoder
 
 // Mock window.matchMedia for components using useReducedMotion
 Object.defineProperty(window, 'matchMedia', {

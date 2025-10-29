@@ -130,18 +130,42 @@ function RunsPageContent() {
   const companyCount = uniqueCompanies.length
 
   return (
-    <div className="min-h-screen bg-white p-6 lg:p-12">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-[#F5F5F5] relative overflow-hidden p-6 lg:p-12">
+      {/* Decorative Teal Circles - Hidden on mobile to prevent overflow */}
+      <div className="hidden lg:block absolute inset-0 pointer-events-none" aria-hidden="true">
+        {/* Top Left */}
+        <div className="absolute top-[10%] left-[15%] w-32 h-32 rounded-full bg-[#5B9A99] opacity-70"></div>
+        <div className="absolute top-[25%] left-[8%] w-24 h-24 rounded-full bg-[#6BAAA9] opacity-60"></div>
+
+        {/* Top Right */}
+        <div className="absolute top-[12%] right-[18%] w-40 h-40 rounded-full bg-[#5B9A99] opacity-75"></div>
+        <div className="absolute top-[8%] right-[35%] w-28 h-28 rounded-full bg-[#6BAAA9] opacity-65"></div>
+
+        {/* Bottom Left */}
+        <div className="absolute bottom-[15%] left-[12%] w-36 h-36 rounded-full bg-[#5B9A99] opacity-70"></div>
+        <div className="absolute bottom-[8%] left-[25%] w-24 h-24 rounded-full bg-[#6BAAA9] opacity-60"></div>
+
+        {/* Bottom Right */}
+        <div className="absolute bottom-[20%] right-[15%] w-32 h-32 rounded-full bg-[#5B9A99] opacity-65"></div>
+        <div className="absolute bottom-[10%] right-[8%] w-20 h-20 rounded-full bg-[#6BAAA9] opacity-55"></div>
+      </div>
+
+      <div className="max-w-7xl mx-auto space-y-8 relative z-10">
         {/* Header */}
-        <div className="space-y-2">
-          <h1 className="text-4xl font-black text-[#5B9A99]">Your Innovation Runs</h1>
+        <div className="space-y-2 text-center lg:text-left">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900">
+            <span className="italic text-[#5B9A99]">My</span> Board of Ideators
+          </h1>
+          <p className="text-base sm:text-lg md:text-xl italic text-[#5B9A99] mb-4">
+            Signals to Sparks
+          </p>
           <p className="text-gray-600">
             {total} total runs · {companyCount} {companyCount === 1 ? 'company' : 'companies'}
           </p>
         </div>
 
         {/* Filter Controls */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-6 border-4 border-[#5B9A99] bg-teal-50">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-6 bg-white rounded-xl shadow-sm border border-gray-200">
           {/* Search */}
           <div className="lg:col-span-2 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -149,13 +173,13 @@ function RunsPageContent() {
               placeholder="Search by document name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 border-2 border-[#5B9A99] focus:ring-[#5B9A99]"
+              className="pl-10"
             />
           </div>
 
           {/* Company Filter */}
           <Select value={selectedCompany} onValueChange={setSelectedCompany}>
-            <SelectTrigger className="border-2 border-[#5B9A99] focus:ring-[#5B9A99]">
+            <SelectTrigger>
               <SelectValue placeholder="All Companies" />
             </SelectTrigger>
             <SelectContent>
@@ -170,7 +194,7 @@ function RunsPageContent() {
 
           {/* Status Filter */}
           <Select value={selectedStatus} onValueChange={(value) => setSelectedStatus(value as RunStatus)}>
-            <SelectTrigger className="border-2 border-[#5B9A99] focus:ring-[#5B9A99]">
+            <SelectTrigger>
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
             <SelectContent>
@@ -183,7 +207,7 @@ function RunsPageContent() {
 
           {/* Date Range Filter */}
           <Select value={selectedDateRange} onValueChange={(value) => setSelectedDateRange(value as DateRange)}>
-            <SelectTrigger className="border-2 border-[#5B9A99] focus:ring-[#5B9A99]">
+            <SelectTrigger>
               <SelectValue placeholder="All Time" />
             </SelectTrigger>
             <SelectContent>
@@ -198,7 +222,7 @@ function RunsPageContent() {
         {/* Sort Controls */}
         <div className="flex justify-between items-center">
           <Select value={sortOption} onValueChange={(value) => setSortOption(value as SortOption)}>
-            <SelectTrigger className="w-48 border-2 border-[#5B9A99] focus:ring-[#5B9A99]">
+            <SelectTrigger className="w-48">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -231,15 +255,23 @@ function RunsPageContent() {
         {isLoading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="border-4 border-[#5B9A99] p-6 space-y-4">
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-8 w-1/2" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-2/3" />
-                <div className="flex gap-2 pt-2">
-                  <Skeleton className="h-9 flex-1" />
-                  <Skeleton className="h-9 flex-1" />
-                  <Skeleton className="h-9 w-9" />
+              <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden h-[400px] flex flex-col">
+                {/* Hero skeleton */}
+                <div className="relative flex-1 bg-white">
+                  <div className="absolute inset-0 bg-white" />
+                  {/* Title overlay skeleton */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm p-4">
+                    <Skeleton className="h-4 w-16 mb-2" />
+                    <Skeleton className="h-4 w-3/4" />
+                  </div>
+                </div>
+                {/* Bottom section skeleton */}
+                <div className="p-4 bg-white border-t border-gray-100">
+                  <div className="flex items-center justify-between mb-3">
+                    <Skeleton className="h-4 w-1/2" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                  <Skeleton className="h-9 w-full" />
                 </div>
               </div>
             ))}
@@ -248,12 +280,12 @@ function RunsPageContent() {
 
         {/* Empty State */}
         {!isLoading && runs.length === 0 && !error && (
-          <div className="text-center py-20 border-4 border-[#5B9A99]">
+          <div className="text-center py-20 bg-white rounded-xl shadow-sm border border-gray-200">
             <h2 className="text-2xl font-bold mb-2 text-[#5B9A99]">No runs yet</h2>
             <p className="text-gray-600 mb-6">Upload a document to get started.</p>
             <Button
               onClick={() => router.push('/upload')}
-              className="bg-[#5B9A99] text-white hover:bg-[#4A8988] border-2 border-[#5B9A99]"
+              className="bg-[#5B9A99] text-white hover:bg-[#4A8988]"
             >
               Upload Document
             </Button>
@@ -282,7 +314,7 @@ function RunsPageContent() {
                   size="sm"
                   onClick={() => goToPage(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="border-2 border-[#5B9A99] hover:bg-[#5B9A99] hover:text-white"
+                  className="hover:bg-[#5B9A99] hover:text-white"
                 >
                   <ChevronLeft className="w-4 h-4" />
                   Previous
@@ -309,8 +341,8 @@ function RunsPageContent() {
                         onClick={() => goToPage(pageNum)}
                         className={
                           currentPage === pageNum
-                            ? 'bg-[#5B9A99] text-white border-2 border-[#5B9A99]'
-                            : 'border-2 border-[#5B9A99] hover:bg-[#5B9A99] hover:text-white'
+                            ? 'bg-[#5B9A99] text-white hover:bg-[#4A8988]'
+                            : 'hover:bg-[#5B9A99] hover:text-white'
                         }
                       >
                         {pageNum}
@@ -324,7 +356,7 @@ function RunsPageContent() {
                   size="sm"
                   onClick={() => goToPage(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="border-2 border-[#5B9A99] hover:bg-[#5B9A99] hover:text-white"
+                  className="hover:bg-[#5B9A99] hover:text-white"
                 >
                   Next
                   <ChevronRight className="w-4 h-4" />

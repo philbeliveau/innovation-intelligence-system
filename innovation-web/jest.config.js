@@ -15,7 +15,7 @@ const customJestConfig = {
     '**/?(*.)+(spec|test).[jt]s?(x)'
   ],
   transformIgnorePatterns: [
-    'node_modules/(?!(react-markdown|remark-gfm|rehype-sanitize|unified|bail|is-plain-obj|trough|vfile|unist-.*|mdast-.*|micromark.*|decode-named-character-reference|character-entities|property-information|hast-util-whitespace|hast-util-.*|space-separated-tokens|comma-separated-tokens|ccount|escape-string-regexp|markdown-table|rehype-.*)/)',
+    'node_modules/(?!(react-markdown|remark-gfm|rehype-sanitize|unified|bail|is-plain-obj|trough|vfile|unist-.*|mdast-.*|micromark.*|decode-named-character-reference|character-entities|property-information|hast-util-whitespace|hast-util-.*|space-separated-tokens|comma-separated-tokens|ccount|escape-string-regexp|markdown-table|rehype-.*|marked)/)',
   ],
 }
 

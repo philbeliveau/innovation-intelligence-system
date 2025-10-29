@@ -123,9 +123,13 @@ export default function PipelinePage() {
           return
         }
 
-        // Continue polling if still running
+        // Story 10.7: Stop polling when status is 'completed'
+        // Continue polling only if still running
         if (data.status === 'running') {
           timeoutId = setTimeout(pollStatus, 5000)
+        } else if (data.status === 'completed') {
+          // Pipeline completed - stop polling
+          console.log('[Pipeline] Completed - stopping polling')
         }
 
         // Note: We don't auto-redirect anymore - let user click the button

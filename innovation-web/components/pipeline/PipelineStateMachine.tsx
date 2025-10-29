@@ -23,6 +23,7 @@ import ActionBar from './ActionBar'
 import CollapsedSidebar from './CollapsedSidebar'
 import ExpandedSparkDetail from './ExpandedSparkDetail'
 import MobileSparkNavigationMenu from './MobileSparkNavigationMenu'
+import { ModeIndicator } from './ModeIndicator'
 import { useRouter } from 'next/navigation'
 import { FadeTransition } from '../animations/FadeTransition'
 import { StateAnnouncer } from '../animations/StateAnnouncer'
@@ -37,6 +38,22 @@ const parseStageOutput = (output: string | undefined) => {
   } catch {
     return null
   }
+}
+
+/**
+ * Determines pipeline mode based on status
+ * Story 10.7: Added dual-mode support
+ */
+type PipelineMode = 'live' | 'retrospective'
+
+const determineMode = (status: PipelineStatus, hasStageOutputs: boolean): PipelineMode => {
+  // Retrospective: pipeline completed and has stage outputs
+  if (status === 'COMPLETED' && hasStageOutputs) {
+    return 'retrospective'
+  }
+
+  // Live: pipeline still processing
+  return 'live'
 }
 
 /**
@@ -74,7 +91,18 @@ export default function PipelineStateMachine({
   const [isDownloading, setIsDownloading] = useState(false)
   const [previousState, setPreviousState] = useState<PipelineState | null>(null)
   const [announceMessage, setAnnounceMessage] = useState('')
-  const [isSidebarSticky, setIsSidebarSticky] = useState(true)
+
+  // Story 10.7: Determine pipeline mode (live vs retrospective)
+  const hasStageOutputs = !!(
+    pipelineData.stage1Output ||
+    pipelineData.stage2Output ||
+    pipelineData.stage3Output ||
+    pipelineData.stage4Output
+  )
+  const mode = determineMode(status, hasStageOutputs)
+
+  // Get completion timestamp for retrospective mode
+  const completedAt = pipelineData.stages.find(s => s.stageNumber === 5)?.completedAt
 
   // Use controlled or uncontrolled card selection
   const activeCardId = selectedCardId !== undefined ? selectedCardId : internalSelectedCardId
@@ -164,6 +192,9 @@ export default function PipelineStateMachine({
       {/* Screen reader announcements */}
       {announceMessage && <StateAnnouncer message={announceMessage} />}
 
+      {/* Story 10.7: Mode Indicator */}
+      <ModeIndicator mode={mode} completedAt={completedAt} />
+
       {/* State Container: Fixed height with relative positioning for absolute overlays */}
       <div className="relative min-h-screen">
         {/* State 1: Extraction Animation */}
@@ -247,6 +278,9 @@ export default function PipelineStateMachine({
                     onDownload={() => {
                       // Download handler will be implemented in next task
                       window.open(`/api/pipeline/${pipelineData.runId}/download/stage1`, '_blank')
+                    }}
+                    onClick={() => {
+                      console.log('[PipelineStateMachine] Insights column clicked')
                     }}
                   />
                 ) : (
@@ -335,8 +369,6 @@ export default function PipelineStateMachine({
                 onSelectSpark={handleCardSelect}
                 onBackToColumns={() => handleCardSelect('')}
                 isCollapsed={true}
-                isSticky={isSidebarSticky}
-                onToggleSticky={() => setIsSidebarSticky(!isSidebarSticky)}
               />
             </div>
 

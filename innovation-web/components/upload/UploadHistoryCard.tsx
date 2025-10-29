@@ -437,10 +437,10 @@ export function UploadHistoryCard({ upload, onDelete }: UploadHistoryCardProps) 
 
       {/* Hero Image with PDF thumbnail or loading skeleton */}
       <div className="relative w-full flex-1">
-        {isLoadingPdf ? (
-          /* Loading skeleton while PDF is being processed */
-          <div className="relative w-full h-full bg-gray-100 animate-pulse">
-            <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300" />
+        {(isLoadingPdf || !pdfThumbnail) ? (
+          /* Loading skeleton - stay white until thumbnail is ready */
+          <div className="relative w-full h-full bg-white animate-pulse">
+            <div className="absolute inset-0 bg-white" />
             <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm p-4 z-20">
               <div className="mb-1.5">
                 <div className="inline-block h-4 w-24 bg-gray-200 rounded" />
@@ -449,31 +449,15 @@ export function UploadHistoryCard({ upload, onDelete }: UploadHistoryCardProps) 
             </div>
           </div>
         ) : (
-          <div className="relative w-full h-full overflow-hidden bg-gray-100">
+          <div className="relative w-full h-full overflow-hidden bg-white">
             {/* PDF thumbnail - extremely light blur */}
-            {pdfThumbnail ? (
-              <>
-                <div className="absolute inset-0">
-                  <img
-                    src={pdfThumbnail}
-                    alt="Document preview"
-                    className="w-full h-full object-cover blur-sm"
-                  />
-                </div>
-                {console.log('[UploadHistoryCard] Rendering PDF thumbnail in UI')}
-              </>
-            ) : (
-              <>
-                {/* Fallback gradient when no PDF */}
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background: `linear-gradient(to bottom right, ${colorScheme.from}, ${colorScheme.to})`
-                  }}
-                />
-                {console.log('[UploadHistoryCard] No thumbnail to render, showing gradient only')}
-              </>
-            )}
+            <div className="absolute inset-0">
+              <img
+                src={pdfThumbnail}
+                alt="Document preview"
+                className="w-full h-full object-cover blur-sm"
+              />
+            </div>
 
             {/* Title overlay at bottom with category badge */}
             <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm p-4 z-20">
@@ -492,7 +476,7 @@ export function UploadHistoryCard({ upload, onDelete }: UploadHistoryCardProps) 
 
       {/* Bottom white section */}
       <div className="p-4 bg-white border-t border-gray-100">
-        {isLoadingPdf ? (
+        {(isLoadingPdf || !pdfThumbnail) ? (
           /* Loading skeleton for bottom section */
           <div className="animate-pulse">
             <div className="h-3 w-full bg-gray-200 rounded mb-1" />

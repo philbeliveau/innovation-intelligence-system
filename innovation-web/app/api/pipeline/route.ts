@@ -12,6 +12,7 @@ export interface SidebarRun {
   createdAt: string
   status: RunStatus
   cardCount: number
+  blobUrl?: string | null
 }
 
 interface RunsResponse {
@@ -162,6 +163,7 @@ export async function GET(request: NextRequest) {
       createdAt: run.createdAt.toISOString(),
       status: run.status,
       cardCount: run._count.opportunityCards,
+      blobUrl: run.documentUrl, // documentUrl is the blob URL from Vercel Blob
     }))
 
     // Get unique companies for filter dropdown (query all companies for this user)

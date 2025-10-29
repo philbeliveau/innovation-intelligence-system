@@ -54,7 +54,6 @@ export function UploadHistorySection({ companyId, onHistoryUpdate }: UploadHisto
             scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100
             snap-x snap-mandatory
             md:grid md:grid-cols-2 md:overflow-x-visible lg:grid-cols-3
-            justify-items-center
           "
           style={{
             scrollbarWidth: 'thin',
@@ -62,7 +61,7 @@ export function UploadHistorySection({ companyId, onHistoryUpdate }: UploadHisto
           }}
         >
           {history.map((upload) => (
-            <div key={upload.upload_id} className="snap-start">
+            <div key={upload.upload_id} className="snap-start flex-shrink-0 w-full max-w-sm md:max-w-none">
               <UploadHistoryCard
                 upload={upload}
                 onDelete={handleDelete}

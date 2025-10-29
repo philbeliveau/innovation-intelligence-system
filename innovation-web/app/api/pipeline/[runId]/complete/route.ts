@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { completeSchema } from '@/lib/validations/webhook'
 
 interface OpportunityPayload {
   number?: number
@@ -46,9 +47,24 @@ export async function POST(
     const { runId } = await params
     const body = await request.json()
 
+    // 3. Validate payload using Zod schema
+    const validationResult = completeSchema.safeParse(body)
+    if (!validationResult.success) {
+      console.error('[Webhook] Validation failed:', validationResult.error.format())
+      return NextResponse.json(
+        {
+          error: 'Invalid payload',
+          details: validationResult.error.format()
+        },
+        { status: 400 }
+      )
+    }
+
+    const { completedAt, duration, opportunities, fullReportMarkdown } = validationResult.data
+
     console.log(`[Webhook] Received completion for run ${runId}`)
 
-    // 3. Verify run exists and get current status
+    // 4. Verify run exists and get current status
     const existingRun = await prisma.pipelineRun.findUnique({
       where: { id: runId },
       include: {
@@ -65,7 +81,7 @@ export async function POST(
       )
     }
 
-    // 4. Handle idempotency - if already completed, return success
+    // 5. Handle idempotency - if already completed, return success
     if (existingRun.status === 'COMPLETED') {
       console.log(`[Webhook] Run ${runId} already completed (idempotent)`)
       return NextResponse.json({
@@ -74,20 +90,36 @@ export async function POST(
       })
     }
 
-    // 5. Update run status to COMPLETED
-    await prisma.pipelineRun.update({
-      where: { id: runId },
-      data: {
-        status: 'COMPLETED',
-        completedAt: new Date(body.completedAt),
-        duration: body.duration
-      }
-    })
+    // 6. Update run status to COMPLETED and save fullReportMarkdown if provided
+    const updateData: {
+      status: string
+      completedAt: Date
+      duration?: number
+      fullReportMarkdown?: string
+    } = {
+      status: 'COMPLETED',
+      completedAt: completedAt ? new Date(completedAt) : new Date(),
+      duration
+    }
 
-    console.log(`[Webhook] Updated run ${runId} status to COMPLETED`)
+    // Add fullReportMarkdown if provided (backward compatibility)
+    if (fullReportMarkdown) {
+      updateData.fullReportMarkdown = fullReportMarkdown
+      console.log(`[Webhook] Saving fullReportMarkdown (${fullReportMarkdown.length} chars)`)
+    }
 
-    // 6. Save opportunity cards (validate required fields)
-    const opportunities = (body.opportunities || []) as OpportunityPayload[]
+    try {
+      await prisma.pipelineRun.update({
+        where: { id: runId },
+        data: updateData
+      })
+      console.log(`[Webhook] Updated run ${runId} status to COMPLETED`)
+    } catch (updateError) {
+      console.error(`[Webhook] Failed to update run status:`, updateError)
+      // Don't fail the webhook - try to save opportunity cards anyway
+    }
+
+    // 7. Save opportunity cards (validate required fields)
 
     console.log(`[Webhook] Received ${opportunities.length} opportunities for run ${runId}`)
     console.log(`[Webhook] First opportunity sample:`, JSON.stringify(opportunities[0], null, 2))
@@ -143,7 +175,7 @@ export async function POST(
 
     console.log(`[Webhook] Created ${cardsCreated}/${opportunities.length} opportunity cards`)
 
-    // 7. Fetch stage outputs from StageOutput table and create InspirationReport
+    // 8. Fetch stage outputs from StageOutput table and create InspirationReport
     try {
       // Get all stage outputs from database (already saved by backend during pipeline execution)
       const stageOutputs = await prisma.stageOutput.findMany({

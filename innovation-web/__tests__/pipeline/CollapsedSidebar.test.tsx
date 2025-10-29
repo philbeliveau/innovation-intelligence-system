@@ -38,8 +38,8 @@ describe('CollapsedSidebar', () => {
       />
     )
 
-    // Should render 3 thumbnails (clickable divs)
-    const thumbnails = container.querySelectorAll('[class*="cursor-pointer"]')
+    // Should render 3 thumbnails (clickable divs with aspect-square)
+    const thumbnails = container.querySelectorAll('[class*="aspect-square"][class*="cursor-pointer"]')
     expect(thumbnails.length).toBe(3)
   })
 
@@ -69,16 +69,16 @@ describe('CollapsedSidebar', () => {
       />
     )
 
-    // Find all thumbnail containers
-    const thumbnails = container.querySelectorAll('[class*="ring-"]')
+    // Find all spark thumbnail containers (with aspect-square)
+    const thumbnails = container.querySelectorAll('[class*="aspect-square"][class*="ring-"]')
 
-    // Second thumbnail (index 1) should have ring-3 (selected state)
+    // Second thumbnail (index 1) should have ring-2 (selected state)
     const selectedThumbnail = Array.from(thumbnails).find(
-      (thumb) => thumb.className.includes('ring-3')
+      (thumb) => thumb.className.includes('ring-2') && thumb.className.includes('ring-[#5B9A99]')
     )
 
     expect(selectedThumbnail).toBeTruthy()
-    expect(selectedThumbnail?.className).toContain('ring-3')
+    expect(selectedThumbnail?.className).toContain('ring-2')
   })
 
   it('calls onSelectSpark when thumbnail is clicked', () => {
@@ -91,14 +91,14 @@ describe('CollapsedSidebar', () => {
       />
     )
 
-    // Click the second thumbnail
-    const thumbnails = container.querySelectorAll('[class*="cursor-pointer"]')
+    // Click the second thumbnail (use aspect-square selector to target only spark thumbnails)
+    const thumbnails = container.querySelectorAll('[class*="aspect-square"][class*="cursor-pointer"]')
     fireEvent.click(thumbnails[1])
 
     expect(mockOnSelect).toHaveBeenCalledWith('2')
   })
 
-  it('renders gray placeholder when no hero image', () => {
+  it('renders gradient placeholder when no hero image', () => {
     const mockOnSelect = jest.fn()
     const { container } = render(
       <CollapsedSidebar
@@ -108,8 +108,8 @@ describe('CollapsedSidebar', () => {
       />
     )
 
-    // Check for gray placeholder divs
-    const placeholders = container.querySelectorAll('.bg-gray-200')
+    // Check for gradient placeholder divs (sparks without heroImageUrl)
+    const placeholders = container.querySelectorAll('[class*="bg-gradient-to-br"]')
     expect(placeholders.length).toBeGreaterThanOrEqual(2) // At least 2 sparks have no image
   })
 
@@ -145,7 +145,7 @@ describe('CollapsedSidebar', () => {
     )
 
     expect(container.textContent).toContain('1')
-    const thumbnails = container.querySelectorAll('[class*="cursor-pointer"]')
+    const thumbnails = container.querySelectorAll('[class*="aspect-square"][class*="cursor-pointer"]')
     expect(thumbnails).toHaveLength(1)
   })
 
@@ -161,7 +161,7 @@ describe('CollapsedSidebar', () => {
         />
       )
 
-      const thumbnails = container.querySelectorAll('[class*="cursor-pointer"]')
+      const thumbnails = container.querySelectorAll('[class*="aspect-square"][class*="cursor-pointer"]')
 
       // Simulate keyboard Enter on second thumbnail
       fireEvent.keyDown(thumbnails[1], { key: 'Enter', code: 'Enter' })
@@ -199,7 +199,7 @@ describe('CollapsedSidebar', () => {
       )
 
       const sidebar = container.firstChild as HTMLElement
-      expect(sidebar.style.width).toBe('120px')
+      expect(sidebar.style.width).toBe('240px')
     })
 
     it('applies full width when isCollapsed is false', () => {
@@ -228,10 +228,10 @@ describe('CollapsedSidebar', () => {
         />
       )
 
-      const thumbnails = container.querySelectorAll('[class*="cursor-pointer"]')
+      const thumbnails = container.querySelectorAll('[class*="aspect-square"][class*="cursor-pointer"]')
       const firstThumbnail = thumbnails[0] as HTMLElement
 
-      expect(firstThumbnail.style.transform).toContain('scale(0.9)')
+      expect(firstThumbnail.style.transform).toContain('scale(0.98)')
     })
 
     it('applies normal scale when expanded', () => {
@@ -245,7 +245,7 @@ describe('CollapsedSidebar', () => {
         />
       )
 
-      const thumbnails = container.querySelectorAll('[class*="cursor-pointer"]')
+      const thumbnails = container.querySelectorAll('[class*="aspect-square"][class*="cursor-pointer"]')
       const firstThumbnail = thumbnails[0] as HTMLElement
 
       expect(firstThumbnail.style.transform).toContain('scale(1)')
