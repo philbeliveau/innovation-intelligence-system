@@ -2,15 +2,17 @@
 Utility functions for the Innovation Intelligence Pipeline.
 
 This module provides helper functions for output directory management,
-logging configuration, and common utilities used across pipeline stages.
+logging configuration, webhook delivery, and common utilities used across pipeline stages.
 """
 
 import logging
 import os
 from pathlib import Path
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, Any
 from langchain_openai import ChatOpenAI
+import httpx
+import asyncio
 
 
 def create_llm(temperature: float = 0.5, max_tokens: int = 4000) -> ChatOpenAI:
@@ -346,3 +348,118 @@ def load_research_data(
             f"Proceeding without research data."
         )
         return ""
+
+
+class WebhookDeliveryError(Exception):
+    """Raised when webhook delivery fails after all retries."""
+    pass
+
+
+def send_webhook_sync(
+    run_id: str,
+    endpoint: str,
+    payload: Dict[str, Any],
+    max_retries: int = 3,
+    timeout: int = 10
+) -> None:
+    """Synchronous wrapper for webhook delivery with retry logic.
+
+    This is a synchronous version for use in non-async pipeline code.
+    Uses asyncio.run() to execute the async webhook function.
+
+    Args:
+        run_id: Pipeline run identifier
+        endpoint: Webhook endpoint path ("stage-update" or "complete")
+        payload: JSON payload to send in webhook body
+        max_retries: Maximum number of retry attempts (default: 3)
+        timeout: Request timeout in seconds (default: 10)
+
+    Raises:
+        WebhookDeliveryError: If webhook fails after all retries
+
+    Example:
+        >>> send_webhook_sync(
+        ...     run_id="run-123",
+        ...     endpoint="stage-update",
+        ...     payload={"stageNumber": 1, "status": "COMPLETE", "output": {...}}
+        ... )
+    """
+    try:
+        asyncio.run(send_webhook_with_retry(run_id, endpoint, payload, max_retries, timeout))
+    except WebhookDeliveryError as e:
+        # Log but don't re-raise - webhook failures should not block pipeline
+        logging.error(f"[{run_id}] Webhook delivery failed: {e}")
+
+
+async def send_webhook_with_retry(
+    run_id: str,
+    endpoint: str,
+    payload: Dict[str, Any],
+    max_retries: int = 3,
+    timeout: int = 10
+) -> None:
+    """Send webhook with exponential backoff retry logic.
+
+    Sends webhook to frontend with automatic retry on failure. Logs all attempts
+    and includes response time metrics. Designed for non-blocking pipeline execution.
+
+    Args:
+        run_id: Pipeline run identifier
+        endpoint: Webhook endpoint path ("stage-update" or "complete")
+        payload: JSON payload to send in webhook body
+        max_retries: Maximum number of retry attempts (default: 3)
+        timeout: Request timeout in seconds (default: 10)
+
+    Raises:
+        WebhookDeliveryError: If webhook fails after all retries
+
+    Example:
+        >>> await send_webhook_with_retry(
+        ...     run_id="run-123",
+        ...     endpoint="stage-update",
+        ...     payload={"stageNumber": 1, "status": "COMPLETE", "output": {...}}
+        ... )
+    """
+    frontend_url = os.getenv("FRONTEND_URL")
+    webhook_secret = os.getenv("WEBHOOK_SECRET")
+
+    if not frontend_url:
+        logging.error(f"[{run_id}] FRONTEND_URL not configured - skipping webhook delivery")
+        return
+
+    if not webhook_secret:
+        logging.warning(f"[{run_id}] WEBHOOK_SECRET not configured - webhook may be rejected")
+
+    url = f"{frontend_url}/api/pipeline/{run_id}/{endpoint}"
+    headers = {
+        "X-Webhook-Secret": webhook_secret,
+        "Content-Type": "application/json"
+    }
+
+    for attempt in range(max_retries):
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                start_time = datetime.now()
+                response = await client.post(url, json=payload, headers=headers)
+                elapsed = (datetime.now() - start_time).total_seconds()
+
+                response.raise_for_status()
+
+                logging.info(
+                    f"[{run_id}] Webhook delivered: {endpoint} "
+                    f"(status={response.status_code}, time={elapsed:.2f}s)"
+                )
+                return  # Success
+
+        except (httpx.HTTPError, httpx.TimeoutException) as e:
+            wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+            logging.warning(
+                f"[{run_id}] Webhook attempt {attempt + 1}/{max_retries} failed: {e}. "
+                f"Retrying in {wait_time}s..."
+            )
+            if attempt < max_retries - 1:
+                await asyncio.sleep(wait_time)
+            else:
+                error_msg = f"Failed after {max_retries} attempts: {e}"
+                logging.error(f"[{run_id}] Webhook delivery failed: {error_msg}")
+                raise WebhookDeliveryError(error_msg) from e

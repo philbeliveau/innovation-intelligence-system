@@ -21,7 +21,7 @@ from pipeline.stages.stage2_signal_amplification import Stage2Chain
 from pipeline.stages.stage3_general_translation import Stage3Chain
 from pipeline.stages.stage4_brand_contextualization import Stage4Chain
 from pipeline.stages.stage5_opportunity_generation import Stage5Chain
-from pipeline.utils import load_research_data
+from pipeline.utils import load_research_data, send_webhook_sync
 from app.prisma_client import PrismaAPIClient
 from app.pipeline_errors import (
     PipelineErrorCode,
@@ -342,6 +342,18 @@ def execute_pipeline_background(
         # Mark stage 1 as completed in Prisma with flattened structure
         prisma_client.mark_stage_complete(run_id, 1, flattened_output)
 
+        # Send Stage 1 webhook with output
+        webhook_payload = {
+            "stageNumber": 1,
+            "stageName": "Extraction",
+            "status": "COMPLETE",
+            "output": {
+                "extractedText": flattened_output.get("extractedText", ""),
+                "mechanisms": flattened_output.get("mechanisms", [])
+            }
+        }
+        send_webhook_sync(run_id, "stage-update", webhook_payload)
+
         # Extract stage1 output text for Stage 2
         # Stage 2 needs the raw LLM output, not the structured fields
         # Use raw_text if available (original LLM output), otherwise fall back to stage1_output
@@ -368,6 +380,17 @@ def execute_pipeline_background(
         save_stage_output(run_id, 2, stage2_result)
         prisma_client.mark_stage_complete(run_id, 2, stage2_result)
 
+        # Send Stage 2 webhook with output
+        webhook_payload = {
+            "stageNumber": 2,
+            "stageName": "Signals",
+            "status": "COMPLETE",
+            "output": {
+                "signals": stage2_result.get("signals", [])
+            }
+        }
+        send_webhook_sync(run_id, "stage-update", webhook_payload)
+
         # Extract stage2 output text for Stage 3
         stage2_output_text = stage2_result.get("stage2_output", "")
 
@@ -381,6 +404,17 @@ def execute_pipeline_background(
 
         save_stage_output(run_id, 3, stage3_result)
         prisma_client.mark_stage_complete(run_id, 3, stage3_result)
+
+        # Send Stage 3 webhook with output
+        webhook_payload = {
+            "stageNumber": 3,
+            "stageName": "Insights",
+            "status": "COMPLETE",
+            "output": {
+                "insights": stage3_result.get("insights", [])
+            }
+        }
+        send_webhook_sync(run_id, "stage-update", webhook_payload)
 
         # Extract stage3 output text for Stage 4
         stage3_output_text = stage3_result.get("stage3_output", "")
@@ -404,6 +438,17 @@ def execute_pipeline_background(
 
         save_stage_output(run_id, 4, stage4_result)
         prisma_client.mark_stage_complete(run_id, 4, stage4_result)
+
+        # Send Stage 4 webhook with output
+        webhook_payload = {
+            "stageNumber": 4,
+            "stageName": "Ideation",
+            "status": "COMPLETE",
+            "output": {
+                "preliminary": stage4_result.get("preliminary", [])
+            }
+        }
+        send_webhook_sync(run_id, "stage-update", webhook_payload)
 
         # Extract stage4 output text for Stage 5
         stage4_output_text = stage4_result.get("stage4_output", "")
