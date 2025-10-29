@@ -28,6 +28,7 @@ from app.pipeline_errors import (
     create_error_payload,
     classify_error
 )
+from utils.report_generator import generate_full_report, calculate_report_size
 
 logger = logging.getLogger(__name__)
 
@@ -195,7 +196,9 @@ def call_completion_webhook(
     stage2_result: Dict[str, Any],
     stage3_result: Dict[str, Any],
     stage4_result: Dict[str, Any],
-    stage5_result: Dict[str, Any]
+    stage5_result: Dict[str, Any],
+    company_name: str,
+    document_name: str
 ) -> None:
     """Call frontend webhook to notify pipeline completion with retry logic.
 
@@ -208,6 +211,8 @@ def call_completion_webhook(
         stage3_result: Stage 3 output dictionary
         stage4_result: Stage 4 output dictionary
         stage5_result: Stage 5 output dictionary
+        company_name: Company/brand name for report header
+        document_name: Source document name for report header
     """
     frontend_url = os.getenv("FRONTEND_WEBHOOK_URL", "https://innovation-web-rho.vercel.app")
     webhook_secret = os.getenv("WEBHOOK_SECRET", "dev-secret-123")
@@ -226,12 +231,55 @@ def call_completion_webhook(
         }
         enhanced_opportunities.append(enhanced_opp)
 
+    # Generate full report markdown
+    full_report_markdown = None
+    try:
+        report_start = time.time()
+
+        stage_outputs = {
+            "stage1": stage1_result,
+            "stage2": stage2_result,
+            "stage3": stage3_result,
+            "stage4": stage4_result
+        }
+
+        full_report_markdown = generate_full_report(
+            run_id=run_id,
+            company_name=company_name,
+            document_name=document_name,
+            stage_outputs=stage_outputs,
+            opportunity_cards=opportunities
+        )
+
+        report_duration = time.time() - report_start
+        report_size_kb = calculate_report_size(full_report_markdown)
+
+        logger.info(
+            f"[{run_id}] Full report generated: {report_size_kb:.2f} KB "
+            f"in {report_duration:.2f}s"
+        )
+
+        # Validate report size
+        if report_size_kb > 100:
+            logger.warning(
+                f"[{run_id}] Report size ({report_size_kb:.2f} KB) exceeds 100KB limit"
+            )
+
+    except Exception as e:
+        logger.error(
+            f"[{run_id}] Report generation failed: {e}. "
+            "Continuing without report.",
+            exc_info=True
+        )
+        # Continue without report - don't block pipeline completion
+
     # Prepare completion payload
     completion_data = {
         "status": "COMPLETED",
         "completedAt": datetime.utcnow().isoformat() + "Z",
         "duration": int((time.time() - start_time) * 1000),  # milliseconds
         "opportunities": enhanced_opportunities,
+        "fullReportMarkdown": full_report_markdown,
         "stageOutputs": {
             "stage1": stage1_result,
             "stage2": stage2_result,
@@ -487,7 +535,9 @@ def execute_pipeline_background(
             stage2_result=stage2_result,
             stage3_result=stage3_result,
             stage4_result=stage4_result,
-            stage5_result=stage5_result
+            stage5_result=stage5_result,
+            company_name=brand_name,
+            document_name=input_source
         )
 
     except Exception as e:
