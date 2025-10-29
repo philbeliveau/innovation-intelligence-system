@@ -13,14 +13,13 @@ model Document {
   fileName    String
   fileSize    Int
   blobUrl     String
-  contentHash String?  // SHA-256 hash of file content for duplicate detection
+  contentHash String?  // SHA-256 hash of file content
   uploadedAt  DateTime
   createdAt   DateTime @default(now())
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, contentHash]) // Prevent duplicate uploads per user
   @@index([userId, createdAt])
-  @@index([contentHash]) // Fast lookup for duplicate checks
+  @@index([contentHash])
 }
 
 model InspirationReport {

@@ -43,16 +43,13 @@ function sanitizeOpportunityContent(rawContent: string): string {
 
   // If the cleaned content is empty or still looks like JSON, return empty
   // (Better to have no content than malformed content)
-  if (cleaned.length === 0 || cleaned.startsWith('{') || cleaned.startsWith('"')) {
-    console.warn('[Sanitize] Content appears to be pure JSON after cleaning, returning empty')
+  if (cleaned.length === 0) {
+    console.warn('[Sanitize] Content is empty after cleaning')
     return ''
   }
 
-  // Verify the result looks like markdown (should start with # or regular text)
-  if (!cleaned.startsWith('#') && !/^[A-Za-z]/.test(cleaned)) {
-    console.warn('[Sanitize] Content does not look like markdown after cleaning')
-    return ''
-  }
+  // Log what we're about to return
+  console.log(`[Sanitize] Returning cleaned content: ${cleaned.length} chars, starts with: ${cleaned.substring(0, 50)}`)
 
   return cleaned
 }
@@ -185,6 +182,7 @@ export async function POST(
         // Check for content in any of the three possible field names
         if (!opp.markdown && !opp.fullContent && !opp.content) {
           console.warn(`[Webhook] Skipping opportunity ${opp.number || 'unknown'} "${opp.title}" - missing markdown/fullContent/content`)
+          console.warn(`[Webhook] Opportunity fields:`, Object.keys(opp))
           return false
         }
         return true
@@ -193,10 +191,19 @@ export async function POST(
         // Get raw content from any available field
         const rawContent = opp.fullContent || opp.markdown || opp.content || ''
 
+        console.log(`[Webhook] Opportunity ${opp.number || index + 1} BEFORE sanitize:`)
+        console.log(`[Webhook]   - Has fullContent: ${!!opp.fullContent} (length: ${opp.fullContent?.length || 0})`)
+        console.log(`[Webhook]   - Has markdown: ${!!opp.markdown} (length: ${opp.markdown?.length || 0})`)
+        console.log(`[Webhook]   - Has content: ${!!opp.content} (length: ${opp.content?.length || 0})`)
+        console.log(`[Webhook]   - Raw content preview:`, rawContent.substring(0, 100))
+
         // Sanitize content to remove JSON prefix if present
         const cleanContent = sanitizeOpportunityContent(rawContent)
 
-        console.log(`[Webhook] Opportunity ${opp.number || index + 1}: Raw length=${rawContent.length}, Clean length=${cleanContent.length}`)
+        console.log(`[Webhook] Opportunity ${opp.number || index + 1} AFTER sanitize: length=${cleanContent.length}`)
+        if (cleanContent.length === 0) {
+          console.error(`[Webhook] WARNING: Sanitization removed all content for opportunity ${opp.number || index + 1}`)
+        }
 
         return {
           runId,
