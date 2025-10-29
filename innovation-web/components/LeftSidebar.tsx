@@ -174,9 +174,9 @@ export function LeftSidebar() {
                     <path d="M15 18l-6-6 6-6" />
                   </svg>
                 ) : (
-                  // Left arrow (collapsed) - light gray
+                  // Right arrow (not sticky) - light gray
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M15 18l-6-6 6-6" />
+                    <path d="M9 18l6-6-6-6" />
                   </svg>
                 )}
               </button>
