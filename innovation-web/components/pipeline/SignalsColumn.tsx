@@ -201,11 +201,11 @@ export const SignalsColumn: React.FC<SignalsColumnProps> = ({
                 console.log('[SignalsColumn] No thumbnail to render, showing gradient only')
               )}
 
-              {/* Gradient overlay layer */}
+              {/* Gradient overlay layer - lighter opacity to show PDF through */}
               <div
                 className="absolute inset-0 z-10"
                 style={{
-                  background: `linear-gradient(to bottom right, ${colorScheme.from}CC, ${colorScheme.to}CC)`
+                  background: `linear-gradient(to bottom right, ${colorScheme.from}66, ${colorScheme.to}66)`
                 }}
               />
             </div>
