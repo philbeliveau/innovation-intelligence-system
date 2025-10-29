@@ -31,8 +31,8 @@ export function UploadHistorySection({ companyId, onHistoryUpdate }: UploadHisto
   }
 
   // Handle delete from history
-  const handleDelete = (uploadId: string) => {
-    removeUploadFromHistory(companyId, uploadId)
+  const handleDelete = async (uploadId: string) => {
+    await removeUploadFromHistory(companyId, uploadId)
     loadHistory() // Reload history after deletion
     onHistoryUpdate?.() // Notify parent
   }

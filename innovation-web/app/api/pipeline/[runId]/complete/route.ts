@@ -11,6 +11,53 @@ interface OpportunityPayload {
 }
 
 /**
+ * Sanitize opportunity content by removing stage outputs and JSON if present
+ * Backend sometimes sends stage outputs concatenated with the actual spark markdown
+ */
+function sanitizeOpportunityContent(rawContent: string): string {
+  // Pattern 1: Remove stage output JSON blocks (e.g., "stage1_output": "{...}")
+  // This handles the case where all stage outputs are concatenated together
+  let cleaned = rawContent
+
+  // Remove all stage output JSON blocks
+  const stageOutputPattern = /"stage\d+_output":\s*"[^"]*(?:\\.[^"]*)*"/g
+  cleaned = cleaned.replace(stageOutputPattern, '')
+
+  // Remove other common JSON fields that might be prepended
+  const jsonFieldPatterns = [
+    /"(?:trendTitle|trendImage|coreMechanism|businessImpact|patternTransfersTo|mechanisms|abstractionTest|evidenceStrength|cpgRelevance|extractedText|brand_profile|research_data)":\s*(?:"[^"]*(?:\\.[^"]*)*"|\[[^\]]*\]|\{[^}]*\})/g,
+  ]
+
+  jsonFieldPatterns.forEach(pattern => {
+    cleaned = cleaned.replace(pattern, '')
+  })
+
+  // Remove JSON structural characters that might be left over
+  cleaned = cleaned
+    .replace(/^\s*[\{\},"]*\s*/, '') // Remove leading JSON chars
+    .replace(/\s*[\{\},"]*\s*$/, '') // Remove trailing JSON chars
+    .replace(/\\n/g, '\n')           // Convert literal \n to actual newlines
+    .replace(/\\"/g, '"')            // Convert escaped quotes
+    .replace(/\n{3,}/g, '\n\n')      // Collapse multiple newlines
+    .trim()
+
+  // If the cleaned content is empty or still looks like JSON, return empty
+  // (Better to have no content than malformed content)
+  if (cleaned.length === 0 || cleaned.startsWith('{') || cleaned.startsWith('"')) {
+    console.warn('[Sanitize] Content appears to be pure JSON after cleaning, returning empty')
+    return ''
+  }
+
+  // Verify the result looks like markdown (should start with # or regular text)
+  if (!cleaned.startsWith('#') && !/^[A-Za-z]/.test(cleaned)) {
+    console.warn('[Sanitize] Content does not look like markdown after cleaning')
+    return ''
+  }
+
+  return cleaned
+}
+
+/**
  * POST /api/pipeline/[runId]/complete
  *
  * Webhook endpoint called by Railway backend when pipeline completes.
@@ -92,7 +139,7 @@ export async function POST(
 
     // 6. Update run status to COMPLETED and save fullReportMarkdown if provided
     const updateData: {
-      status: string
+      status: 'COMPLETED'
       completedAt: Date
       duration?: number
       fullReportMarkdown?: string
@@ -142,13 +189,23 @@ export async function POST(
         }
         return true
       })
-      .map(({ opp, index }) => ({
-        runId,
-        number: opp.number || index + 1,
-        title: opp.title,
-        content: opp.fullContent || opp.markdown || opp.content || '',  // Try fullContent first (backend's field name)
-        isStarred: false
-      }))
+      .map(({ opp, index }) => {
+        // Get raw content from any available field
+        const rawContent = opp.fullContent || opp.markdown || opp.content || ''
+
+        // Sanitize content to remove JSON prefix if present
+        const cleanContent = sanitizeOpportunityContent(rawContent)
+
+        console.log(`[Webhook] Opportunity ${opp.number || index + 1}: Raw length=${rawContent.length}, Clean length=${cleanContent.length}`)
+
+        return {
+          runId,
+          number: opp.number || index + 1,
+          title: opp.title,
+          content: cleanContent,
+          isStarred: false
+        }
+      })
 
     console.log(`[Webhook] Validated ${validOpportunities.length}/${opportunities.length} opportunities for database insertion`)
 

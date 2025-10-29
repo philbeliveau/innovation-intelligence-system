@@ -6,8 +6,9 @@ import { pdfDownloadLimiter, getClientIdentifier } from '@/lib/rate-limit'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { runId: string } }
+  props: { params: Promise<{ runId: string }> }
 ) {
+  const params = await props.params;
   try {
     // Check authentication
     const { userId } = await auth()
@@ -92,7 +93,7 @@ export async function GET(
     const filename = `${sanitizedCompanyName}-analysis-report.pdf`
 
     // Return PDF with appropriate headers including rate limit info
-    return new Response(pdfBuffer, {
+    return new Response(pdfBuffer as unknown as BodyInit, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,

@@ -322,11 +322,11 @@ export function UploadHistoryCard({ upload, onDelete }: UploadHistoryCardProps) 
         canvas.width = viewport.width
         console.log('[UploadHistoryCard] Canvas size:', canvas.width, 'x', canvas.height)
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // @ts-expect-error - pdfjs-dist types are incomplete
         await page.render({
           canvasContext: context,
           viewport: viewport,
-        } as any).promise
+        }).promise
 
         console.log('[UploadHistoryCard] Page rendered to canvas')
 

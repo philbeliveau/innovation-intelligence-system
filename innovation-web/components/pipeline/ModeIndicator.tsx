@@ -10,12 +10,7 @@ type ModeIndicatorProps = {
 
 export function ModeIndicator({ mode, completedAt }: ModeIndicatorProps) {
   if (mode === 'live') {
-    return (
-      <div className="flex items-center gap-2 mb-4">
-        <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-        <span className="text-sm text-gray-600">Live Pipeline Running</span>
-      </div>
-    )
+    return null
   }
 
   return (
