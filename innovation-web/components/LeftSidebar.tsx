@@ -7,6 +7,7 @@ import { useRuns } from '@/lib/use-runs'
 import { formatRelativeTime } from '@/lib/format-relative-time'
 import type { RunStatus } from '@/app/api/pipeline/route'
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
+import { useSidebarContext } from './LayoutWithSidebar'
 
 interface Track {
   trackNumber: number
@@ -21,6 +22,7 @@ export function LeftSidebar() {
   const [isVisible, setIsVisible] = useState(true) // Start visible for debugging
   const [nonSelectedTrack, setNonSelectedTrack] = useState<Track | null>(null)
   const [isMobile, setIsMobile] = useState(false)
+  const { isSidebarSticky: isSticky, setIsSidebarSticky: setIsSticky } = useSidebarContext()
 
   // Enable polling on all pages to show runs in sidebar
   const { runs, loading, error } = useRuns({
@@ -81,11 +83,11 @@ export function LeftSidebar() {
           </span>
         )
       case 'COMPLETED':
-        return <span className="text-green-600">✅</span>
+        return <span className="flex items-center"><div className="w-2 h-2 rounded-full bg-[#5B9A99]" /></span>
       case 'FAILED':
-        return <span className="text-red-600">❌</span>
+        return <span className="flex items-center"><div className="w-2 h-2 rounded-full bg-red-600" /></span>
       case 'CANCELLED':
-        return <span className="text-gray-400">⭕</span>
+        return <span className="flex items-center"><div className="w-2 h-2 rounded-full border-2 border-gray-400" /></span>
       default:
         return null
     }
@@ -134,39 +136,65 @@ export function LeftSidebar() {
         />
       )}
 
-      {/* Sidebar - Mobile: slide from left, Desktop: hover reveal */}
+      {/* Sidebar - Mobile: slide from left, Desktop: hover reveal or sticky */}
       <div
-        className={`fixed ${isMobile ? 'left-0 top-0 bottom-0' : 'left-4 top-1/2 -translate-y-1/2'} z-50 transition-transform duration-300 ease-in-out ${
+        className={`fixed ${isMobile ? 'left-0 top-0 bottom-0' : isSticky ? 'left-0 top-0 bottom-0' : 'left-4 top-1/2 -translate-y-1/2'} z-50 transition-all duration-300 ease-in-out ${
           isVisible ? 'translate-x-0' : '-translate-x-full'
         }`}
-        onMouseLeave={() => !isMobile && setIsVisible(false)}
-        style={{ minWidth: isMobile ? 'auto' : '288px' }}
+        onMouseLeave={() => !isMobile && !isSticky && setIsVisible(false)}
+        style={{ minWidth: isMobile ? 'auto' : '220px' }}
       >
-        <div className={`flex bg-white ${isMobile ? 'h-full flex-col p-5' : 'w-72 p-5'} shadow-md shadow-purple-200/50 ${isMobile ? 'rounded-r-md' : 'rounded-md'}`}>
-          {/* Mobile: Close button */}
-          {isMobile && (
-            <button
-              onClick={() => setIsVisible(false)}
-              className="self-end mb-4 p-2 hover:bg-purple-100 rounded-full transition-all"
-              aria-label="Close menu"
-            >
-              <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          )}
+        <div className={`flex bg-white ${isMobile ? 'h-full flex-col p-4' : isSticky ? 'h-full flex-col py-4 pr-4 pl-2' : 'w-56 p-4'} shadow-md shadow-teal-200/50 ${isMobile ? 'rounded-r-md' : isSticky ? 'rounded-r-md' : 'rounded-md'}`}>
+          {/* Header: Close button (mobile) + Sticky toggle (desktop) */}
+          <div className="flex items-center justify-between mb-4">
+            {isMobile && (
+              <button
+                onClick={() => setIsVisible(false)}
+                className="p-2 hover:bg-teal-50 rounded-full transition-all"
+                aria-label="Close menu"
+              >
+                <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+            {!isMobile && (
+              <button
+                onClick={() => setIsSticky(!isSticky)}
+                className="ml-auto p-1.5 hover:bg-teal-50 rounded-full transition-all"
+                title={isSticky ? 'Unstick sidebar' : 'Stick sidebar'}
+                aria-label={isSticky ? 'Unstick sidebar' : 'Stick sidebar'}
+              >
+                {isSticky ? (
+                  // Locked icon
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <rect x="5" y="11" width="14" height="10" rx="2" stroke="#5B9A99" strokeWidth="2"/>
+                    <path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="#5B9A99" strokeWidth="2" strokeLinecap="round"/>
+                    <circle cx="12" cy="16" r="1.5" fill="#5B9A99"/>
+                  </svg>
+                ) : (
+                  // Unlocked icon
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <rect x="5" y="11" width="14" height="10" rx="2" stroke="#9CA3AF" strokeWidth="2"/>
+                    <path d="M8 11V7a4 4 0 0 1 8 0v3" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"/>
+                    <circle cx="12" cy="16" r="1.5" fill="#9CA3AF"/>
+                  </svg>
+                )}
+              </button>
+            )}
+          </div>
 
-          <ul className="w-full flex flex-col gap-2">
+          <ul className="w-full flex flex-col gap-1.5">
             {/* Home Button */}
             <li className="flex-center cursor-pointer w-full whitespace-nowrap">
               <button
                 title="Go to the home page"
                 onClick={handleHomeClick}
-                className="flex size-full gap-4 p-4 group font-semibold rounded-full bg-cover hover:bg-purple-100 hover:shadow-inner focus:bg-gradient-to-r focus:from-purple-400 focus:to-purple-600 focus:text-white text-gray-700 transition-all ease-linear"
+                className="flex size-full gap-2 p-2.5 group text-sm font-semibold rounded-full bg-cover hover:bg-teal-50 hover:shadow-inner focus:bg-[#5B9A99] focus:text-white text-gray-700 transition-all ease-linear"
               >
                 <svg
                   stroke="#000000"
-                  className="size-6 group-focus:fill-white group-focus:stroke-white"
+                  className="size-5 group-focus:fill-white group-focus:stroke-white"
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
                   fill="#000000"
@@ -188,11 +216,11 @@ export function LeftSidebar() {
               <li className="flex-center cursor-pointer w-full whitespace-nowrap">
                 <button
                   title={`Track ${nonSelectedTrack.trackNumber}: ${nonSelectedTrack.title}`}
-                  className="flex size-full gap-4 p-4 group font-semibold rounded-full bg-cover hover:bg-purple-100 hover:shadow-inner focus:bg-gradient-to-r focus:from-purple-400 focus:to-purple-600 focus:text-white text-gray-700 transition-all ease-linear"
+                  className="flex size-full gap-2 p-2.5 group text-sm font-semibold rounded-full bg-cover hover:bg-teal-50 hover:shadow-inner focus:bg-[#5B9A99] focus:text-white text-gray-700 transition-all ease-linear"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="size-6 group-focus:fill-white"
+                    className="size-5 group-focus:fill-white"
                     viewBox="0 0 20 20"
                     fill="currentColor"
                   >
@@ -214,13 +242,13 @@ export function LeftSidebar() {
                 <SignInButton mode="modal">
                   <button
                     title="Sign In"
-                    className="flex size-full gap-4 p-4 group font-semibold rounded-full bg-cover hover:bg-purple-100 hover:shadow-inner focus:bg-gradient-to-r focus:from-purple-400 focus:to-purple-600 focus:text-white text-gray-700 transition-all ease-linear"
+                    className="flex size-full gap-2 p-2.5 group text-sm font-semibold rounded-full bg-cover hover:bg-teal-50 hover:shadow-inner focus:bg-[#5B9A99] focus:text-white text-gray-700 transition-all ease-linear"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
-                      className="size-6"
+                      className="size-5"
                     >
                       <path
                         className="group-focus:fill-white"
@@ -240,11 +268,11 @@ export function LeftSidebar() {
             </SignedOut>
             <SignedIn>
               <li className="flex-center cursor-pointer w-full whitespace-nowrap">
-                <button className="flex size-full gap-4 p-4 group font-semibold rounded-full bg-cover hover:bg-purple-100 hover:shadow-inner focus:bg-gradient-to-r focus:from-purple-400 focus:to-purple-600 focus:text-white text-gray-700 transition-all ease-linear items-center">
+                <button className="flex size-full gap-2 p-2.5 group text-sm font-semibold rounded-full bg-cover hover:bg-teal-50 hover:shadow-inner focus:bg-[#5B9A99] focus:text-white text-gray-700 transition-all ease-linear items-center">
                   <UserButton
                     appearance={{
                       elements: {
-                        avatarBox: "w-6 h-6"
+                        avatarBox: "w-5 h-5"
                       }
                     }}
                   />
@@ -256,13 +284,13 @@ export function LeftSidebar() {
             {/* My Runs Section */}
             <SignedIn>
               <li className="w-full border-t border-gray-200 my-2" />
-              <li className="w-full px-2">
+              <li className="w-full px-1">
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <h3 className="text-xs font-semibold text-gray-500 mb-2 cursor-help inline-flex items-center gap-1">
+                      <h3 className="text-[10px] font-semibold text-gray-500 mb-1.5 cursor-help inline-flex items-center gap-1">
                         My Runs
-                        <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-2.5 h-2.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                       </h3>
@@ -291,7 +319,7 @@ export function LeftSidebar() {
 
                 {/* Runs List */}
                 {!loading && !error && runs.length === 0 && (
-                  <div className="text-xs text-gray-400 px-2 py-1">
+                  <div className="text-[10px] text-gray-400 px-1 py-1">
                     No runs yet
                   </div>
                 )}
@@ -302,26 +330,26 @@ export function LeftSidebar() {
                       <button
                         key={run.id}
                         onClick={() => handleRunClick(run.id)}
-                        className="w-full text-left p-2 rounded-lg hover:bg-purple-50 transition-colors border border-transparent hover:border-purple-200"
+                        className="w-full text-left p-1.5 rounded-md hover:bg-teal-50 transition-colors border border-transparent hover:border-teal-200"
                         title={`${run.documentName} - ${run.companyName}`}
                       >
-                        <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start justify-between gap-1">
                           <div className="flex-1 min-w-0">
-                            <div className="text-xs font-medium text-gray-900 truncate">
+                            <div className="text-[10px] font-medium text-gray-900 truncate leading-tight">
                               {truncateDocumentName(run.documentName)}
                             </div>
-                            <div className="text-xs text-gray-500 truncate">
+                            <div className="text-[9px] text-gray-500 truncate leading-tight">
                               {run.companyName}
                             </div>
-                            <div className="text-xs text-gray-400 mt-1">
+                            <div className="text-[9px] text-gray-400 mt-0.5 leading-tight">
                               {formatRelativeTime(run.createdAt)}
                             </div>
                           </div>
-                          <div className="flex flex-col items-end gap-1">
+                          <div className="flex flex-col items-end gap-0.5">
                             {getStatusBadge(run.status)}
                             {run.cardCount > 0 && (
-                              <span className="text-xs text-gray-500">
-                                {run.cardCount} cards
+                              <span className="text-[9px] text-gray-500">
+                                {run.cardCount}
                               </span>
                             )}
                           </div>
@@ -335,9 +363,9 @@ export function LeftSidebar() {
                 {runs.length > 0 && (
                   <button
                     onClick={handleViewAllRuns}
-                    className="w-full mt-2 text-xs text-purple-600 hover:text-purple-700 font-medium py-1 px-2 rounded hover:bg-purple-50 transition-colors"
+                    className="w-full mt-1.5 text-[10px] text-[#5B9A99] hover:text-[#4A8887] font-medium py-1 px-1 rounded hover:bg-teal-50 transition-colors"
                   >
-                    View All Runs →
+                    View All →
                   </button>
                 )}
               </li>

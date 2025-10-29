@@ -216,8 +216,11 @@ export default function ExtractionAnimation({ status, elapsedTime }: ExtractionA
   const isError = status === 'error'
 
   return (
-    <div className="relative h-full flex flex-col items-center justify-center">
-      <BOIBadge size="medium" />
+    <div className="relative h-full flex flex-col items-center justify-center p-4 md:p-6">
+      {/* BOI Badge - scales down on mobile */}
+      <div className="scale-80 md:scale-100">
+        <BOIBadge size="medium" />
+      </div>
 
       {/* Error overlay */}
       {isError && (
@@ -225,19 +228,21 @@ export default function ExtractionAnimation({ status, elapsedTime }: ExtractionA
       )}
 
       {/* Main content */}
-      <div className="text-center space-y-6">
+      <div className="text-center space-y-4 md:space-y-6 w-full">
         {/* Coffee Machine illustration or error icon */}
         {isError ? (
-          <div className="text-6xl mb-4" aria-label="Error">
+          <div className="text-5xl md:text-6xl mb-4" aria-label="Error">
             ⚠️
           </div>
         ) : (
-          <CoffeeMachineAnimation isAnimating={isRunning} />
+          <div className="scale-90 md:scale-100">
+            <CoffeeMachineAnimation isAnimating={isRunning} />
+          </div>
         )}
 
         {/* Status text */}
-        <div className="space-y-2">
-          <h3 className="text-xl font-semibold text-gray-900">
+        <div className="space-y-2 px-4 md:px-0">
+          <h3 className="text-lg md:text-xl font-semibold text-gray-900">
             {isError ? 'Extraction encountered an error' : 'Extracting transferable insights from your document'}
           </h3>
 

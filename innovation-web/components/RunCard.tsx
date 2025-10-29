@@ -117,15 +117,15 @@ export default function RunCard({ run, onDelete, onRerun }: RunCardProps) {
   return (
     <>
       <Card
-        className="border-[5px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all duration-200 hover:-translate-x-[3px] hover:-translate-y-[3px] hover:shadow-[11px_11px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
+        className="border-[5px] border-[#5B9A99] shadow-[8px_8px_0px_0px_rgba(91,154,153,1)] transition-all duration-200 hover:-translate-x-[3px] hover:-translate-y-[3px] hover:shadow-[11px_11px_0px_0px_rgba(91,154,153,1)] cursor-pointer"
         onClick={handleView}
       >
         <CardContent className="p-6 space-y-4">
           {/* Document Name */}
-          <h3 className="font-bold text-lg truncate">{run.documentName}</h3>
+          <h3 className="font-bold text-lg truncate text-[#5B9A99]">{run.documentName}</h3>
 
           {/* Company Badge */}
-          <Badge className="bg-white border-2 border-black text-black font-semibold px-3 py-1">
+          <Badge className="bg-white border-2 border-[#5B9A99] text-[#5B9A99] font-semibold px-3 py-1">
             {run.companyName}
           </Badge>
 
@@ -150,7 +150,7 @@ export default function RunCard({ run, onDelete, onRerun }: RunCardProps) {
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 border-2 border-black hover:bg-black hover:text-white"
+              className="flex-1 border-2 border-[#5B9A99] hover:bg-[#5B9A99] hover:text-white"
               onClick={handleView}
             >
               <Eye className="w-4 h-4 mr-1" />
@@ -159,7 +159,7 @@ export default function RunCard({ run, onDelete, onRerun }: RunCardProps) {
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 border-2 border-black hover:bg-blue-500 hover:text-white hover:border-blue-500"
+              className="flex-1 border-2 border-[#5B9A99] hover:bg-[#4A8988] hover:text-white hover:border-[#4A8988]"
               onClick={(e) => {
                 e.stopPropagation()
                 setShowRerunDialog(true)
@@ -171,7 +171,7 @@ export default function RunCard({ run, onDelete, onRerun }: RunCardProps) {
             <Button
               variant="outline"
               size="sm"
-              className="border-2 border-black hover:bg-red-500 hover:text-white hover:border-red-500"
+              className="border-2 border-[#5B9A99] hover:bg-red-500 hover:text-white hover:border-red-500"
               onClick={(e) => {
                 e.stopPropagation()
                 setShowDeleteDialog(true)

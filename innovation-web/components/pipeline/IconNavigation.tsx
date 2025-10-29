@@ -13,18 +13,22 @@ export default function IconNavigation({ activeSection, onNavigate }: IconNaviga
   ]
 
   return (
-    <div className="flex justify-center gap-12 py-6 mb-6 border-b border-gray-200">
+    <div className="flex justify-center gap-6 md:gap-12 py-4 md:py-6 mb-4 md:mb-6 border-b border-gray-200">
       {sections.map(({ id, label, Icon }) => (
         <button
           key={id}
           onClick={() => onNavigate?.(id)}
-          className={`flex flex-col items-center gap-2 transition-colors ${
-            activeSection === id ? 'text-[#5B9A99]' : 'text-gray-400'
-          }`}
+          className={`
+            flex flex-col items-center gap-1 md:gap-2
+            transition-colors
+            min-w-[44px] min-h-[44px]
+            ${activeSection === id ? 'text-[#5B9A99]' : 'text-gray-400'}
+          `}
           aria-label={`Navigate to ${label}`}
         >
-          <Icon className="w-8 h-8" />
-          <span className="text-xs font-medium">{label}</span>
+          <Icon className="w-6 h-6 md:w-8 md:h-8" />
+          {/* Labels: Show on tablet+, hide on mobile to save space */}
+          <span className="hidden md:inline text-xs font-medium">{label}</span>
         </button>
       ))}
     </div>

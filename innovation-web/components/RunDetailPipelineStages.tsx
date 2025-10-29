@@ -85,7 +85,7 @@ export default function RunDetailPipelineStages({ stages }: RunDetailPipelineSta
       {/* Timeline */}
       <div className="relative">
         {/* Vertical Line */}
-        <div className="absolute left-8 top-0 bottom-0 w-1 bg-gray-300" />
+        <div className="absolute left-8 top-0 bottom-0 w-1 bg-[#99D6D5]" />
 
         {/* Stages */}
         {sortedStages.map((stage, index) => {
@@ -99,10 +99,10 @@ export default function RunDetailPipelineStages({ stages }: RunDetailPipelineSta
                 <div
                   className={`w-9 h-9 rounded-full border-4 flex items-center justify-center font-bold text-white ${
                     stage.status === 'COMPLETED'
-                      ? 'bg-green-500 border-green-700'
+                      ? 'bg-[#5B9A99] border-[#4A8988]'
                       : stage.status === 'FAILED'
                       ? 'bg-red-500 border-red-700'
-                      : 'bg-blue-500 border-blue-700'
+                      : 'bg-[#5B9A99] border-[#4A8988]'
                   }`}
                 >
                   {stage.stageNumber}
@@ -110,18 +110,18 @@ export default function RunDetailPipelineStages({ stages }: RunDetailPipelineSta
               </div>
 
               {/* Stage Card */}
-              <Card className="ml-20 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+              <Card className="ml-20 border-4 border-[#5B9A99] shadow-[8px_8px_0px_0px_rgba(91,154,153,1)]">
                 <CardContent className="p-0">
                   {/* Stage Header */}
                   <Button
                     variant="ghost"
-                    className="w-full p-6 flex items-start justify-between hover:bg-gray-50 rounded-none"
+                    className="w-full p-6 flex items-start justify-between hover:bg-teal-50 rounded-none"
                     onClick={() => toggleStage(stage.stageNumber)}
                   >
                     <div className="flex-1 text-left space-y-2">
                       <div className="flex items-center gap-3">
                         {getStatusIcon(stage.status)}
-                        <h3 className="text-xl font-black">{stage.stageName}</h3>
+                        <h3 className="text-xl font-black text-[#5B9A99]">{stage.stageName}</h3>
                       </div>
                       <div className="flex items-center gap-4 text-sm text-gray-600">
                         {getStatusBadge(stage.status)}
@@ -139,9 +139,9 @@ export default function RunDetailPipelineStages({ stages }: RunDetailPipelineSta
 
                   {/* Expanded Content */}
                   {isExpanded && (
-                    <div className="px-6 py-4 border-t-4 border-black bg-gray-50">
-                      <h4 className="font-bold mb-3">Output Data:</h4>
-                      <pre className="text-xs bg-white p-4 border-2 border-black rounded overflow-x-auto whitespace-pre-wrap font-mono">
+                    <div className="px-6 py-4 border-t-4 border-[#5B9A99] bg-teal-50">
+                      <h4 className="font-bold mb-3 text-[#5B9A99]">Output Data:</h4>
+                      <pre className="text-xs bg-white p-4 border-2 border-[#5B9A99] rounded overflow-x-auto whitespace-pre-wrap font-mono">
                         {stage.output
                           ? JSON.stringify(JSON.parse(stage.output), null, 2)
                           : 'No output data'}
@@ -157,8 +157,8 @@ export default function RunDetailPipelineStages({ stages }: RunDetailPipelineSta
 
       {/* Empty State */}
       {sortedStages.length === 0 && (
-        <div className="text-center py-20 border-4 border-black">
-          <h2 className="text-2xl font-bold mb-2">No stage data</h2>
+        <div className="text-center py-20 border-4 border-[#5B9A99]">
+          <h2 className="text-2xl font-bold mb-2 text-[#5B9A99]">No stage data</h2>
           <p className="text-gray-600">This run has not generated stage output data yet.</p>
         </div>
       )}

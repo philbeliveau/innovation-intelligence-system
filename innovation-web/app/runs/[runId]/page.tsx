@@ -400,13 +400,13 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
         )}
 
         {/* Header */}
-        <div className="border-4 border-black p-6 space-y-4">
+        <div className="border-4 border-[#5B9A99] p-6 space-y-4">
           {/* Title */}
-          <h1 className="text-3xl font-black">{run.documentName}</h1>
+          <h1 className="text-3xl font-black text-[#5B9A99]">{run.documentName}</h1>
 
           {/* Metadata Row */}
           <div className="flex flex-wrap gap-3 items-center">
-            <Badge className="bg-white border-2 border-black text-black font-semibold px-3 py-1">
+            <Badge className="bg-white border-2 border-[#5B9A99] text-[#5B9A99] font-semibold px-3 py-1">
               {run.companyName}
             </Badge>
             <span className="text-gray-600">
@@ -423,7 +423,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
           <div className="flex gap-2 flex-wrap">
             <Button
               variant="outline"
-              className="border-2 border-black hover:bg-blue-500 hover:text-white hover:border-blue-500"
+              className="border-2 border-[#5B9A99] hover:bg-[#4A8988] hover:text-white hover:border-[#4A8988]"
               onClick={handleRerun}
               disabled={run.status === 'PROCESSING'}
             >
@@ -432,7 +432,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
             </Button>
             <Button
               variant="outline"
-              className="border-2 border-black hover:bg-green-500 hover:text-white hover:border-green-500"
+              className="border-2 border-[#5B9A99] hover:bg-[#5B9A99] hover:text-white hover:border-[#5B9A99]"
               onClick={handleDownloadPDF}
               disabled={isDownloading || run.status !== 'COMPLETED'}
             >
@@ -441,7 +441,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
             </Button>
             <Button
               variant="outline"
-              className="border-2 border-black hover:bg-red-500 hover:text-white hover:border-red-500"
+              className="border-2 border-[#5B9A99] hover:bg-red-500 hover:text-white hover:border-red-500"
               onClick={() => setShowDeleteDialog(true)}
             >
               <Trash2 className="w-4 h-4 mr-2" />
@@ -462,14 +462,14 @@ export default function RunDetailPage({ params }: { params: Promise<{ runId: str
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 border-2 border-black">
-            <TabsTrigger value="cards" className="font-bold">
+          <TabsList className="grid w-full grid-cols-3 border-2 border-[#5B9A99]">
+            <TabsTrigger value="cards" className="font-bold data-[state=active]:bg-[#5B9A99] data-[state=active]:text-white">
               Opportunity Cards
             </TabsTrigger>
-            <TabsTrigger value="report" className="font-bold">
+            <TabsTrigger value="report" className="font-bold data-[state=active]:bg-[#5B9A99] data-[state=active]:text-white">
               Full Report
             </TabsTrigger>
-            <TabsTrigger value="stages" className="font-bold">
+            <TabsTrigger value="stages" className="font-bold data-[state=active]:bg-[#5B9A99] data-[state=active]:text-white">
               Pipeline Stages
             </TabsTrigger>
           </TabsList>

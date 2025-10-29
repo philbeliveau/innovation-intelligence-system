@@ -134,14 +134,14 @@ function RunsPageContent() {
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div className="space-y-2">
-          <h1 className="text-4xl font-black">Your Innovation Runs</h1>
+          <h1 className="text-4xl font-black text-[#5B9A99]">Your Innovation Runs</h1>
           <p className="text-gray-600">
             {total} total runs · {companyCount} {companyCount === 1 ? 'company' : 'companies'}
           </p>
         </div>
 
         {/* Filter Controls */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-6 border-4 border-black bg-gray-50">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-6 border-4 border-[#5B9A99] bg-teal-50">
           {/* Search */}
           <div className="lg:col-span-2 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -149,13 +149,13 @@ function RunsPageContent() {
               placeholder="Search by document name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 border-2 border-black"
+              className="pl-10 border-2 border-[#5B9A99] focus:ring-[#5B9A99]"
             />
           </div>
 
           {/* Company Filter */}
           <Select value={selectedCompany} onValueChange={setSelectedCompany}>
-            <SelectTrigger className="border-2 border-black">
+            <SelectTrigger className="border-2 border-[#5B9A99] focus:ring-[#5B9A99]">
               <SelectValue placeholder="All Companies" />
             </SelectTrigger>
             <SelectContent>
@@ -170,7 +170,7 @@ function RunsPageContent() {
 
           {/* Status Filter */}
           <Select value={selectedStatus} onValueChange={(value) => setSelectedStatus(value as RunStatus)}>
-            <SelectTrigger className="border-2 border-black">
+            <SelectTrigger className="border-2 border-[#5B9A99] focus:ring-[#5B9A99]">
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
             <SelectContent>
@@ -183,7 +183,7 @@ function RunsPageContent() {
 
           {/* Date Range Filter */}
           <Select value={selectedDateRange} onValueChange={(value) => setSelectedDateRange(value as DateRange)}>
-            <SelectTrigger className="border-2 border-black">
+            <SelectTrigger className="border-2 border-[#5B9A99] focus:ring-[#5B9A99]">
               <SelectValue placeholder="All Time" />
             </SelectTrigger>
             <SelectContent>
@@ -198,7 +198,7 @@ function RunsPageContent() {
         {/* Sort Controls */}
         <div className="flex justify-between items-center">
           <Select value={sortOption} onValueChange={(value) => setSortOption(value as SortOption)}>
-            <SelectTrigger className="w-48 border-2 border-black">
+            <SelectTrigger className="w-48 border-2 border-[#5B9A99] focus:ring-[#5B9A99]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -231,7 +231,7 @@ function RunsPageContent() {
         {isLoading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="border-4 border-black p-6 space-y-4">
+              <div key={i} className="border-4 border-[#5B9A99] p-6 space-y-4">
                 <Skeleton className="h-6 w-3/4" />
                 <Skeleton className="h-8 w-1/2" />
                 <Skeleton className="h-4 w-full" />
@@ -248,12 +248,12 @@ function RunsPageContent() {
 
         {/* Empty State */}
         {!isLoading && runs.length === 0 && !error && (
-          <div className="text-center py-20 border-4 border-black">
-            <h2 className="text-2xl font-bold mb-2">No runs yet</h2>
+          <div className="text-center py-20 border-4 border-[#5B9A99]">
+            <h2 className="text-2xl font-bold mb-2 text-[#5B9A99]">No runs yet</h2>
             <p className="text-gray-600 mb-6">Upload a document to get started.</p>
             <Button
               onClick={() => router.push('/upload')}
-              className="bg-black text-white hover:bg-gray-800 border-2 border-black"
+              className="bg-[#5B9A99] text-white hover:bg-[#4A8988] border-2 border-[#5B9A99]"
             >
               Upload Document
             </Button>
@@ -282,7 +282,7 @@ function RunsPageContent() {
                   size="sm"
                   onClick={() => goToPage(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="border-2 border-black"
+                  className="border-2 border-[#5B9A99] hover:bg-[#5B9A99] hover:text-white"
                 >
                   <ChevronLeft className="w-4 h-4" />
                   Previous
@@ -309,8 +309,8 @@ function RunsPageContent() {
                         onClick={() => goToPage(pageNum)}
                         className={
                           currentPage === pageNum
-                            ? 'bg-black text-white border-2 border-black'
-                            : 'border-2 border-black'
+                            ? 'bg-[#5B9A99] text-white border-2 border-[#5B9A99]'
+                            : 'border-2 border-[#5B9A99] hover:bg-[#5B9A99] hover:text-white'
                         }
                       >
                         {pageNum}
@@ -324,7 +324,7 @@ function RunsPageContent() {
                   size="sm"
                   onClick={() => goToPage(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="border-2 border-black"
+                  className="border-2 border-[#5B9A99] hover:bg-[#5B9A99] hover:text-white"
                 >
                   Next
                   <ChevronRight className="w-4 h-4" />

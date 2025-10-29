@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { Check, Loader2, Circle } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 
 interface StageBoxProps {
   stageNumber: number
@@ -8,18 +8,22 @@ interface StageBoxProps {
 }
 
 export default function StageBox({ stageNumber, stageName, status }: StageBoxProps) {
-  // Elegant icon components instead of emoji
-  const StatusIcon = {
-    completed: Check,
-    running: Loader2,
-    pending: Circle
-  }[status]
+  // Minimal dot icons - sleek and modern
+  const StatusIcon = ({className}: {className: string}) => {
+    if (status === 'completed') {
+      return (
+        <div className={cn('rounded-full bg-white', className)} aria-hidden="true" />
+      )
+    }
+    if (status === 'running') {
+      return <Loader2 className={cn(className, 'animate-spin')} aria-hidden="true" />
+    }
+    return (
+      <div className={cn('rounded-full border-2 border-current', className)} aria-hidden="true" />
+    )
+  }
 
-  const iconClassName = {
-    completed: 'h-5 w-5 sm:h-6 sm:w-6',
-    running: 'h-5 w-5 sm:h-6 sm:w-6 animate-spin',
-    pending: 'h-5 w-5 sm:h-6 sm:w-6'
-  }[status]
+  const iconClassName = 'h-3 w-3 sm:h-4 sm:w-4'
 
   // Brand-aligned teal color palette
   const statusClass = {
@@ -43,7 +47,7 @@ export default function StageBox({ stageNumber, stageName, status }: StageBoxPro
       <span className="text-[10px] sm:text-xs font-medium opacity-70">Stage {stageNumber}</span>
       <span className="text-xs sm:text-sm font-semibold mt-1 sm:mt-1.5">{stageName}</span>
       <div className="mt-2 sm:mt-3">
-        <StatusIcon className={iconClassName} aria-hidden="true" />
+        <StatusIcon className={iconClassName} />
       </div>
     </div>
   )

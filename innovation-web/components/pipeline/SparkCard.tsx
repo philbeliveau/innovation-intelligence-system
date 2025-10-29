@@ -25,6 +25,8 @@ export default function SparkCard({ spark, number, onClick }: SparkCardProps) {
         bg-white rounded-lg shadow-md overflow-hidden cursor-pointer
         transition-all duration-300 ease-in-out
         hover:shadow-xl hover:scale-[1.02]
+        active:scale-[0.98]
+        min-h-[200px]
       "
       role="button"
       tabIndex={0}
@@ -56,11 +58,18 @@ export default function SparkCard({ spark, number, onClick }: SparkCardProps) {
       </div>
 
       {/* Card Content */}
-      <div className="p-6">
-        <h3 className="text-xl font-semibold mb-2 line-clamp-2">{spark.title}</h3>
-        <p className="text-sm text-gray-600 mb-4 line-clamp-4">{spark.summary}</p>
+      <div className="p-4 md:p-6">
+        <h3 className="text-lg md:text-xl font-semibold mb-2 line-clamp-2">{spark.title}</h3>
+        <p className="text-sm text-gray-600 mb-4 line-clamp-3 md:line-clamp-4">{spark.summary}</p>
         <button
-          className="ml-auto px-4 py-2 bg-[#5B9A99] text-white rounded-md hover:bg-[#4A7F7E] transition-colors flex items-center gap-2"
+          className="
+            ml-auto px-4 py-2
+            bg-[#5B9A99] text-white rounded-md
+            hover:bg-[#4A7F7E] active:bg-[#3A6F6E]
+            transition-colors
+            flex items-center gap-2
+            min-h-[44px]
+          "
           onClick={(e) => {
             e.stopPropagation()
             onClick()

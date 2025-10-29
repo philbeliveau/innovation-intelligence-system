@@ -22,6 +22,7 @@ import SparksGrid from './SparksGrid'
 import ActionBar from './ActionBar'
 import CollapsedSidebar from './CollapsedSidebar'
 import ExpandedSparkDetail from './ExpandedSparkDetail'
+import MobileSparkNavigationMenu from './MobileSparkNavigationMenu'
 import { useRouter } from 'next/navigation'
 import { FadeTransition } from '../animations/FadeTransition'
 import { StateAnnouncer } from '../animations/StateAnnouncer'
@@ -73,6 +74,7 @@ export default function PipelineStateMachine({
   const [isDownloading, setIsDownloading] = useState(false)
   const [previousState, setPreviousState] = useState<PipelineState | null>(null)
   const [announceMessage, setAnnounceMessage] = useState('')
+  const [isSidebarSticky, setIsSidebarSticky] = useState(true)
 
   // Use controlled or uncontrolled card selection
   const activeCardId = selectedCardId !== undefined ? selectedCardId : internalSelectedCardId
@@ -295,14 +297,30 @@ export default function PipelineStateMachine({
           </div>
         </FadeTransition>
 
-        {/* State 4: Detail View with Collapsed Sidebar */}
+        {/* State 4: Detail View with Collapsed Sidebar + Mobile Menu */}
         <FadeTransition isVisible={currentState === PipelineState.State4 && !!activeCardId}>
           <div
             className="flex flex-row h-full"
             data-testid="state-4"
           >
-            {/* Collapsed Sidebar */}
-            <div className="hidden md:block">
+            {/* Mobile Hamburger Menu (visible only on mobile) */}
+            <MobileSparkNavigationMenu
+              sparks={
+                pipelineData.opportunityCards?.map((card) => ({
+                  id: card.id,
+                  title: card.title,
+                  summary: card.summary || '',
+                  heroImageUrl: undefined, // TODO: Add hero images
+                  content: card.content || card.markdown || '',
+                })) || []
+              }
+              selectedId={activeCardId || ''}
+              onSelect={handleCardSelect}
+              onClose={() => {}}
+            />
+
+            {/* Collapsed Sidebar (visible only on desktop) */}
+            <div className="hidden lg:block">
               <CollapsedSidebar
                 sparks={
                   pipelineData.opportunityCards?.map((card) => ({
@@ -317,6 +335,8 @@ export default function PipelineStateMachine({
                 onSelectSpark={handleCardSelect}
                 onBackToColumns={() => handleCardSelect('')}
                 isCollapsed={true}
+                isSticky={isSidebarSticky}
+                onToggleSticky={() => setIsSidebarSticky(!isSidebarSticky)}
               />
             </div>
 

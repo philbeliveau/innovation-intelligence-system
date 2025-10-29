@@ -11,8 +11,9 @@ export default function PipelineTrackCard({ trackNumber, title, summary }: Pipel
   return (
     <Card className="relative" data-testid={`track-card-${trackNumber}`}>
       <div className="absolute top-4 right-4">
-        <Badge variant="default" className="bg-green-500 hover:bg-green-600" data-testid="selected-badge">
-          ✓ Selected
+        <Badge variant="default" className="bg-[#5B9A99] hover:bg-[#4A8887] flex items-center gap-1.5" data-testid="selected-badge">
+          <div className="w-2 h-2 rounded-full bg-white" aria-hidden="true" />
+          Selected
         </Badge>
       </div>
       <CardHeader>

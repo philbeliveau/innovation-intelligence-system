@@ -40,7 +40,7 @@ export default function RunDetailOpportunityCards({
         {cards.map((card) => (
           <Card
             key={card.id}
-            className="border-[5px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all duration-200 hover:-translate-x-[3px] hover:-translate-y-[3px] hover:shadow-[11px_11px_0px_0px_rgba(0,0,0,1)] cursor-pointer relative"
+            className="border-[5px] border-[#5B9A99] shadow-[8px_8px_0px_0px_rgba(91,154,153,1)] transition-all duration-200 hover:-translate-x-[3px] hover:-translate-y-[3px] hover:shadow-[11px_11px_0px_0px_rgba(91,154,153,1)] cursor-pointer relative"
             onClick={() => setExpandedCard(card)}
           >
             {/* Star Button */}
@@ -64,10 +64,10 @@ export default function RunDetailOpportunityCards({
 
             <CardContent className="p-6 pr-14">
               {/* Card Number */}
-              <div className="text-xs font-mono text-gray-500 mb-2">CARD {card.number}</div>
+              <div className="text-xs font-mono text-[#5B9A99] mb-2">CARD {card.number}</div>
 
               {/* Title */}
-              <h3 className="text-xl font-black mb-4 line-clamp-2">{card.title}</h3>
+              <h3 className="text-xl font-black mb-4 line-clamp-2 text-[#5B9A99]">{card.title}</h3>
 
               {/* Content Preview */}
               <div className="text-sm text-gray-700 line-clamp-4 prose prose-sm">
@@ -90,22 +90,22 @@ export default function RunDetailOpportunityCards({
 
       {/* Empty State */}
       {cards.length === 0 && (
-        <div className="text-center py-20 border-4 border-black">
-          <h2 className="text-2xl font-bold mb-2">No opportunity cards</h2>
+        <div className="text-center py-20 border-4 border-[#5B9A99]">
+          <h2 className="text-2xl font-bold mb-2 text-[#5B9A99]">No opportunity cards</h2>
           <p className="text-gray-600">This run did not generate any opportunity cards.</p>
         </div>
       )}
 
       {/* Expanded Card Modal */}
       <Dialog open={!!expandedCard} onOpenChange={() => setExpandedCard(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto border-4 border-black">
-          <DialogHeader className="sticky top-0 bg-white z-10 pb-4 border-b-4 border-black mb-4">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto border-4 border-[#5B9A99]">
+          <DialogHeader className="sticky top-0 bg-white z-10 pb-4 border-b-4 border-[#5B9A99] mb-4">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
-                <div className="text-xs font-mono text-gray-500 mb-2">
+                <div className="text-xs font-mono text-[#5B9A99] mb-2">
                   CARD {expandedCard?.number}
                 </div>
-                <DialogTitle className="text-2xl font-black">
+                <DialogTitle className="text-2xl font-black text-[#5B9A99]">
                   {expandedCard?.title}
                 </DialogTitle>
               </div>

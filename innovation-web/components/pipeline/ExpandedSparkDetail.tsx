@@ -9,6 +9,7 @@ import { ArrowLeft, ChevronUp, ChevronDown } from 'lucide-react'
 import { Spark } from './CollapsedSidebar'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import { useWillChange } from '@/hooks/useWillChange'
+import { useSwipeable } from '@/hooks/useSwipeable'
 import { DURATION, EASING_FUNCTION } from '@/lib/transitions'
 import { getCardColorGradient } from '@/lib/card-colors'
 
@@ -43,29 +44,50 @@ function MobileNavBar({
   onBack: () => void
 }) {
   return (
-    <div className="md:hidden sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3">
+    <div className="md:hidden sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3 safe-top">
       <div className="flex items-center justify-between">
         <button
           onClick={onBack}
-          className="text-[#5B9A99] hover:text-[#4A7F7E] transition-colors"
+          className="
+            text-[#5B9A99] hover:text-[#4A7F7E] active:text-[#3A6F6E]
+            transition-colors
+            p-2 -ml-2
+            min-w-[44px] min-h-[44px]
+            flex items-center justify-center
+          "
+          aria-label="Back to sparks"
         >
           <ArrowLeft className="w-6 h-6" />
         </button>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           <button
             onClick={onPrev}
             disabled={currentIndex === 0}
-            className="disabled:opacity-30 disabled:cursor-not-allowed"
+            className="
+              disabled:opacity-30 disabled:cursor-not-allowed
+              active:scale-95
+              p-2
+              min-w-[44px] min-h-[44px]
+              flex items-center justify-center
+            "
+            aria-label="Previous spark"
           >
             <ChevronUp className="w-6 h-6" />
           </button>
-          <span className="text-sm font-medium">
+          <span className="text-sm font-medium px-2">
             {currentIndex + 1} of {total}
           </span>
           <button
             onClick={onNext}
             disabled={currentIndex === total - 1}
-            className="disabled:opacity-30 disabled:cursor-not-allowed"
+            className="
+              disabled:opacity-30 disabled:cursor-not-allowed
+              active:scale-95
+              p-2
+              min-w-[44px] min-h-[44px]
+              flex items-center justify-center
+            "
+            aria-label="Next spark"
           >
             <ChevronDown className="w-6 h-6" />
           </button>
@@ -95,6 +117,22 @@ export default function ExpandedSparkDetail({
   const displayNumber = cardNumber ?? (currentIndex !== undefined ? currentIndex + 1 : 1)
   const gradientClass = getCardColorGradient(displayNumber)
 
+  // Swipe gesture support for mobile navigation
+  const swipeHandlers = useSwipeable({
+    onSwipeLeft: () => {
+      if (onNext && currentIndex !== undefined && totalSparks !== undefined && currentIndex < totalSparks - 1) {
+        onNext()
+      }
+    },
+    onSwipeRight: () => {
+      if (onPrev && currentIndex !== undefined && currentIndex > 0) {
+        onPrev()
+      }
+    },
+    threshold: 50,        // 50px minimum swipe distance
+    timeThreshold: 300,   // 300ms maximum swipe duration
+  })
+
   // Trigger animation complete callback
   useEffect(() => {
     if (onAnimationComplete) {
@@ -113,13 +151,16 @@ export default function ExpandedSparkDetail({
   return (
     <div
       ref={containerRef as React.RefObject<HTMLDivElement>}
-      className="flex-1 overflow-y-auto h-full bg-white transition-all"
+      {...swipeHandlers}
+      className="flex-1 overflow-y-auto h-full bg-white transition-all overscroll-contain"
       style={{
         opacity: 1,
         transform: 'translateX(0)',
         transitionDuration: `${duration}ms`,
         transitionTimingFunction: EASING_FUNCTION,
-        transitionProperty: 'opacity, transform'
+        transitionProperty: 'opacity, transform',
+        // Disable pull-to-refresh on mobile browsers
+        overscrollBehaviorY: 'contain',
       }}
       tabIndex={-1}
       aria-label={`Spark detail: ${spark.title}`}

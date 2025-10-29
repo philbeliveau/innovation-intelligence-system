@@ -4,6 +4,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { LeftSidebar } from "@/components/LeftSidebar";
 import { Toaster } from "@/components/ui/sonner";
+import { LayoutWithSidebar } from "@/components/LayoutWithSidebar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,8 +44,10 @@ export default function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} ${dancingScript.variable} antialiased`}
         >
-          <LeftSidebar />
-          {children}
+          <LayoutWithSidebar>
+            <LeftSidebar />
+            {children}
+          </LayoutWithSidebar>
           <Toaster />
         </body>
       </html>

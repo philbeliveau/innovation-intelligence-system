@@ -91,9 +91,9 @@ export default function RunDetailFullReport({ report }: RunDetailFullReportProps
       {/* Ideation Tracks */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Selected Track */}
-        <Card className="border-4 border-black">
-          <CardHeader className="bg-green-100 border-b-4 border-black">
-            <CardTitle className="text-xl font-black">
+        <Card className="border-4 border-[#5B9A99]">
+          <CardHeader className="bg-teal-100 border-b-4 border-[#5B9A99]">
+            <CardTitle className="text-xl font-black text-[#5B9A99]">
               Selected Track ✓
             </CardTitle>
           </CardHeader>
@@ -110,9 +110,9 @@ export default function RunDetailFullReport({ report }: RunDetailFullReportProps
         </Card>
 
         {/* Non-Selected Track */}
-        <Card className="border-4 border-black">
-          <CardHeader className="bg-gray-100 border-b-4 border-black">
-            <CardTitle className="text-xl font-black">
+        <Card className="border-4 border-[#5B9A99]">
+          <CardHeader className="bg-gray-100 border-b-4 border-[#5B9A99]">
+            <CardTitle className="text-xl font-black text-gray-700">
               Alternative Track
             </CardTitle>
           </CardHeader>
@@ -130,9 +130,9 @@ export default function RunDetailFullReport({ report }: RunDetailFullReportProps
       </div>
 
       {/* Stage Outputs */}
-      <Card className="border-4 border-black">
-        <CardHeader className="bg-blue-100 border-b-4 border-black">
-          <CardTitle className="text-2xl font-black">
+      <Card className="border-4 border-[#5B9A99]">
+        <CardHeader className="bg-teal-100 border-b-4 border-[#5B9A99]">
+          <CardTitle className="text-2xl font-black text-[#5B9A99]">
             Pipeline Stage Outputs
           </CardTitle>
         </CardHeader>
@@ -140,20 +140,20 @@ export default function RunDetailFullReport({ report }: RunDetailFullReportProps
           <Accordion type="single" collapsible className="w-full">
             {stages.map((stage) => (
               <AccordionItem key={stage.number} value={`stage-${stage.number}`}>
-                <AccordionTrigger className="px-6 py-4 hover:bg-gray-50 border-b-2 border-black">
+                <AccordionTrigger className="px-6 py-4 hover:bg-teal-50 border-b-2 border-[#5B9A99]">
                   <div className="flex items-start gap-4 text-left">
-                    <div className="shrink-0 w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold">
+                    <div className="shrink-0 w-8 h-8 rounded-full bg-[#5B9A99] text-white flex items-center justify-center font-bold">
                       {stage.number}
                     </div>
                     <div>
-                      <div className="font-black text-lg">{stage.name}</div>
+                      <div className="font-black text-lg text-[#5B9A99]">{stage.name}</div>
                       <div className="text-sm text-gray-600 font-normal">
                         {stage.description}
                       </div>
                     </div>
                   </div>
                 </AccordionTrigger>
-                <AccordionContent className="px-6 py-6 bg-gray-50">
+                <AccordionContent className="px-6 py-6 bg-teal-50">
                   <div className="prose prose-sm max-w-none">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
