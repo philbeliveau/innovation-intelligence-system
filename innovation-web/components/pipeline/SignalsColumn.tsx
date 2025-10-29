@@ -104,33 +104,53 @@ export const SignalsColumn: React.FC<SignalsColumnProps> = ({
 
   // Generate PDF thumbnail for background
   useEffect(() => {
-    if (!blobUrl) return
+    if (!blobUrl) {
+      console.log('[SignalsColumn] No blobUrl provided')
+      return
+    }
+
+    console.log('[SignalsColumn] Loading PDF thumbnail from:', blobUrl)
 
     const loadPdfThumbnail = async () => {
       try {
         // Dynamically import pdf.js - use webpack build for Next.js
         const pdfjsLib = await import('pdfjs-dist/webpack.mjs')
+        console.log('[SignalsColumn] PDF.js loaded, version:', pdfjsLib.version)
 
-        const pdf = await pdfjsLib.getDocument(blobUrl).promise
+        const loadingTask = pdfjsLib.getDocument(blobUrl)
+        console.log('[SignalsColumn] Loading document...')
+
+        const pdf = await loadingTask.promise
+        console.log('[SignalsColumn] PDF loaded, pages:', pdf.numPages)
+
         const page = await pdf.getPage(1)
+        console.log('[SignalsColumn] First page loaded')
 
         const viewport = page.getViewport({ scale: 0.5 })
         const canvas = document.createElement('canvas')
         const context = canvas.getContext('2d')
 
-        if (!context) return
+        if (!context) {
+          console.error('[SignalsColumn] Failed to get canvas context')
+          return
+        }
 
         canvas.height = viewport.height
         canvas.width = viewport.width
+        console.log('[SignalsColumn] Canvas size:', canvas.width, 'x', canvas.height)
 
         await page.render({
           canvasContext: context,
           viewport: viewport,
         }).promise
 
-        setPdfThumbnail(canvas.toDataURL())
+        console.log('[SignalsColumn] Page rendered to canvas')
+
+        const dataUrl = canvas.toDataURL()
+        console.log('[SignalsColumn] Thumbnail generated, length:', dataUrl.length)
+        setPdfThumbnail(dataUrl)
       } catch (error) {
-        console.error('Failed to generate PDF thumbnail:', error)
+        console.error('[SignalsColumn] Failed to generate PDF thumbnail:', error)
         // Fallback to just gradient
         setPdfThumbnail(null)
       }
@@ -166,16 +186,19 @@ export const SignalsColumn: React.FC<SignalsColumnProps> = ({
           ) : (
             <div className="relative w-full h-full overflow-hidden">
               {/* PDF thumbnail layer (blurred) */}
-              {pdfThumbnail && (
-                <div className="absolute inset-0 z-0">
-                  <Image
-                    src={pdfThumbnail}
-                    alt="Document preview"
-                    fill
-                    className="object-cover blur-3xl scale-110 opacity-40"
-                    unoptimized
-                  />
-                </div>
+              {pdfThumbnail ? (
+                <>
+                  <div className="absolute inset-0 z-0">
+                    <img
+                      src={pdfThumbnail}
+                      alt="Document preview"
+                      className="w-full h-full object-cover blur-3xl scale-110 opacity-40"
+                    />
+                  </div>
+                  {console.log('[SignalsColumn] Rendering PDF thumbnail in UI')}
+                </>
+              ) : (
+                console.log('[SignalsColumn] No thumbnail to render, showing gradient only')
               )}
 
               {/* Gradient overlay layer */}
