@@ -185,7 +185,7 @@ export const SignalsColumn: React.FC<SignalsColumnProps> = ({
             </div>
           ) : (
             <div className="relative w-full h-full overflow-hidden bg-gray-100">
-              {/* PDF thumbnail layer (blurred) - full opacity */}
+              {/* PDF thumbnail layer (blurred) */}
               {pdfThumbnail ? (
                 <>
                   <div className="absolute inset-0 z-0">
@@ -198,16 +198,17 @@ export const SignalsColumn: React.FC<SignalsColumnProps> = ({
                   {console.log('[SignalsColumn] Rendering PDF thumbnail in UI')}
                 </>
               ) : (
-                console.log('[SignalsColumn] No thumbnail to render, showing gradient only')
+                <>
+                  {/* Fallback gradient when no PDF */}
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      background: `linear-gradient(to bottom right, ${colorScheme.from}, ${colorScheme.to})`
+                    }}
+                  />
+                  {console.log('[SignalsColumn] No thumbnail to render, showing gradient only')}
+                </>
               )}
-
-              {/* Gradient overlay layer - semi-transparent to show PDF through */}
-              <div
-                className="absolute inset-0 z-10 mix-blend-multiply"
-                style={{
-                  background: `linear-gradient(to bottom right, ${colorScheme.from}, ${colorScheme.to})`
-                }}
-              />
             </div>
           )}
 
