@@ -142,9 +142,12 @@ export function LeftSidebar() {
           isVisible ? 'translate-x-0' : '-translate-x-full'
         }`}
         onMouseLeave={() => !isMobile && !isSticky && setIsVisible(false)}
-        style={{ minWidth: isMobile ? 'auto' : '220px' }}
+        style={{
+          width: isMobile ? 'auto' : '220px',
+          maxWidth: isMobile ? 'auto' : '220px'
+        }}
       >
-        <div className={`flex bg-white ${isMobile ? 'h-full flex-col p-4' : isSticky ? 'h-full flex-col py-4 pr-4 pl-2' : 'w-56 p-4'} shadow-md shadow-teal-200/50 ${isMobile ? 'rounded-r-md' : isSticky ? 'rounded-r-md' : 'rounded-md'}`}>
+        <div className={`flex bg-white ${isMobile ? 'h-full flex-col p-4' : isSticky ? 'h-full flex-col py-4 pr-4 pl-2' : 'flex-col py-4 pr-4 pl-2'} shadow-md shadow-teal-200/50 ${isMobile ? 'rounded-r-md' : isSticky ? 'rounded-r-md' : 'rounded-md'} overflow-hidden`}>
           {/* Header: Close button (mobile) + Sticky toggle (desktop) */}
           <div className="flex items-center justify-between mb-4">
             {isMobile && (
@@ -303,16 +306,16 @@ export function LeftSidebar() {
 
                 {/* Loading State */}
                 {loading && (
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     {[1, 2, 3].map((i) => (
-                      <div key={i} className="animate-pulse bg-gray-100 rounded-lg p-2 h-16" />
+                      <div key={i} className="animate-pulse bg-gray-100 rounded-md p-1.5 h-12" />
                     ))}
                   </div>
                 )}
 
                 {/* Error State */}
                 {error && !loading && (
-                  <div className="text-xs text-red-600 px-2 py-1 bg-red-50 rounded-lg">
+                  <div className="text-[10px] text-red-600 px-1 py-1 bg-red-50 rounded-md">
                     {error}
                   </div>
                 )}
