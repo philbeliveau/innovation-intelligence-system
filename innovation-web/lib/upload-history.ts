@@ -84,19 +84,40 @@ export function addUploadToHistory(
 
 /**
  * Remove a specific upload from the history
+ * Also deletes from database if content_hash is available
  * @param companyId - The company identifier
  * @param uploadId - The upload ID to remove
  */
-export function removeUploadFromHistory(
+export async function removeUploadFromHistory(
   companyId: string,
   uploadId: string
-): void {
+): Promise<void> {
   try {
     const history = getUploadHistory(companyId)
-    const filtered = history.filter(u => u.upload_id !== uploadId)
 
+    // Find the upload to get content_hash for database deletion
+    const uploadToDelete = history.find(u => u.upload_id === uploadId)
+
+    // Remove from localStorage
+    const filtered = history.filter(u => u.upload_id !== uploadId)
     const key = `upload_history_${companyId}`
     localStorage.setItem(key, JSON.stringify(filtered))
+
+    // Delete from database if content_hash exists
+    if (uploadToDelete?.content_hash) {
+      try {
+        const response = await fetch(`/api/document/by-hash/${uploadToDelete.content_hash}`, {
+          method: 'DELETE',
+        })
+
+        if (!response.ok) {
+          console.warn('Failed to delete document from database:', response.status)
+        }
+      } catch (error) {
+        console.error('Failed to delete document from database:', error)
+        // Don't throw - localStorage deletion was successful
+      }
+    }
   } catch (error) {
     console.error('Failed to remove from upload history:', error)
   }
