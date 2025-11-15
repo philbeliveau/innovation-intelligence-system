@@ -1,0 +1,5 @@
+{
+  "scripts": {
+    "vercel-build": "cd innovation-web && npm install && next build"
+  }
+}
