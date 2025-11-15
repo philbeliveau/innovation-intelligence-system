@@ -21,8 +21,11 @@ export function LeftSidebar() {
   const pathname = usePathname()
   const [isVisible, setIsVisible] = useState(true) // Start visible for debugging
   const [nonSelectedTrack, setNonSelectedTrack] = useState<Track | null>(null)
-  const [isMobile, setIsMobile] = useState(false)
-  const { isSidebarSticky: isSticky, setIsSidebarSticky: setIsSticky } = useSidebarContext()
+  const {
+    isSidebarSticky: isSticky,
+    setIsSidebarSticky: setIsSticky,
+    isMobile,
+  } = useSidebarContext()
 
   // Enable polling on all pages to show runs in sidebar
   const { runs, loading, error } = useRuns({
@@ -31,13 +34,7 @@ export function LeftSidebar() {
     enabled: true, // Always fetch runs
   })
 
-  // Detect mobile on mount
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768)
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
+
 
   useEffect(() => {
     // Clear track data when on home/upload page

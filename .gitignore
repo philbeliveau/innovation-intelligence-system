@@ -112,6 +112,7 @@ checkpoints/
 data/raw/
 data/processed/
 data/test-outputs/
+data/brand-profiles/
 *.csv
 *.json
 *.parquet
