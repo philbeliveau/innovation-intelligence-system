@@ -45,7 +45,7 @@ class ExperimentalPipeline:
         """Extract trends with full L1-L4 abstraction ladder"""
 
         prompt = """
-        Extract all emotional trends from this WGSN report.
+        Extract all trends from this WGSN report.
         For each trend, provide 4 abstraction levels:
 
         L1 (Domain-Specific): CPG-actionable application
