@@ -1,410 +1,171 @@
 # Innovation Intelligence System - Claude Configuration
-      340 +  ## Deployment to Railway
-       341 +  
-       342 +  ### Backend Deployment
-       343 +  
-       344 +  The Python FastAPI backend is deployed to Railway. The service is configured with:
-       345 +  - **Root Directory**: `backend` (configured in Railway dashboard)
-       346 +  - **Build**: Dockerfile-based build
-       347 +  - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-       348 +  
-       349 +  **Deploying from CLI:**
-       350 +  
-       351 +  ```bash
-       352 +  # Deploy from PROJECT ROOT (not from backend directory)
-       353 +  # Railway is configured with root directory as 'backend'
-       354 +  railway deploy
-       355 +  
-       356 +  # Or using Railway MCP tool
-       357 +  # Must provide absolute path to PROJECT ROOT
-       358 +  /Users/your-username/path/to/innovation-intelligence-system
-       359 +  ```
-       360 +  
-       361 +  **Important Notes:**
-       362 +  - ✅ Deploy from the **project root** directory (`innovation-intelligence-system/`)
-       363 +  - ❌ Do NOT deploy from `backend/` subdirectory
-       364 +  - The Railway service has `backend` configured as the root directory in the dashboard
-       365 +  - This means Railway expects to find the `backend/` folder relative to where you deploy from
-       366 +  
-       367 +  **Environment Variables:**
-       368 +  - Set in Railway dashboard under Settings → Variables
-       369 +  - Required: `DATABASE_URL`, `OPENROUTER_API_KEY`, `WEBHOOK_SECRET`, `VERCEL_BLOB_READ_WRITE_TOKEN`
-       370 +  
-       371 +  **Monitoring Deployment:**
-       372 +  - Build logs are available in Railway dashboard
-       373 +  - Or access via CLI: `railway logs`
-## Current Sprint: Pipeline Visualization Frontend Build
-
-**Status:** Building the Pipeline Visualization Page (`/pipeline/[runId]`) with 4 progressive UI states
-
-**Goal:** Transform the existing pipeline page into a live, real-time UI that visualizes all 5 pipeline stages and displays final "Sparks" (formerly Opportunity Cards) per BOI branding
-
-## Architecture Overview
-
-**Tech Stack:**
-- Next.js 15 App Router with TypeScript
-- shadcn/ui component library
-- Tailwind CSS for styling
-- Python backend pipeline (5 stages)
-- Prisma ORM with PostgreSQL (NOT file-based)
-- Webhook-based state updates from Railway backend
-
-**Key Directories:**
-- `innovation-web/` - Next.js frontend application
-- `innovation-web/app/pipeline/[runId]/page.tsx` - Main pipeline page to refactor
-- `innovation-web/components/pipeline/` - Pipeline-related components
-- `docs/front-end-spec.md` - Complete UX/UI specification
-- `backend/pipeline/` - Python pipeline implementation
-
-## Frontend Build Task: Pipeline Visualization Page
-
-### Overview
-The pipeline page exists as **a single component with 4 progressive states** that evolve as the backend pipeline executes:
-
-**State 1: Stage 1 Running**
-- Left box: Extraction animation (beaker/flask visual)
-- Right box: Workflow illustration
-
-**State 2: Stage 1 Complete + Stages 2-5 Running**
-- 3-column layout: Signals → Transferable Insights → Sparks
-- Shows pipeline transformation in real-time
-- BOI branding: "My Board of Ideators" badge
-
-**State 3: All Complete - Sparks Grid**
-- 2-column grid of spark cards with numbered overlays
-- Download All and New Pipeline buttons
-- Icon navigation: Signal, Insights, Sparks icons
-
-**State 4: Card Detail View**
-- Collapsed sidebar (thumbnails) on left
-- Expanded spark detail with full markdown on right
-- Click thumbnails to navigate between sparks
-
-### Current Implementation Status
-
-**Existing (`innovation-web/app/pipeline/[runId]/page.tsx`):**
-- ✅ Real-time polling with exponential backoff
-- ✅ Left sidebar with stage boxes
-- ✅ Main content area with basic visualization
-- ❌ Auto-redirects to `/results/[runId]` (needs removal)
-- ❌ `DetailPanel` component (needs replacement with state machine)
-
-### Major Changes Required
-
-1. **Delete:** Auto-redirect to `/results/[runId]`
-2. **Replace:** `DetailPanel` → `PipelineStateMachine` component
-3. **Create:** 10 new components for the 4 states
-4. **Enhance:** Stage 1 JSON output to include mechanism details
-5. **Update:** API status endpoint with timestamps
-
-### New Components to Create
-
-```
-innovation-web/components/pipeline/
-├── PipelineStateMachine.tsx       (Orchestrator)
-├── ExtractionAnimation.tsx        (State 1)
-├── WorkflowIllustration.tsx       (State 1)
-├── ThreeColumnLayout.tsx          (State 2 - Signals → Insights → Sparks)
-├── SignalCard.tsx                 (State 2)
-├── InsightCard.tsx                (State 2)
-├── IconNavigation.tsx             (States 3-4 navigation)
-├── SparksGrid.tsx                 (State 3)
-├── SparkCard.tsx                  (State 3 - with number overlay)
-├── CollapsedSidebar.tsx           (State 4)
-└── ExpandedSparkDetail.tsx        (State 4)
-```
-
-### Key Technical Details
-
-**State Management:**
-- React hooks + local state (no Redux)
-- State transitions driven by `currentStage` and `status`
-- Polling continues until pipeline complete
-
-**API Integration:**
-- Poll `GET /api/pipeline/[runId]/status` every 5 seconds (corrected endpoint)
-- Backend updates via webhook to `/api/pipeline/[runId]/stage-update`
-- Opportunity cards saved via `/api/pipeline/[runId]/complete` webhook
-- Download endpoints for PDFs
-
-**Visual Design:**
-- Color: Teal (#5B9A99 primary)
-- Typography: System UI font stack
-- Animations: 300-800ms transitions with `ease-in-out`
-- Responsive: Mobile (1 col) → Tablet (2 col) → Desktop (2 col)
-
-**Reference:** Complete specification in `docs/front-end-spec.md`
-
-## Working with This Repository
-
-### BMAD Agent System Integration
-
-This repository leverages the **BMAD™ Core** agent orchestration system for systematic innovation intelligence workflows. The system provides specialized agents that integrate with your Innovation Intelligence System.
-
-#### Available BMAD Agents
-
-**Core Development & Analysis Team:**
-- `/BMad:agents:analyst` - Business Analyst (Mary) 📊 - Market research, brainstorming, competitive analysis
-- `/BMad:agents:architect` - System Architect - Technical architecture and system design
-- `/BMad:agents:dev` - Developer Agent - Implementation and coding tasks
-- `/BMad:agents:pm` - Project Manager - Coordination and delivery management
-- `/BMad:agents:po` - Product Owner - Requirements and feature prioritization
-- `/BMad:agents:qa` - Quality Assurance - Testing and validation protocols
-- `/BMad:agents:ux-expert` - UX Expert - User experience and interface design
-- `/BMad:agents:sm` - Scrum Master - Agile process facilitation
-
-**System Orchestration:**
-- `/BMad:agents:bmad-master` - Master Orchestrator for complex multi-agent workflows
-- `/BMad:agents:bmad-orchestrator` - Workflow coordination and agent management
-
-### Operational Command Structure
-
-**BMAD-Integrated Innovation Commands:**
-```bash
-# Agent-Powered Research & Analysis
-/BMad:agents:analyst *brainstorm {innovation-topic} - Structured brainstorming with templates
-/BMad:agents:analyst *create-competitor-analysis - Comprehensive competitive analysis
-/BMad:agents:analyst *perform-market-research - Market research with validation frameworks
-/BMad:agents:analyst *research-prompt {topic} - Deep research prompt generation
-
-# Research & Analysis
-/BMad:agents:qa *validate-innovation {concept} - Research validation methodologies
-/BMad:agents:analyst *elicit - Advanced requirements elicitation for research
-
-# Exploration Coordination
-/BMad:agents:bmad-master - Orchestrate multi-disciplinary research workflows
-/BMad:agents:bmad-orchestrator - Coordinate research and analysis activities
-
-# Research Workflows
-/BMad:workflows:innovation-discovery - Explore information processing approaches
-/BMad:workflows:validation-protocol - Research validation methodology concepts
-/BMad:workflows:agent-synthesis - Investigate multi-perspective analysis methods
-```
-
-**Legacy Innovation Commands (for reference):**
-```bash
-# Research and analysis
-/research [topic] - Search research documents for specific concepts
-/validate [concept] - Apply SPECTRE validation framework
-/challenge [idea] - Run adversarial analysis on innovation concepts
-
-# Agent collaboration
-/pattern-hunt [problem] - Apply TRIZ/SIT systematic innovation
-/biomimicry [challenge] - Find nature-inspired solutions
-/market-analysis [innovation] - Assess user adoption psychology
-/red-team [concept] - Systematic vulnerability identification
-/foresight [trend] - Long-term strategic analysis
-/synthesize [perspectives] - Integrate multiple viewpoints
-
-# System workflow
-/workflow [phase] - Access specific workflow documentation
-/framework [type] - Apply psychological or validation frameworks
-```
-
-### BMAD Agent Quick Reference for This Task
-
-**Primary Agents for Frontend Build:**
-- `/BMad:agents:dev` - Implementation and coding
-- `/BMad:agents:ux-expert` - UI/UX design guidance (created the spec)
-- `/BMad:agents:architect` - System architecture decisions
-
-**Supporting Agents:**
-- `/BMad:agents:pm` - Project coordination
-- `/BMad:agents:qa` - Testing and validation
-
-### BMAD System Architecture
-
-**Agent Configuration (`.bmad-core/agents/`):**
-- Pre-configured innovation intelligence agents with specialized capabilities
-- Each agent includes persona definitions, commands, and dependency mappings
-- Seamless integration between BMAD agents and Innovation Intelligence personas
-
-**Templates & Frameworks (`.bmad-core/templates/`):**
-- `competitor-analysis-tmpl.yaml` - Structured competitive intelligence
-- `market-research-tmpl.yaml` - Systematic market analysis with psychological frameworks
-- `project-brief-tmpl.yaml` - Innovation project scoping and definition
-- `brainstorming-output-tmpl.yaml` - Structured ideation session outputs
-- Integration with SPECTRE validation templates
-
-**Tasks & Workflows (`.bmad-core/tasks/`):**
-- `advanced-elicitation.md` - Multi-method requirements discovery
-- `facilitate-brainstorming-session.md` - Structured innovation ideation
-- `create-deep-research-prompt.md` - Systematic research query generation
-- `create-doc.md` - Template-driven document creation
-- Integration with innovation intelligence workflows
-
-**Agent Teams (`.bmad-core/agent-teams/`):**
-- `team-fullstack.yaml` - Complete innovation intelligence team
-- `team-all.yaml` - Maximum agent coordination for complex challenges
-- `team-ide-minimal.yaml` - Core analytical team for rapid insights
-- Configurable team compositions for different innovation challenges
-
-
-## Development Guidelines
-
-### BMAD System Configuration
-
-**Core Configuration (`/.bmad-core/core-config.yaml`):**
-```yaml
-slashPrefix: BMad  # Enables /BMad:agents:* commands
-markdownExploder: true  # Enhanced document processing (md-tree)
-prd:
-  prdFile: docs/prd.md
-  prdSharded: true  # PRD split into modular sections
-architecture:
-  architectureFile: docs/architecture.md
-  architectureSharded: true  # Architecture split into 15 modules
-  architectureShardedLocation: docs/architecture
-```
-
-**Active Development Agent Protocol:**
-```bash
-# Primary development coordination
-/BMad:agents:architect  # System design and architecture
-/BMad:agents:dev        # Implementation and coding tasks
-/BMad:agents:qa         # Testing and validation
-
-# Supporting development
-/BMad:agents:pm         # Project coordination and roadmap
-/BMad:agents:ux-expert  # UI/UX design and component specs
-```
-
-### Code Style & Standards
-
-**Next.js/React Conventions:**
-- Next.js 15 App Router patterns (React Server Components)
-- TypeScript strict mode
-- Tailwind CSS utility-first styling
-- shadcn/ui component library
-
-**Implementation Priorities:**
-1. **Functional completeness** - All 4 states working
-2. **Minimal dependencies** - Use existing shadcn/ui components
-3. **Real-time feedback** - Smooth polling and transitions
-4. **Mobile responsive** - Tailwind responsive classes
-5. **Error handling** - Graceful failures with user feedback
-
-## Implementation Phases
-
-### Phase 1: Foundation (Estimated: 2-3 hours)
-- [ ] Create component file structure
-- [ ] Set up TypeScript interfaces
-- [ ] Implement `PipelineStateMachine` orchestrator
-- [ ] Wire up state transition logic
-- [ ] Remove auto-redirect to `/results`
-
-### Phase 2: State 1-2 Components (Estimated: 3-4 hours)
-- [ ] Build `ExtractionAnimation`
-- [ ] Build `WorkflowIllustration`
-- [ ] Build `ExtractedTextView`
-- [ ] Build `MechanismCard`
-- [ ] Build `StagesAnimation`
-
-### Phase 3: State 3-4 Components (Estimated: 3-4 hours)
-- [ ] Build `OpportunityCardsGrid`
-- [ ] Build `OpportunityCard`
-- [ ] Build `CollapsedSidebar`
-- [ ] Build `ExpandedOpportunityDetail`
-- [ ] Add Download/New Pipeline actions
-
-### Phase 4: Polish & Testing (Estimated: 2-3 hours)
-- [ ] Add state transition animations
-- [ ] Test responsive breakpoints
-- [ ] Add accessibility attributes
-- [ ] Test error states
-- [ ] Cross-browser testing
-
-### Phase 5: Backend Integration (Estimated: 1-2 hours)
-- [ ] Enhance Stage 1 JSON output
-- [ ] Update API status endpoint
-- [ ] Create download endpoints
-- [ ] Test full pipeline integration
-
-**Total Estimated Time:** 11-16 hours
-
-## Frontend Refactor Safety Guidelines
-
-### Critical: This Refactor WILL NOT Break Pipeline or Opportunity Saving
-
-**Why It's Safe:**
-1. **Backend Independence**: Python pipeline runs on Railway, completely separate from frontend
-2. **Webhook Integrity**: All webhooks remain unchanged (`/api/pipeline/[runId]/stage-update`, `/api/pipeline/[runId]/complete`)
-3. **Database Unchanged**: Prisma schema and OpportunityCard model untouched
-4. **API Compatibility**: Status endpoint structure remains identical
-
-### Safety Recommendations for Implementation
-
-#### 1. Feature Flag Deployment
-```typescript
-// In pipeline/[runId]/page.tsx
-const ENABLE_NEW_UI = process.env.NEXT_PUBLIC_NEW_UI === 'true'
-
-return ENABLE_NEW_UI ? (
-  <PipelineStateMachine {...props} />
-) : (
-  <CurrentImplementation {...props} />
-)
-```
-
-#### 2. Preserve Results Page as Fallback
-- Keep `/results/[runId]` page functional during transition
-- Users can still access it directly if needed
-- Remove only after confirming new UI works in production
-
-#### 3. Staged Deployment Testing
-```bash
-# Stage 1: Deploy with feature flag OFF
-vercel --prod --yes
-
-# Stage 2: Test existing pipeline works
-# Run a full pipeline, verify opportunity cards save
-
-# Stage 3: Enable new UI with flag
-NEXT_PUBLIC_NEW_UI=true vercel --prod --yes
-
-# Stage 4: Test new UI with same pipeline
-```
-
-#### 4. Data Validation in New Components
-```typescript
-// Add validation to all new components
-const validateSparkData = (spark: unknown): boolean => {
-  return !!(spark?.title && (spark?.markdown || spark?.content))
+
+## 🎯 Current Milestone: Mintel Report Value Extraction (Architecture Phase)
+
+**Status:** Discovery Complete → Pipeline Design
+**Timeline:** 1 month to demo
+**Goal:** Prove that we can unlock the $50K value trapped in Mintel/WGSN trend reports that innovation teams pay for but struggle to operationalize
+
+### Problem Statement
+
+**Core Hypothesis:** CPG innovation teams at companies like Lactalis, McCormick, and Decathlon pay $50K/year for trend reports (Mintel, WGSN) but lack the "muscle" to:
+- Generalize insights to their specific industry and operations
+- Extract actionable value from trend data
+- Apply global trends to their product categories
+- Generate concrete initiative concepts from emotional trends
+
+### Pipeline Architecture: SIT-Based Extraction Framework
+
+**Core Innovation:** Transform general emotional trends into industry-specific initiative concepts using **Systematic Inventive Thinking (SIT)** framework.
+
+#### Two-Input Extraction Model
+
+**INPUT 1: Trend Report (WGSN/Mintel)**
+- Emotional trends (e.g., "Strategic Joy," "Witherwill," "Suspicious Optimism")
+- Lifecycle stage (EMERGING → ACCELERATING → PEAKING)
+- Evidence and weak signals
+- Timeline predictions
+- General consumer behavior shifts
+
+**INPUT 2: Brand Profile (4 Required Fields)**
+1. **Company Name**: e.g., "Boulangerie St-Méthode"
+2. **Industry**: e.g., "Bread manufacturer"
+3. **Geography**: e.g., "Quebec"
+4. **Product Portfolio**: e.g., "25 SKUs, healthy bread focus"
+
+**Optional Enrichment via Perplexity:**
+- Market context (competitors, category trends)
+- Distribution channels
+- Brand positioning
+
+#### 5-Stage LLM Pipeline
+
+**STAGE 1: TREND DECOMPOSITION**
+- Extract structured trend objects from report
+- Output: Reusable trend JSON (lifecycle, evidence, emotional drivers, aspirations)
+
+**STAGE 2: CONSUMER INSIGHT SYNTHESIS**
+- Map general trend → brand/industry-specific consumer want
+- Example: "Witherwill" (general) → "I'm overwhelmed by bread choices" (industry-specific)
+- Output: Consumer wants/needs grounded in brand context
+
+**STAGE 3: SIT TECHNIQUE MATCHING**
+- Analyze consumer want + brand resources
+- Match to one of 5 SIT techniques:
+  - **Subtraction**: Remove essential component
+  - **Task Unification**: Assign new task to existing resource
+  - **Multiplication**: Copy component with variation
+  - **Attribute Dependency**: Correlate two attributes
+  - **Division**: Separate in space/time
+- Output: Selected SIT technique + rationale
+
+**STAGE 4: INITIATIVE CONCEPT GENERATION**
+- Apply SIT technique → directional concept
+- Output: Product/service/marketing initiative concept
+- **STOPS HERE**: No financial projections, no business plans, no validation steps
+
+**STAGE 5: PACKAGING**
+- Format into opportunity card
+- Structure: Trend → Consumer Insight → SIT Technique → Initiative Concept
+
+#### Structural Mechanism Definition
+
+**"Structural Mechanism" = SIT Technique + Application Context**
+
+Stored as transferable, domain-agnostic building blocks for latent space ideation engine:
+
+```json
+{
+  "trend": "Witherwill",
+  "consumer_need": "Simplify decision-making",
+  "sit_technique": "Task Unification",
+  "component": "Shelf/Packaging",
+  "new_task": "Choice simplification",
+  "transferable_pattern": "Unify decision-support with existing customer touchpoints"
 }
 ```
 
-#### 5. Critical Path Monitoring
-- Add console.log at webhook entry/exit points
-- Log opportunity card creation counts
-- Monitor Railway logs during first runs
-- Watch for 404s or 500s in Vercel Functions logs
+### No-Hallucination Boundaries
 
-### Pre-Refactor Checklist
-- [ ] Backup `page.tsx` as `page.backup.tsx`
-- [ ] Create `NEXT_PUBLIC_NEW_UI` environment variable
-- [ ] Test current pipeline end-to-end
-- [ ] Document current opportunity card count
-- [ ] Verify Railway backend is healthy
-- [ ] Check Prisma database connection
+**What LLM CANNOT Do:**
+- ❌ Fabricate market statistics (TAM, market share, growth rates)
+- ❌ Invent competitive intelligence ("NO brand does X")
+- ❌ Generate financial projections or ROI predictions
+- ❌ Create detailed business plans or validation steps
+- ❌ Infer data not present in source documents
 
-### Rollback Plan
-If issues arise:
-1. Set `NEXT_PUBLIC_NEW_UI=false` in Vercel
-2. Redeploy: `vercel --prod --yes`
-3. Users immediately return to old UI
-4. Debug new components offline
+**What LLM DOES:**
+- ✅ Synthesize trend report + brand context
+- ✅ Generate consumer insights via reasoning
+- ✅ Match SIT techniques to problems
+- ✅ Create directional initiative concepts
+- ✅ Use ONLY explicitly provided data
 
-### What Changes, What Doesn't
+### Example Output (Boulangerie St-Méthode)
 
-**Changes (Frontend Only):**
-- Visual presentation of pipeline states
-- Component structure in `/components/pipeline/`
-- User interaction flow (no redirect to results)
-- Terminology: Opportunities → Sparks
+```
+TREND: Witherwill (EMERGING → ACCELERATING, peaks 2027)
+EVIDENCE: "Longing to be free from responsibility, decision fatigue, ping minimalism"
 
-**Unchanged (Backend/Data):**
-- Railway Python pipeline execution
-- Webhook endpoints and payloads
-- Prisma database schema
-- OpportunityCard saving logic
-- API response structures
+CONSUMER INSIGHT: "I'm overwhelmed by bread choices - just tell me THE ONE bread for my family"
+
+SIT TECHNIQUE: Task Unification
+MECHANISM: Assign choice-simplification task to existing shelf/packaging resource
+
+INITIATIVE: Le Guide St-Méthode (The Bread Finder Tool)
+CONCEPT: Decision-support tool where consumers answer 3 questions and receive ONE
+St-Méthode bread recommendation. Delivered via QR code on shelf and online.
+
+BRAND CONTEXT (PROVIDED): St-Méthode operates in Quebec, manufactures bread,
+has 25 SKUs with healthy bread focus.
+```
+
+### Success Criteria
+
+Innovation teams see the demo and react with: **"Woah, okay, THIS is what this report is signaling and these are concrete initiatives we could explore for our brand"**
+
+### Next Steps
+
+1. ✅ Complete discovery brainstorming (SIT framework identified)
+2. Build Stage 1: Trend decomposition from WGSN report
+3. Build Stage 2: Consumer insight synthesis with brand context
+4. Build Stage 3: SIT technique matching logic
+5. Build Stage 4: Initiative concept generation
+6. Test with `WGSN - FC27-Emotions - Report.pdf` + multiple brand profiles
+
+---
+
+## Deployment to Railway
+
+### Backend Deployment
+
+The Python FastAPI backend is deployed to Railway. The service is configured with:
+- **Root Directory**: `backend` (configured in Railway dashboard)
+- **Build**: Dockerfile-based build
+- **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+
+**Deploying from CLI:**
+
+```bash
+# Deploy from PROJECT ROOT (not from backend directory)
+# Railway is configured with root directory as 'backend'
+railway deploy
+
+# Or using Railway MCP tool
+# Must provide absolute path to PROJECT ROOT
+/Users/your-username/path/to/innovation-intelligence-system
+```
+
+**Important Notes:**
+-  Deploy from the **project root** directory (`innovation-intelligence-system/`)
+- L Do NOT deploy from `backend/` subdirectory
+- The Railway service has `backend` configured as the root directory in the dashboard
+- This means Railway expects to find the `backend/` folder relative to where you deploy from
+
+**Environment Variables:**
+- Set in Railway dashboard under Settings � Variables
+- Required: `DATABASE_URL`, `OPENROUTER_API_KEY`, `WEBHOOK_SECRET`, `VERCEL_BLOB_READ_WRITE_TOKEN`
+
+**Monitoring Deployment:**
+- Build logs are available in Railway dashboard
+- Or access via CLI: `railway logs`

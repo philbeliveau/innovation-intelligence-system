@@ -1,10 +1,11 @@
-# Innovation Pipeline Web App - Hackathon Architecture
+# Innovation Pipeline Web App - Production Architecture
 
-**Version:** 2.0 (Hackathon Build)
-**Last Updated:** January 2025
-**Status:** Ready for Implementation
-**Architecture Type:** Minimal Web Wrapper + Real-time Pipeline Visualization
-**Build Time:** 8-10 hours (1 day hackathon)
+**Version:** 3.0 (7-Stage Pipeline Redesign)
+**Last Updated:** November 2025
+**Status:** Epic Planning Complete - Ready for Story Breakdown
+**Architecture Type:** Brownfield Enhancement - 5-Stage → 7-Stage Pipeline
+**Build Time:** 3 weeks (Epic EPIC-001)
+**Epic Reference:** `/docs/epics/pipeline-redesign-7-stage.md`
 
 ---
 
@@ -26,100 +27,129 @@
 
 ### Purpose
 
-Build a **minimal web interface** that wraps the existing Python pipeline, enabling users to:
-1. **Pre-select company** during team-led onboarding (loads brand context from YAML profiles)
-2. Upload PDF trend reports via drag & drop
-3. Watch real-time pipeline execution across 5 stages
-4. View extracted trends, insights, and opportunity cards
+Enhance the existing Python pipeline from **5-stage to 7-stage architecture** to enable:
+1. **Multi-trend convergence discovery** - Discover non-obvious connections between 2+ trends
+2. **Systematic innovation framework integration** - Validate insights against SIT/TRIZ/Doblin techniques
+3. **Lifecycle-aware strategic positioning** - Map opportunities to EMERGING/ACCELERATING/PEAKING phases
+4. **Competitive intelligence validation** - Search-based validation with honesty constraints (no hallucinations)
 
-**Key Change:** Brand selection happens during onboarding (before homepage), not on the homepage itself. This enables clean client presentations without exposing multi-brand selector.
+**Key Enhancement:** Transform general trend reports into defensible, high-quality CPG innovation opportunities with full traceability from trend extraction to final opportunity cards.
+
+**Architectural Approach:** Brownfield enhancement maintaining backward compatibility via feature flag (`PIPELINE_VERSION=v1_5stage|v2_7stage`).
 
 ### Core Philosophy
 
-**Reuse, Don't Rebuild**
-- Keep 100% of existing Python pipeline logic
-- Add thin Next.js web layer on top
-- Focus on UI/UX, not backend refactoring
-- Ship in 1 day
+**Enhance, Don't Replace**
+- Maintain existing REST API endpoints and webhook system
+- Database schema changes are additive only (no breaking changes)
+- Feature flag enables gradual rollout and instant rollback
+- Preserve frontend integration with graceful degradation
+- Comprehensive testing at each story boundary
 
-### Key Constraints
+### Key Constraints & Requirements
 
-- ⏱️ **8-10 hour build time** (hackathon scope)
-- 🎨 **Ultra-minimal UI** (shadcn/ui components only)
-- 🚫 **No database** (file-based state)
-- 🚫 **No complex orchestration** (sequential API calls)
-- ✅ **Vercel Blob for file storage**
-- ✅ **Real-time stage visualization**
+- ⏱️ **3-week build time** (Epic EPIC-001: 3 stories)
+- 🎯 **Performance target**: < 3 minutes end-to-end (vs current < 2 minutes)
+- 🔄 **Backward compatibility**: Existing 5-stage pipeline continues to work
+- 🧪 **Testing**: Integration tests verify existing functionality after each story
+- 📊 **Caching**: Stage 0 (>90%) and Stage 1 (>95%) cache hit rates
+- 🔍 **New dependencies**: Perplexity API for Stages 0 and 5
+- ✅ **Database**: PostgreSQL with Prisma ORM (existing)
+- ✅ **LLM Provider**: OpenRouter (existing)
 
 ---
 
 ## 2. Architecture Overview
 
-### System Diagram
+### System Diagram (7-Stage Pipeline)
 
 ```mermaid
 graph TB
     subgraph "Frontend - Next.js 15"
         A0[Onboarding<br/>Company Selection]
         A[Homepage<br/>Drag & Drop Only]
-        A1[Intermediary Card<br/>Document Summary + Latent Factors]
-        B[Pipeline Viewer<br/>Real-time Stage Visualization]
-        C[Left Sidebar<br/>Collapsible Home Menu]
+        A1[Intermediary Card<br/>Document Summary]
+        B[Pipeline Viewer<br/>Real-time 7-Stage Visualization]
+        C[Results Page<br/>Opportunity Cards with Transparency Layers]
     end
 
-    subgraph "API Layer - Next.js Route Handlers"
-        D[POST /api/upload<br/>Save to Vercel Blob]
-        D1[POST /api/analyze-document<br/>LLM Extract Summary + Latent Factors]
-        E[POST /api/run<br/>Execute Pipeline Stages]
-        F[GET /api/status/:runId<br/>Poll Stage Progress]
+    subgraph "API Layer - FastAPI Backend (Railway)"
+        D[POST /api/pipeline/run<br/>Trigger Pipeline with blob_url + brand_id]
+        E[GET /api/pipeline/status/:runId<br/>Poll Stage Progress via Webhooks]
+        F[POST /api/pipeline/:runId/stage-update<br/>Webhook for Stage Updates]
     end
 
-    subgraph "Pipeline Execution - Python"
-        G1[Stage 1: Input Processing<br/>Extract 2 Main Inspirations]
-        G2[Stage 2: Signal Amplification<br/>Extract Trends]
-        G3[Stage 3: General Translation<br/>Universal Lessons]
-        G4[Stage 4: Brand Contextualization<br/>Brand-Specific Insights]
-        G5[Stage 5: Opportunity Generation<br/>5 Opportunity Cards]
+    subgraph "Pipeline Execution - Python (7 Stages)"
+        G0[Stage 0: Brand Profile Enrichment<br/>Perplexity API - Enrich minimal brand input]
+        G1[Stage 1: Multi-Trend Decomposition<br/>Extract L1-L4 abstraction levels]
+        G2[Stage 2: Consumer Insight Synthesis<br/>Trend convergence discovery C n,2]
+        G3[Stage 3: Technique Library Matching<br/>SIT/TRIZ/Doblin validation]
+        G4[Stage 4: Directional Concept Generation<br/>Lifecycle-aware concepts]
+        G5[Stage 5: Competitive Intelligence Integration<br/>Perplexity API - Search validation]
+        G6[Stage 6: Opportunity Card Packaging<br/>Transparency layers + no-hallucination disclosure]
     end
 
-    subgraph "Storage"
+    subgraph "External APIs"
+        P1[Perplexity API<br/>Brand Enrichment Stage 0]
+        P2[Perplexity API<br/>Competitive Search Stage 5]
+        LLM[OpenRouter<br/>Claude Sonnet 4.5 Stages 1-6]
+    end
+
+    subgraph "Storage - PostgreSQL + Vercel Blob"
+        DB[(PostgreSQL via Prisma<br/>PipelineRun, OpportunityCard,<br/>BrandEnrichment, ConvergencePattern,<br/>TechniqueLibrary, CompetitiveIntelligence)]
         H[Vercel Blob<br/>PDF Files]
-        I[Local Filesystem<br/>Stage Outputs + Logs]
     end
 
+    A0 --> D
     A --> D
-    D --> D1
-    D1 --> A1
-    A1 --> E
-    B --> F
-    C --> A
-
-    D --> H
-    D1 --> I
-    E --> G1
+    D --> G0
+    G0 --> P1
+    P1 --> G0
+    G0 --> G1
+    G1 --> LLM
+    LLM --> G1
     G1 --> G2
     G2 --> G3
     G3 --> G4
     G4 --> G5
-    G5 --> I
+    G5 --> P2
+    P2 --> G5
+    G5 --> G6
+    G6 --> DB
 
-    F --> I
+    G0 --> F
+    G1 --> F
+    G2 --> F
+    G3 --> F
+    G4 --> F
+    G5 --> F
+    G6 --> F
 
+    F --> B
+    E --> DB
+    B --> C
+
+    D --> H
+
+    style G0 fill:#d1c4e9
     style G1 fill:#e3f2fd
     style G2 fill:#f3e5f5
     style G3 fill:#fff3e0
     style G4 fill:#e8f5e9
-    style G5 fill:#fce4ec
+    style G5 fill:#ffe0b2
+    style G6 fill:#fce4ec
 ```
 
 ### Architecture Principles
 
-1. **Minimal Web Wrapper**: Next.js frontend + API routes trigger existing Python pipeline
-2. **Vercel Blob Storage**: Store uploaded PDFs, serve via public URLs
-3. **File-Based State**: No database - use filesystem for stage outputs
-4. **Sequential Execution**: Run stages 1-5 sequentially in single API call
-5. **Log-Based Progress**: Poll log files to detect current stage
-6. **shadcn/ui MCP**: Use Magic component builder for rapid UI development
+1. **Brownfield Enhancement Pattern**: Preserve existing system integrity while adding new capabilities
+2. **Feature Flag Architecture**: Toggle between 5-stage (v1) and 7-stage (v2) pipelines for gradual rollout
+3. **Database-Backed State**: PostgreSQL via Prisma for persistent storage (OpportunityCard, PipelineRun, new models)
+4. **Webhook-Based Progress**: Real-time stage updates via webhooks to frontend (POST `/api/pipeline/:runId/stage-update`)
+5. **Caching Strategy**: Stage 0 (brand enrichment) and Stage 1 (trend decomposition) cached to reduce redundant API calls
+6. **API Integration**: Perplexity API for brand enrichment (Stage 0) and competitive validation (Stage 5)
+7. **Backward Compatibility**: Existing REST API endpoints unchanged, database migrations additive only
+8. **Traceability**: Full lineage from trend → insight → convergence → technique → concept → opportunity card
 
 ---
 
@@ -144,10 +174,12 @@ graph TB
 | **Validation** | Zod | 3.22+ | API response validation (Epic 8) |
 | **Database ORM** | Prisma | 5.8+ | PostgreSQL integration (Epic 8) |
 | **Database** | PostgreSQL | latest | Production data storage (Epic 8) |
-| **Backend Runtime** | Python | 3.11 | Existing pipeline (unchanged) |
-| **Backend Framework** | FastAPI | latest | Railway backend (Epic 8) |
-| **Pipeline Framework** | LangChain | 0.1.0 | Existing implementation |
-| **LLM Provider** | OpenRouter | latest | Claude Sonnet 4.5 via existing setup |
+| **Backend Runtime** | Python | 3.11+ | Pipeline execution environment |
+| **Backend Framework** | FastAPI | latest | REST API endpoints on Railway |
+| **Pipeline Framework** | LangChain | 0.1.0+ | LLM orchestration framework |
+| **LLM Provider** | OpenRouter | latest | Claude Sonnet 4.5 for Stages 1-6 |
+| **Search API** | Perplexity API | latest | **NEW** - Stage 0 (brand) + Stage 5 (competitive) |
+| **Caching** | Redis/In-Memory | latest | **NEW** - Stage 0 and Stage 1 output caching |
 | **File Storage** | Vercel Blob | 0.23+ | PDF storage with public URLs |
 | **Deployment (Frontend)** | Vercel | latest | Next.js deployment |
 | **Deployment (Backend)** | Railway | latest | Python FastAPI deployment (Epic 8) |
@@ -167,7 +199,224 @@ graph TB
 
 ---
 
-## 3.1 Project Directory Structure
+## 3.1 7-Stage Pipeline Architecture Details
+
+### Pipeline Transformation: 5-Stage → 7-Stage
+
+**Legacy Pipeline (v1):**
+1. Input Processing → 2. Signal Amplification → 3. General Translation → 4. Brand Contextualization → 5. Opportunity Generation
+
+**Enhanced Pipeline (v2):**
+0. Brand Profile Enrichment → 1. Multi-Trend Decomposition → 2. Consumer Insight Synthesis → 3. Technique Library Matching → 4. Directional Concept Generation → 5. Competitive Intelligence Integration → 6. Opportunity Card Packaging
+
+### Stage-by-Stage Breakdown
+
+#### Stage 0: Brand Profile Enrichment (NEW)
+**Purpose:** Enrich minimal brand input (4 fields: company name, industry, geography, product portfolio) into comprehensive brand context using Perplexity API search.
+
+**Input:**
+- Minimal brand profile YAML (4 required fields)
+
+**Processing:**
+- Search queries via Perplexity API for market context, competitors, category trends, distribution channels
+- Confidence scoring for enriched data
+- Cache enriched profiles for reuse (>90% hit rate target)
+
+**Output:**
+- Enriched brand context with confidence scores
+- Database: `BrandEnrichment` table
+
+**Caching:** Redis/In-memory cache with brand_id as key
+
+---
+
+#### Stage 1: Multi-Trend Decomposition (REFACTORED)
+**Purpose:** Extract 3-6 trends from WGSN report with L1-L4 abstraction levels for cross-domain transfer.
+
+**Input:**
+- WGSN PDF text (from Vercel Blob)
+
+**Processing:**
+- LLM extraction of trends with lifecycle stage (EMERGING/ACCELERATING/PEAKING)
+- L1 (Concrete Example) → L2 (Product Category) → L3 (Innovation Archetype) → L4 (Human Need)
+- Brand-agnostic output for reuse across brands
+
+**Output:**
+- JSON array of trend objects with L1-L4 abstraction levels
+- Database: `TrendObject` table (updated schema)
+
+**Caching:** Redis/In-memory cache with report hash as key (>95% hit rate target)
+
+---
+
+#### Stage 2: Consumer Insight Synthesis (MAJOR REFACTOR)
+**Purpose:** Discover trend convergence patterns via C(n,2) enumeration and generate brand-specific consumer insights combining 2+ trends.
+
+**Input:**
+- Stage 1 trend objects (L1-L4)
+- Stage 0 enriched brand context
+
+**Processing:**
+- Enumerate all possible trend pairs: C(n,2) combinations
+- LLM synthesis to discover non-obvious convergences
+- Generate consumer insights with functional + emotional + social needs
+- Lifecycle strategy mapping (EMERGING: experimental, PEAKING: fast-follower)
+
+**Output:**
+- Convergence patterns with traceability to source trends
+- Brand-specific consumer insights
+- Database: `ConvergencePattern` table
+
+**Success Metric:** Convergence discovery rate > 50% (non-obvious connections)
+
+---
+
+#### Stage 3: Technique Library Matching (NEW)
+**Purpose:** Validate consumer insights against systematic innovation frameworks (SIT/TRIZ/Doblin) and assess defensibility.
+
+**Input:**
+- Stage 2 consumer insights
+- Technique libraries (SIT: 5, TRIZ: 10, Doblin: 10 with CPG examples)
+
+**Processing:**
+- Multi-framework validation logic
+- Pattern matching insights to appropriate techniques
+- Defensibility assessment (LOW/MEDIUM/HIGH)
+- Reasoning chains for technique selection
+
+**Output:**
+- Matched techniques with justification
+- Defensibility score
+- Database: `TechniqueLibrary` table (seeded data)
+
+**Technique Libraries:**
+- **SIT (5 techniques):** Subtraction, Task Unification, Multiplication, Attribute Dependency, Division
+- **TRIZ (10 principles):** Segmentation, Taking Out, Local Quality, Asymmetry, Merging, Universality, Nested Doll, Anti-Weight, Preliminary Anti-Action, Preliminary Action
+- **Doblin (10 types):** Profit Model, Network, Structure, Process, Product Performance, Product System, Service, Channel, Brand, Customer Engagement
+
+---
+
+#### Stage 4: Directional Concept Generation (REFACTORED)
+**Purpose:** Generate lifecycle-aware directional concepts combining validated insight + technique + brand context.
+
+**Input:**
+- Stage 3 validated techniques
+- Stage 2 consumer insights
+- Stage 0 enriched brand context
+
+**Processing:**
+- Narrative framework construction (Problem/Solution/Payoff/Proof)
+- Lifecycle-aware concept formulation (experimental vs fast-follower)
+- Integration of technique application with brand assets
+
+**Output:**
+- Directional concept with narrative structure
+- **STOPS HERE:** No financial projections, no business plans, no validation steps
+
+**No-Hallucination Boundary:** Concepts are directional ideas, not validated business cases
+
+---
+
+#### Stage 5: Competitive Intelligence Integration (NEW)
+**Purpose:** Search-based competitive validation with honesty constraints (no hallucinated statistics).
+
+**Input:**
+- Stage 4 directional concepts
+
+**Processing:**
+- 3 search queries per concept via Perplexity API:
+  1. Direct competitors implementing similar concepts
+  2. Analogous industries with similar patterns
+  3. Competitive landscape assessment
+- Honesty constraints: "No evidence found" vs "Zero competition" (never claim zero without proof)
+
+**Output:**
+- Competitive intelligence with search result citations
+- Database: `CompetitiveIntelligence` table
+
+**Success Metric:** Competitive validation accuracy > 90% (no false "zero competition" claims)
+
+---
+
+#### Stage 6: Opportunity Card Packaging (UPDATED)
+**Purpose:** Package validated concepts into retail-ready opportunity cards with transparency layers and no-hallucination disclosure.
+
+**Input:**
+- Stage 4 directional concepts
+- Stage 5 competitive intelligence
+- Full traceability chain (trends → insights → convergences → techniques → concepts)
+
+**Processing:**
+- Markdown card generation with updated template
+- Transparency layers:
+  - What we know (from documents)
+  - What we inferred (LLM reasoning)
+  - What we validated (search results)
+  - What we don't know (gaps)
+- No-hallucination disclosure section
+
+**Output:**
+- 3-5 opportunity cards in markdown format
+- Database: `OpportunityCard` table (updated schema)
+
+**Card Format:**
+```markdown
+# Opportunity: [Title]
+
+## Consumer Insight
+[Stage 2 insight]
+
+## Innovation Technique
+[Stage 3 technique with SIT/TRIZ/Doblin reference]
+
+## Directional Concept
+[Stage 4 narrative: Problem/Solution/Payoff/Proof]
+
+## Competitive Context
+[Stage 5 search results with citations]
+
+## Transparency
+**What we know:** [Citations from documents]
+**What we inferred:** [LLM reasoning chains]
+**What we validated:** [Search results]
+**What we don't know:** [Gaps and uncertainties]
+
+## Traceability
+**Source Trends:** [Stage 1 trends with L1-L4]
+**Convergence Pattern:** [Stage 2 combination]
+**Technique Applied:** [Stage 3 SIT/TRIZ/Doblin]
+```
+
+---
+
+### Feature Flag Implementation
+
+**Environment Variable:** `PIPELINE_VERSION=v1_5stage|v2_7stage`
+
+**Default:** `v1_5stage` (safe rollback to legacy pipeline)
+
+**Location:** `/backend/app/pipeline_runner.py`
+
+**Behavior:**
+```python
+# backend/app/pipeline_runner.py
+PIPELINE_VERSION = os.getenv("PIPELINE_VERSION", "v1_5stage")
+
+if PIPELINE_VERSION == "v2_7stage":
+    # Execute 7-stage pipeline (Stages 0-6)
+    from pipeline.stages import stage0_brand_enrichment
+    # ... stages 0-6
+else:
+    # Execute legacy 5-stage pipeline (Stages 1-5)
+    from pipeline.stages import stage1_input_processing
+    # ... stages 1-5
+```
+
+**Rollback Strategy:** Set `PIPELINE_VERSION=v1_5stage` in Railway environment variables for instant rollback
+
+---
+
+## 3.2 Project Directory Structure
 
 ```
 innovation-web/
@@ -274,34 +523,70 @@ innovation-web/
 ├── tailwind.config.ts
 └── tsconfig.json
 
-# Python Pipeline (existing, unchanged)
-pipeline/
-├── stages/
-│   ├── stage1_input_processing.py
-│   ├── stage2_signal_amplification.py
-│   ├── stage3_general_translation.py
-│   ├── stage4_brand_contextualization.py
-│   └── stage5_opportunity_generation.py
-├── utils.py
-└── chains.py
-
-scripts/
-└── run_pipeline.py               # Entry point (modified)
+# Backend - Python Pipeline (7-Stage Architecture)
+backend/
+├── app/
+│   ├── main.py                   # FastAPI app entry point
+│   ├── routes.py                 # REST API endpoints
+│   ├── models.py                 # Prisma database models (updated)
+│   ├── pipeline_runner.py        # Pipeline orchestrator with feature flag
+│   └── pipeline_errors.py        # Custom exceptions
+├── pipeline/
+│   ├── stages/
+│   │   ├── stage0_brand_enrichment.py          # NEW - Perplexity API integration
+│   │   ├── stage1_trend_decomposition.py       # REFACTORED - L1-L4 abstraction
+│   │   ├── stage2_insight_synthesis.py         # MAJOR REFACTOR - Convergence discovery
+│   │   ├── stage3_technique_matching.py        # NEW - SIT/TRIZ/Doblin validation
+│   │   ├── stage4_concept_generation.py        # REFACTORED - Narrative framework
+│   │   ├── stage5_competitive_intel.py         # NEW - Search-based validation
+│   │   └── stage6_opportunity_packaging.py     # UPDATED - Transparency layers
+│   ├── prompts/
+│   │   ├── stage0_prompt.py
+│   │   ├── stage1_prompt.py
+│   │   ├── stage2_prompt.py
+│   │   ├── stage3_prompt.py
+│   │   ├── stage4_prompt.py
+│   │   ├── stage5_prompt.py
+│   │   └── stage6_prompt.py
+│   ├── technique_libraries/      # NEW - Seeded data files
+│   │   ├── sit_techniques.yaml   # 5 SIT techniques with CPG examples
+│   │   ├── triz_principles.yaml  # 10 TRIZ principles with CPG examples
+│   │   └── doblin_types.yaml     # 10 Doblin types with CPG examples
+│   ├── utils.py
+│   └── chains.py
+├── tests/
+│   ├── test_pipeline_runner.py
+│   ├── test_stage0_brand_enrichment.py          # NEW
+│   ├── test_stage1_trend_decomposition.py       # UPDATED
+│   ├── test_stage2_insight_synthesis.py         # UPDATED
+│   ├── test_stage3_technique_matching.py        # NEW
+│   ├── test_stage4_concept_generation.py        # UPDATED
+│   ├── test_stage5_competitive_intel.py         # NEW
+│   └── test_stage6_opportunity_packaging.py     # UPDATED
+├── prisma/
+│   └── schema.prisma             # Database schema (additive changes)
+└── requirements.txt              # Python dependencies (Perplexity SDK added)
 
 data/
-├── brand-profiles/               # YAML files
-├── brand-research/               # Markdown files
+├── brand-profiles/               # YAML files (unchanged)
+├── brand-research/               # Markdown files (unchanged)
 └── test-outputs/                 # Pipeline outputs
     └── {run_id}/
         ├── logs/
         │   └── pipeline.log
+        ├── stage0/
+        │   └── brand_enrichment.json
         ├── stage1/
-        │   ├── inspiration-analysis.md
-        │   └── inspirations.json
+        │   └── trends_l1_l4.json
         ├── stage2/
+        │   └── convergence_patterns.json
         ├── stage3/
+        │   └── matched_techniques.json
         ├── stage4/
-        └── stage5/
+        │   └── directional_concepts.json
+        ├── stage5/
+        │   └── competitive_intel.json
+        └── stage6/
             ├── opportunity-1.md
             ├── opportunity-2.md
             ├── opportunity-3.md
@@ -1527,44 +1812,249 @@ pydantic>=2.5.0
 
 ---
 
-## 9. Implementation Roadmap
+## 9. Epic EPIC-001 Implementation Roadmap
 
-### ⚠️ CRITICAL PRE-IMPLEMENTATION CHECK
+### Epic Overview
 
-**Before starting implementation, MUST validate Python execution on Vercel:**
+**Epic ID:** EPIC-001
+**Title:** Pipeline Redesign to 7-Stage Architecture - Brownfield Enhancement
+**Timeline:** 3 weeks (1 week per story)
+**Priority:** HIGH
 
-```typescript
-// Create test-python/api/test/route.ts
-import { exec } from 'child_process'
-import { NextResponse } from 'next/server'
-
-export async function GET() {
-  return new Promise((resolve) => {
-    exec('python --version', (error, stdout, stderr) => {
-      resolve(NextResponse.json({
-        pythonAvailable: !error,
-        version: stdout || 'Not available',
-        error: error?.message || null
-      }))
-    })
-  })
-}
-```
-
-**Deploy this test to Vercel FIRST:**
-1. Create minimal Next.js project with above route
-2. Deploy to Vercel: `vercel --prod`
-3. Visit `/api/test` endpoint
-4. **If Python unavailable:** Use contingency plan (separate Python server or containerized deployment)
-
-**Contingency Options if Python Not Available:**
-- **Option A:** Deploy Python pipeline to Render.com, trigger via webhook from Next.js
-- **Option B:** Use Railway or Fly.io with Docker (containerize entire stack)
-- **Option C:** Use Replit or PythonAnywhere with Python support
+**Epic Reference Documents:**
+- Epic Definition: `/docs/epics/pipeline-redesign-7-stage.md`
+- Validation Report: `/docs/epics/pipeline-redesign-7-stage-validation.md`
+- Handoff Document: `/docs/epics/pipeline-redesign-7-stage-handoff.md`
+- Technical Spec: `/documentation/docs-pipeline-strategy/google-docs/simplified.md` (830 lines)
 
 ---
 
-### Hour 0-1: Project Setup
+### Story Breakdown
+
+#### Story 1: Foundation - Brand Enrichment + Trend Decomposition (Stages 0-1)
+
+**Timeline:** Week 1
+**Scope:** Implement Stage 0 (Brand Profile Enrichment) and refactor Stage 1 (Multi-Trend Decomposition)
+
+**Key Deliverables:**
+- [ ] New file: `backend/pipeline/stages/stage0_brand_enrichment.py`
+- [ ] Refactored: `backend/pipeline/stages/stage1_input_processing.py` → `stage1_trend_decomposition.py`
+- [ ] Perplexity API integration for search-based enrichment
+- [ ] L1-L4 abstraction prompt templates
+- [ ] Stage caching system for Stage 0 (brand) and Stage 1 (report)
+- [ ] Database schema updates for `BrandEnrichment` table
+- [ ] Feature flag implementation (`PIPELINE_VERSION` environment variable)
+- [ ] Unit tests for Stage 0 and Stage 1
+
+**Acceptance Criteria:**
+- Stage 0 enriches minimal brand input (4 fields) into full context with confidence scores
+- Stage 1 extracts 3-6 trends with L1-L4 abstraction levels per trend
+- Stage 1 output is brand-agnostic and reusable across brands
+- Stage 0 cache hit rate > 90% after initial runs
+- Stage 1 cache hit rate > 95% after initial runs
+- Feature flag toggles between v1 (5-stage) and v2 (7-stage) pipelines
+- Integration tests verify existing REST API endpoints still work
+
+---
+
+#### Story 2: Core Innovation - Convergence Synthesis + Technique Matching (Stages 2-3)
+
+**Timeline:** Week 2
+**Scope:** Major refactor of Stage 2 (Consumer Insight Synthesis) and implement Stage 3 (Technique Library Matching)
+
+**Key Deliverables:**
+- [ ] Refactored: `backend/pipeline/stages/stage2_signal_amplification.py` → `stage2_insight_synthesis.py`
+- [ ] New file: `backend/pipeline/stages/stage3_technique_matching.py`
+- [ ] Convergence enumeration logic (C(n,2) trend pairs)
+- [ ] Technique library data files:
+  - [ ] `backend/pipeline/technique_libraries/sit_techniques.yaml` (5 techniques)
+  - [ ] `backend/pipeline/technique_libraries/triz_principles.yaml` (10 principles)
+  - [ ] `backend/pipeline/technique_libraries/doblin_types.yaml` (10 types)
+- [ ] Database schema for `ConvergencePattern` and `TechniqueLibrary` tables
+- [ ] Brand-specific insight synthesis with lifecycle strategy mapping
+- [ ] Multi-framework validation logic
+- [ ] Unit tests for Stage 2 and Stage 3
+
+**Acceptance Criteria:**
+- Stage 2 enumerates all possible trend pairs and discovers convergences
+- Stage 2 generates brand-specific consumer insights combining 2+ trends
+- Stage 2 outputs include functional + emotional + social needs
+- Stage 3 matches insights to appropriate SIT/TRIZ/Doblin techniques
+- Stage 3 includes defensibility assessment (LOW/MEDIUM/HIGH)
+- Convergence patterns are fully traceable back to source trends
+- Convergence discovery rate > 50% (non-obvious connections found)
+
+---
+
+#### Story 3: Validation & Packaging - Concept Generation + Competitive Intel + Cards (Stages 4-6)
+
+**Timeline:** Week 3
+**Scope:** Refactor Stage 4 (Directional Concept Generation), implement Stage 5 (Competitive Intelligence), and update Stage 6 (Opportunity Card Packaging)
+
+**Key Deliverables:**
+- [ ] Refactored: `backend/pipeline/stages/stage4_brand_contextualization.py` → `stage4_concept_generation.py`
+- [ ] New file: `backend/pipeline/stages/stage5_competitive_intel.py`
+- [ ] Updated: `backend/pipeline/stages/stage5_opportunity_generation.py` → `stage6_opportunity_packaging.py`
+- [ ] Perplexity API integration for competitive search (3 queries per concept)
+- [ ] Narrative framework for concept generation (Problem/Solution/Payoff/Proof)
+- [ ] 3-query competitive validation (direct, analogous, competitive)
+- [ ] Updated opportunity card markdown template with:
+  - [ ] Transparency layers (What we know/inferred/validated/don't know)
+  - [ ] No-hallucination disclosure
+  - [ ] Full traceability (trends → insights → convergences → techniques → concepts)
+- [ ] Database schema for `CompetitiveIntelligence` table
+- [ ] Integration tests for end-to-end pipeline
+- [ ] Performance optimization for < 3 minute total execution
+
+**Acceptance Criteria:**
+- Stage 4 generates directional concepts combining insight + technique + lifecycle strategy
+- Stage 4 outputs include narrative framework (Problem/Solution/Payoff/Proof)
+- Stage 5 executes 3 search queries per concept for competitive validation
+- Stage 5 includes honesty constraints ("no evidence found" vs "zero competition")
+- Stage 6 produces retail-ready opportunity cards in markdown format
+- All cards include no-hallucination disclosure section
+- End-to-end test passes: WGSN PDF → 7 stages → 3-5 opportunity cards
+- Full traceability from trend extraction to final card
+- Competitive validation accuracy > 90% (no false "zero competition" claims)
+- End-to-end execution time < 3 minutes
+
+---
+
+### Compatibility Requirements Checklist
+
+**Before deploying each story, verify:**
+
+- [ ] **REST API endpoints unchanged**
+  - [ ] `POST /api/pipeline/run` accepts same payload
+  - [ ] `GET /api/pipeline/status/:runId` returns expected structure
+  - [ ] Webhook notifications maintain payload structure
+
+- [ ] **Database migrations backward compatible**
+  - [ ] All schema changes are additive only (no drops)
+  - [ ] Existing `PipelineRun` records coexist with new runs
+  - [ ] Migration rollback is safe and tested
+
+- [ ] **Frontend integration intact**
+  - [ ] Opportunity cards output format compatible
+  - [ ] Progress tracking UI displays 7 stages (graceful degradation)
+  - [ ] Webhook payload parsing works with new stage names
+
+- [ ] **Performance meets target**
+  - [ ] End-to-end execution < 3 minutes
+  - [ ] Stage 0 cache hit rate > 90%
+  - [ ] Stage 1 cache hit rate > 95%
+
+---
+
+### Risk Mitigation Strategy
+
+**Feature Flag (Story 1 - Non-Negotiable):**
+- Environment variable: `PIPELINE_VERSION=v1_5stage|v2_7stage`
+- Default: `v1_5stage` (safe rollback to legacy pipeline)
+- Location: `/backend/app/pipeline_runner.py`
+- Rollback: Set `PIPELINE_VERSION=v1_5stage` in Railway for instant rollback
+
+**Deployment Strategy:**
+- Deploy Story 1 with feature flag set to `v1_5stage` (no impact)
+- Test Story 1 in staging with `v2_7stage` flag
+- Deploy Story 2 incrementally, maintain v1 as default
+- Deploy Story 3, validate end-to-end, then switch default to `v2_7stage`
+- Monitor for 48 hours before removing feature flag
+
+**Rollback Triggers:**
+- Frontend integration breaks (webhook parsing errors)
+- Performance degrades (>3 minutes execution time)
+- Database migration failure
+- Perplexity API outage (>10 minutes downtime)
+
+---
+
+### Success Metrics
+
+**Quality Metrics:**
+- Opportunity card quality score > 8/10 (stakeholder review)
+- Convergence discovery rate > 50% (non-obvious connections)
+- Competitive validation accuracy > 90% (no false claims)
+
+**Performance Metrics:**
+- End-to-end execution time < 3 minutes
+- Stage 0 cache hit rate > 90%
+- Stage 1 cache hit rate > 95%
+
+**Reliability Metrics:**
+- Zero breaking changes to existing API endpoints
+- 100% backward compatibility for database migrations
+- Feature flag enables instant rollback (<5 minutes)
+
+---
+
+### Definition of Done (Epic Level)
+
+- [ ] All 3 stories completed with acceptance criteria met
+- [ ] Existing functionality verified through regression testing
+- [ ] Integration points working correctly (API, webhooks, database)
+- [ ] Documentation updated (API docs, stage specifications, deployment guide)
+- [ ] No regression in existing features (frontend still receives progress updates)
+- [ ] End-to-end test passes with real WGSN report
+- [ ] Performance meets < 3 minute target
+- [ ] Deployed to Railway staging environment and validated
+- [ ] Production deployment successful with zero downtime
+- [ ] Feature flag default set to `v2_7stage` after 48-hour monitoring period
+
+---
+
+### Dependencies & Prerequisites
+
+**External APIs:**
+- [ ] Perplexity API access (API key configured)
+- [ ] OpenRouter API access (existing)
+
+**Data Files:**
+- [ ] WGSN FC27 Emotions Report PDF (test data)
+- [ ] Technique library YAML files (SIT/TRIZ/Doblin)
+
+**Infrastructure:**
+- [ ] Railway deployment environment (existing)
+- [ ] PostgreSQL database via Prisma (existing)
+- [ ] Vercel Blob storage (existing)
+
+**Team Knowledge:**
+- [ ] LLM pipeline architecture experience
+- [ ] Prisma ORM and database migration workflows
+- [ ] FastAPI backend development
+- [ ] Feature flag implementation patterns
+
+---
+
+---
+
+### Next Steps for Story Manager
+
+**Story Manager should now:**
+
+1. **Review epic documents** in `/docs/epics/`:
+   - `pipeline-redesign-7-stage.md` - Epic definition
+   - `pipeline-redesign-7-stage-validation.md` - Validation report
+   - `pipeline-redesign-7-stage-handoff.md` - Handoff document
+
+2. **Read technical specification**:
+   - `/documentation/docs-pipeline-strategy/google-docs/simplified.md` (830 lines detailed spec)
+   - `/documentation/handoff-pipeline-redesign.md` (implementation guidance)
+
+3. **Create 3 detailed user stories** using BMAD brownfield story template:
+   - Story 1: Foundation - Brand Enrichment + Trend Decomposition (Stages 0-1)
+   - Story 2: Core Innovation - Convergence Synthesis + Technique Matching (Stages 2-3)
+   - Story 3: Validation & Packaging - Concept Generation + Competitive Intel + Cards (Stages 4-6)
+
+4. **Save stories to**: `/docs/stories/epic-001.{story-number}.{story-title}.md`
+
+**BLOCKER:** Stakeholder decision required before story creation:
+- [ ] Proceed with 3-story brownfield epic (faster, higher risk)
+- [ ] Escalate to full brownfield PRD process (slower, lower risk, recommended by validation report)
+
+---
+
+## 10. Appendix: Legacy Implementation Notes (Pre-Epic)
 - [ ] Create Next.js 15 app: `npx create-next-app@latest innovation-web --app --tailwind`
 - [ ] Install dependencies:
   ```bash
