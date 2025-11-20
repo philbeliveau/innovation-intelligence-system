@@ -30,6 +30,15 @@ except ImportError:
     # Graceful degradation if few_shot_manager not yet implemented
     FileSystemExampleStorage = None
 
+# Import curation interface (Story 11.3c)
+try:
+    from curation_interface import create_curation_tab
+    from example_usage_tracker import ExampleUsageTracker
+except ImportError:
+    # Graceful degradation
+    create_curation_tab = None
+    ExampleUsageTracker = None
+
 # Backend API configuration
 BACKEND_API_URL = os.getenv("BACKEND_API_URL", "http://localhost:8000")
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -40,6 +49,12 @@ class GradioLab:
     def __init__(self):
         self.backend_url = BACKEND_API_URL
         self.brand_profiles_dir = Path("../../data/brand-profiles")
+
+        # Initialize usage tracker for curation interface (Story 11.3c)
+        if ExampleUsageTracker:
+            self.usage_tracker = ExampleUsageTracker()
+        else:
+            self.usage_tracker = None
 
     def extract_pdf_text(self, pdf_file) -> Tuple[str, str]:
         """Extract text from PDF file with validation
@@ -572,6 +587,16 @@ class GradioLab:
                                 label="Opportunity Cards",
                                 value="Run pipeline to generate opportunity cards..."
                             )
+
+                        # Story 11.3c: Add curation interface tab
+                        if create_curation_tab:
+                            with gr.Tab("📚 Example Curation"):
+                                # Create curation interface
+                                curation_content = create_curation_tab(
+                                    storage_path=str(Path(__file__).parent / "successful_examples"),
+                                    usage_tracker=self.usage_tracker
+                                )
+                                # Note: curation_content is a gr.Blocks that renders inside this tab
 
                     gr.Markdown("### Quality Assessment")
 
