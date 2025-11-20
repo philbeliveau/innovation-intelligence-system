@@ -49,6 +49,12 @@ INPUT SOURCE: {input_source}
 TASK:
 Generate exactly 5 distinct, retail-ready innovation opportunities that can be pitched to buyers within 90 days.
 
+CRITICAL OUTPUT FORMAT:
+- Return ONLY valid JSON, no markdown code blocks, no explanations
+- Do NOT wrap output in ```json``` tags
+- Start response directly with {{ and end with }}
+- Ensure all JSON is properly formatted with commas between objects
+
 CPG INNOVATION REALITY CHECK:
 - Innovation teams have 2-5 people, not 50
 - Quarterly pipeline reviews demand concepts NOW

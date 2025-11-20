@@ -11,7 +11,7 @@ import logging
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 import requests
 from pypdf import PdfReader
@@ -22,6 +22,7 @@ from pipeline.stages.stage3_general_translation import Stage3Chain
 from pipeline.stages.stage4_brand_contextualization import Stage4Chain
 from pipeline.stages.stage5_opportunity_generation import Stage5Chain
 from pipeline.utils import load_research_data, send_webhook_sync
+from pipeline.output_formatters import format_stage_output
 from app.prisma_client import PrismaAPIClient
 from app.pipeline_errors import (
     PipelineErrorCode,
@@ -31,6 +32,75 @@ from app.pipeline_errors import (
 from utils.report_generator import generate_full_report, calculate_report_size
 
 logger = logging.getLogger(__name__)
+
+
+def update_status_file(run_id: str, status: str, current_stage: int, stages: Dict[str, Any], error: Optional[str] = None) -> None:
+    """Update status.json file for Gradio polling
+
+    Updates both database (via PrismaAPIClient) AND status.json file
+    so that Gradio can poll /status/{run_id} endpoint successfully.
+
+    Now also adds markdown-formatted outputs for UI display.
+
+    Args:
+        run_id: Run identifier
+        status: Pipeline status (running, complete, failed)
+        current_stage: Current stage number (0-5)
+        stages: Dictionary of stage info keyed by stage number
+        error: Optional error message
+    """
+    status_file = Path("/tmp/runs") / run_id / "status.json"
+
+    if not status_file.parent.exists():
+        logger.warning(f"[{run_id}] Status file directory does not exist: {status_file.parent}")
+        return
+
+    try:
+        # Read existing status or create new structure
+        if status_file.exists():
+            with open(status_file, "r") as f:
+                status_data = json.load(f)
+        else:
+            status_data = {
+                "run_id": run_id,
+                "status": "running",
+                "current_stage": 0,
+                "stages": {},
+            }
+
+        # Add markdown formatting to stage outputs for UI display
+        stages_with_markdown = {}
+        for stage_key, stage_info in stages.items():
+            stage_num = int(stage_key)
+            stage_data = stage_info.copy()
+
+            # Add markdown field if output exists
+            if "output" in stage_data and stage_data["output"]:
+                try:
+                    markdown = format_stage_output(stage_num, stage_data["output"])
+                    stage_data["markdown"] = markdown
+                except Exception as e:
+                    logger.warning(f"[{run_id}] Failed to format stage {stage_num} markdown: {e}")
+                    # Fallback to JSON display
+                    stage_data["markdown"] = f"```json\n{json.dumps(stage_data['output'], indent=2)}\n```"
+
+            stages_with_markdown[stage_key] = stage_data
+
+        # Update fields
+        status_data["status"] = status
+        status_data["current_stage"] = current_stage
+        status_data["stages"] = stages_with_markdown
+        if error:
+            status_data["error"] = error
+
+        # Write atomically
+        with open(status_file, "w") as f:
+            json.dump(status_data, f, indent=2)
+
+        logger.debug(f"[{run_id}] Updated status.json: stage {current_stage}, status={status}")
+
+    except Exception as e:
+        logger.error(f"[{run_id}] Failed to update status.json: {e}")
 
 
 def extract_text_from_pdf(pdf_path: str) -> str:
@@ -214,7 +284,16 @@ def call_completion_webhook(
         company_name: Company/brand name for report header
         document_name: Source document name for report header
     """
-    frontend_url = os.getenv("FRONTEND_WEBHOOK_URL", "https://innovation-web-rho.vercel.app")
+    frontend_url = os.getenv("FRONTEND_WEBHOOK_URL")
+
+    # If webhook URL not configured, skip webhook (Gradio-only mode)
+    if not frontend_url:
+        logger.info(
+            f"[{run_id}] FRONTEND_WEBHOOK_URL not configured - skipping completion webhook "
+            "(Gradio will poll /status endpoint for completion)"
+        )
+        return
+
     webhook_secret = os.getenv("WEBHOOK_SECRET", "dev-secret-123")
 
     # Ensure opportunities have all required fields
@@ -337,7 +416,8 @@ def call_completion_webhook(
 def execute_pipeline_background(
     run_id: str,
     pdf_path: str,
-    brand_profile: Dict[str, Any]
+    brand_profile: Dict[str, Any],
+    pre_extracted_text: Optional[str] = None
 ) -> None:
     """Execute the 5-stage pipeline in background.
 
@@ -345,8 +425,9 @@ def execute_pipeline_background(
 
     Args:
         run_id: Unique run identifier
-        pdf_path: Path to PDF file
+        pdf_path: Path to PDF file (only used if pre_extracted_text is None)
         brand_profile: Brand profile data from YAML
+        pre_extracted_text: Optional pre-extracted text (for local dev)
     """
     logger.info(f"Starting pipeline execution for run {run_id}")
     start_time = time.time()  # Track pipeline duration
@@ -359,9 +440,13 @@ def execute_pipeline_background(
         # Initialize pipeline stages in Prisma (stage 1 = PROCESSING)
         prisma_client.initialize_pipeline_stages(run_id)
 
-        # Extract text from PDF
-        logger.info(f"[{run_id}] Extracting text from PDF")
-        input_text = extract_text_from_pdf(pdf_path)
+        # Extract text from PDF or use pre-extracted text
+        if pre_extracted_text:
+            logger.info(f"[{run_id}] Using pre-extracted text (local development)")
+            input_text = pre_extracted_text
+        else:
+            logger.info(f"[{run_id}] Extracting text from PDF")
+            input_text = extract_text_from_pdf(pdf_path)
 
         # Stage 1: Input Processing
         logger.info(f"[{run_id}] Starting Stage 1: Input Processing")
@@ -389,6 +474,19 @@ def execute_pipeline_background(
 
         # Mark stage 1 as completed in Prisma with flattened structure
         prisma_client.mark_stage_complete(run_id, 1, flattened_output)
+
+        # Update status.json for Gradio polling
+        update_status_file(
+            run_id=run_id,
+            status="running",
+            current_stage=1,
+            stages={
+                "1": {
+                    "status": "complete",
+                    "output": flattened_output
+                }
+            }
+        )
 
         # Send Stage 1 webhook with output
         webhook_payload = {
@@ -428,6 +526,17 @@ def execute_pipeline_background(
         save_stage_output(run_id, 2, stage2_result)
         prisma_client.mark_stage_complete(run_id, 2, stage2_result)
 
+        # Update status.json for Gradio polling
+        update_status_file(
+            run_id=run_id,
+            status="running",
+            current_stage=2,
+            stages={
+                "1": {"status": "complete", "output": flattened_output},
+                "2": {"status": "complete", "output": stage2_result}
+            }
+        )
+
         # Send Stage 2 webhook with output
         webhook_payload = {
             "stageNumber": 2,
@@ -452,6 +561,18 @@ def execute_pipeline_background(
 
         save_stage_output(run_id, 3, stage3_result)
         prisma_client.mark_stage_complete(run_id, 3, stage3_result)
+
+        # Update status.json for Gradio polling
+        update_status_file(
+            run_id=run_id,
+            status="running",
+            current_stage=3,
+            stages={
+                "1": {"status": "complete", "output": flattened_output},
+                "2": {"status": "complete", "output": stage2_result},
+                "3": {"status": "complete", "output": stage3_result}
+            }
+        )
 
         # Send Stage 3 webhook with output
         webhook_payload = {
@@ -486,6 +607,19 @@ def execute_pipeline_background(
 
         save_stage_output(run_id, 4, stage4_result)
         prisma_client.mark_stage_complete(run_id, 4, stage4_result)
+
+        # Update status.json for Gradio polling
+        update_status_file(
+            run_id=run_id,
+            status="running",
+            current_stage=4,
+            stages={
+                "1": {"status": "complete", "output": flattened_output},
+                "2": {"status": "complete", "output": stage2_result},
+                "3": {"status": "complete", "output": stage3_result},
+                "4": {"status": "complete", "output": stage4_result}
+            }
+        )
 
         # Send Stage 4 webhook with output
         webhook_payload = {
@@ -523,6 +657,20 @@ def execute_pipeline_background(
         # Mark stage 5 as completed (auto-marks PipelineRun as COMPLETED)
         # Save opportunities_output (with markdown) instead of stage5_result
         prisma_client.mark_stage_complete(run_id, 5, opportunities_output)
+
+        # Update status.json for Gradio polling - COMPLETE
+        update_status_file(
+            run_id=run_id,
+            status="complete",
+            current_stage=5,
+            stages={
+                "1": {"status": "complete", "output": flattened_output},
+                "2": {"status": "complete", "output": stage2_result},
+                "3": {"status": "complete", "output": stage3_result},
+                "4": {"status": "complete", "output": stage4_result},
+                "5": {"status": "complete", "output": opportunities_output}
+            }
+        )
 
         logger.info(f"Pipeline execution completed successfully for run {run_id}")
 
@@ -562,6 +710,15 @@ def execute_pipeline_background(
             run_id,
             current_stage,
             json.dumps(error_payload["error"], indent=2)
+        )
+
+        # Update status.json for Gradio polling - FAILED
+        update_status_file(
+            run_id=run_id,
+            status="failed",
+            current_stage=current_stage,
+            stages={},  # Empty stages on failure
+            error=error_payload["error"]["message"]
         )
 
     finally:

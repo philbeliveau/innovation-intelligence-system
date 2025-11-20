@@ -21,6 +21,7 @@ import yaml
 import httpx
 import os
 import uuid
+import tempfile
 
 # Import few-shot storage (Story 11.3a)
 # Note: This import will work once few_shot_manager.py is created in Story 11.3a
@@ -39,6 +40,21 @@ except ImportError:
     create_curation_tab = None
     ExampleUsageTracker = None
 
+# Import export and backup functionality (Story 11.4b)
+try:
+    from backend.app.prisma_client import PrismaAPIClient
+    from backend.experimentation.export.json_export import export_to_json
+    from backend.experimentation.export.csv_export import export_to_csv, export_experiments_summary
+    from backend.experimentation.export.backup_manager import backup_experiments, archive_to_blob
+except ImportError:
+    # Graceful degradation
+    PrismaAPIClient = None
+    export_to_json = None
+    export_to_csv = None
+    export_experiments_summary = None
+    backup_experiments = None
+    archive_to_blob = None
+
 # Backend API configuration
 BACKEND_API_URL = os.getenv("BACKEND_API_URL", "http://localhost:8000")
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -55,6 +71,12 @@ class GradioLab:
             self.usage_tracker = ExampleUsageTracker()
         else:
             self.usage_tracker = None
+
+        # Initialize Prisma API client for export/backup (Story 11.4b)
+        if PrismaAPIClient:
+            self.prisma_client = PrismaAPIClient()
+        else:
+            self.prisma_client = None
 
     def extract_pdf_text(self, pdf_file) -> Tuple[str, str]:
         """Extract text from PDF file with validation
@@ -231,97 +253,100 @@ class GradioLab:
                 "product_portfolio": product_portfolio.split("\n") if product_portfolio else []
             }
 
-            # Stage 0: Brand Enrichment (14%)
-            progress(0.14, desc="🏢 Stage 0: Enriching brand profile...")
-            stage0_output = await self._call_backend_stage(0, {
-                "brand_profile": brand_profile
-            })
+            # Start pipeline via /run/local endpoint
+            progress(0.05, desc="🚀 Starting pipeline...")
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                response = await client.post(
+                    f"{self.backend_url}/run/local",
+                    json={
+                        "pdf_text": pdf_text,
+                        "brand_profile": brand_profile,
+                        "run_id": run_id
+                    }
+                )
 
-            # Stage 1: Trend Decomposition (28%)
-            progress(0.28, desc="🔍 Stage 1: Extracting trends...")
-            stage1_output = await self._call_backend_stage(1, {
-                "report_text": pdf_text,
-                "brand_context": stage0_output
-            })
+                if response.status_code != 200:
+                    raise Exception(f"Failed to start pipeline: {response.text}")
 
-            # Stage 2: Consumer Insights (42%)
-            progress(0.42, desc="💡 Stage 2: Generating consumer insights...")
-            stage2_output = await self._call_backend_stage(2, {
-                "trends": stage1_output,
-                "brand_context": stage0_output
-            })
+                result = response.json()
+                actual_run_id = result["run_id"]
 
-            # Stage 3: Technique Matching (57%)
-            progress(0.57, desc="🎯 Stage 3: Matching innovation techniques...")
-            stage3_output = await self._call_backend_stage(3, {
-                "insights": stage2_output,
-                "brand_context": stage0_output
-            })
+            # Poll /status endpoint for progress
+            stage_outputs = {}
+            max_polls = 300  # 300 * 2s = 10 minutes max
+            poll_count = 0
 
-            # Stage 4: Concept Generation (71%)
-            progress(0.71, desc="💎 Stage 4: Generating concepts...")
-            stage4_output = await self._call_backend_stage(4, {
-                "techniques": stage3_output,
-                "brand_context": stage0_output
-            })
+            while poll_count < max_polls:
+                await asyncio.sleep(2)  # Poll every 2 seconds
+                poll_count += 1
 
-            # Stage 5: Competitive Intelligence (85%)
-            progress(0.85, desc="🔎 Stage 5: Searching competitive intel...")
-            stage5_output = await self._call_backend_stage(5, {
-                "concepts": stage4_output
-            })
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    status_response = await client.get(
+                        f"{self.backend_url}/status/{actual_run_id}"
+                    )
 
-            # Stage 6: Opportunity Cards (100%)
-            progress(1.0, desc="📋 Stage 6: Packaging opportunity cards...")
-            stage6_output = await self._call_backend_stage(6, {
-                "concepts": stage4_output,
-                "competitive": stage5_output,
-                "brand_context": stage0_output
-            })
+                    if status_response.status_code != 200:
+                        raise Exception(f"Failed to get status: {status_response.text}")
 
-            # Format outputs
-            stage0_json = json.dumps(stage0_output, indent=2)
-            stage1_json = json.dumps(stage1_output, indent=2)
-            stage2_json = json.dumps(stage2_output, indent=2)
-            stage3_json = json.dumps(stage3_output, indent=2)
-            stage4_json = json.dumps(stage4_output, indent=2)
-            stage5_json = json.dumps(stage5_output, indent=2)
+                    status = status_response.json()
 
-            # Stage 6 is markdown format
-            stage6_markdown = stage6_output.get("markdown", str(stage6_output)) if isinstance(stage6_output, dict) else str(stage6_output)
+                # Update progress based on current stage
+                current_stage = status.get("current_stage", 0)
+                stage_progress = [0.05, 0.20, 0.35, 0.50, 0.65, 0.80, 0.95]
+                if current_stage < len(stage_progress):
+                    progress(stage_progress[current_stage], desc=f"🔄 Stage {current_stage}...")
 
-            status_message = f"Success: Pipeline complete! Run ID: {run_id}"
+                # Check if pipeline is complete
+                if status["status"] == "complete":
+                    # Extract stage outputs
+                    stages = status.get("stages", {})
+                    for stage_key, stage_info in stages.items():
+                        if stage_info.get("output"):
+                            stage_outputs[stage_key] = stage_info["output"]
+                    break
 
-            return (stage0_json, stage1_json, stage2_json, stage3_json,
-                    stage4_json, stage5_json, stage6_markdown, status_message)
+                elif status["status"] == "failed":
+                    error_msg = status.get("error", "Pipeline failed with unknown error")
+                    raise Exception(error_msg)
+
+            if poll_count >= max_polls:
+                raise Exception("Pipeline timeout: execution took longer than 10 minutes")
+
+            # Format outputs for display (prefer markdown over JSON)
+            def get_stage_display(stage_key: str) -> str:
+                """Get markdown or JSON fallback for stage display"""
+                if stage_key not in stage_outputs:
+                    return ""
+
+                stage_data = stages.get(stage_key, {})
+
+                # Prefer markdown if available
+                if "markdown" in stage_data:
+                    return stage_data["markdown"]
+
+                # Fallback to formatted JSON
+                output = stage_data.get("output", {})
+                if output:
+                    return f"```json\n{json.dumps(output, indent=2)}\n```"
+
+                return ""
+
+            stage0 = get_stage_display("0")
+            stage1 = get_stage_display("1")
+            stage2 = get_stage_display("2")
+            stage3 = get_stage_display("3")
+            stage4 = get_stage_display("4")
+            stage5 = get_stage_display("5")
+            stage6 = get_stage_display("6")
+
+            status_message = f"✅ Success: Pipeline complete! Run ID: {actual_run_id}"
+
+            return (stage0, stage1, stage2, stage3, stage4, stage5, stage6, status_message)
 
         except Exception as e:
             error_msg = f"Error: Pipeline failed: {str(e)}"
             return "", "", "", "", "", "", "", error_msg
 
-    async def _call_backend_stage(self, stage_num: int, payload: Dict[str, Any]) -> Any:
-        """Call backend API for specific pipeline stage
-
-        Args:
-            stage_num: Stage number (0-6)
-            payload: Stage input data
-
-        Returns:
-            Stage output data
-
-        Raises:
-            Exception: If API call fails
-        """
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            response = await client.post(
-                f"{self.backend_url}/pipeline/stage{stage_num}",
-                json=payload
-            )
-
-            if response.status_code != 200:
-                raise Exception(f"Stage {stage_num} failed: {response.text}")
-
-            return response.json()
 
     async def save_experiment(
         self,
@@ -447,6 +472,128 @@ class GradioLab:
 
         return saved_count, failed_count
 
+    async def export_experiments_json(
+        self,
+        quality_filter: Optional[str] = None,
+        brand_filter: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None
+    ) -> Tuple[str, str]:
+        """Export experiments to JSON format (Story 11.4b)
+
+        Args:
+            quality_filter: Filter by quality tag
+            brand_filter: Filter by brand name
+            start_date: Start date filter (ISO format)
+            end_date: End date filter (ISO format)
+
+        Returns:
+            Tuple of (file_path, status_message)
+        """
+        if not self.prisma_client or not export_to_json:
+            return "", "Export functionality not available (PrismaAPIClient not initialized)"
+
+        try:
+            # Generate output filename
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            output_path = f"/tmp/experiments_export_{timestamp}.json"
+
+            # Export to JSON (using PrismaAPIClient HTTP wrapper)
+            result_path = await export_to_json(
+                prisma_client=self.prisma_client,
+                output_path=output_path,
+                quality_tag=quality_filter.lower() if quality_filter and quality_filter != "All" else None,
+                brand_name=brand_filter if brand_filter and brand_filter != "All" else None,
+                start_date=start_date if start_date else None,
+                end_date=end_date if end_date else None
+            )
+
+            return result_path, f"Success: Exported to {Path(result_path).name}"
+
+        except ValueError as e:
+            return "", f"No experiments found with given filters"
+        except Exception as e:
+            return "", f"Export failed: {str(e)}"
+
+    async def export_experiments_csv(
+        self,
+        quality_filter: Optional[str] = None,
+        brand_filter: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None
+    ) -> Tuple[str, str]:
+        """Export experiments to CSV format (Story 11.4b)
+
+        Args:
+            quality_filter: Filter by quality tag
+            brand_filter: Filter by brand name
+            start_date: Start date filter (ISO format)
+            end_date: End date filter (ISO format)
+
+        Returns:
+            Tuple of (file_path, status_message)
+        """
+        if not self.prisma_client or not export_to_csv:
+            return "", "Export functionality not available (PrismaAPIClient not initialized)"
+
+        try:
+            # Generate output filename
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            output_path = f"/tmp/experiments_export_{timestamp}.csv"
+
+            # Export to CSV (using PrismaAPIClient HTTP wrapper)
+            result_path = await export_to_csv(
+                prisma_client=self.prisma_client,
+                output_path=output_path,
+                quality_tag=quality_filter.lower() if quality_filter and quality_filter != "All" else None,
+                brand_name=brand_filter if brand_filter and brand_filter != "All" else None,
+                start_date=start_date if start_date else None,
+                end_date=end_date if end_date else None
+            )
+
+            return result_path, f"Success: Exported to {Path(result_path).name}"
+
+        except ValueError as e:
+            return "", f"No experiments found with given filters"
+        except Exception as e:
+            return "", f"Export failed: {str(e)}"
+
+    async def create_backup(self) -> Tuple[str, str]:
+        """Create manual backup of all experiments (Story 11.4b)
+
+        Returns:
+            Tuple of (file_path, status_message)
+        """
+        if not self.prisma_client or not backup_experiments:
+            return "", "Backup functionality not available (PrismaAPIClient not initialized)"
+
+        try:
+            # Create compressed backup (using PrismaAPIClient HTTP wrapper)
+            backup_path = await backup_experiments(
+                prisma_client=self.prisma_client,
+                backup_name=None,  # Auto-generate name
+                compress=True
+            )
+
+            # Try to upload to Vercel Blob if token available
+            blob_url = None
+            if archive_to_blob and os.getenv("VERCEL_BLOB_READ_WRITE_TOKEN"):
+                try:
+                    blob_url = await archive_to_blob(backup_path)
+                except Exception as e:
+                    print(f"Blob upload failed: {e}")
+
+            status_msg = f"Success: Backup created at {Path(backup_path).name}"
+            if blob_url:
+                status_msg += f"\nUploaded to Vercel Blob: {blob_url}"
+
+            return backup_path, status_msg
+
+        except ValueError as e:
+            return "", f"No experiments to backup"
+        except Exception as e:
+            return "", f"Backup failed: {str(e)}"
+
     def build_interface(self) -> gr.Blocks:
         """Build Gradio interface
 
@@ -541,51 +688,38 @@ class GradioLab:
 
                     with gr.Tabs():
                         with gr.Tab("Stage 0: Brand Context"):
-                            stage0_output = gr.Code(
-                                label="Enriched Brand Context (JSON)",
-                                language="json",
-                                lines=15
+                            stage0_output = gr.Markdown(
+                                value="Run pipeline to generate brand context..."
                             )
 
-                        with gr.Tab("Stage 1: Trends"):
-                            stage1_output = gr.Code(
-                                label="Extracted Trends (JSON)",
-                                language="json",
-                                lines=15
+                        with gr.Tab("Stage 1: Extraction"):
+                            stage1_output = gr.Markdown(
+                                value="Run pipeline to extract mechanisms..."
                             )
 
-                        with gr.Tab("Stage 2: Insights"):
-                            stage2_output = gr.Code(
-                                label="Consumer Insights (JSON)",
-                                language="json",
-                                lines=15
+                        with gr.Tab("Stage 2: Signals"):
+                            stage2_output = gr.Markdown(
+                                value="Run pipeline to identify signals..."
                             )
 
-                        with gr.Tab("Stage 3: Techniques"):
-                            stage3_output = gr.Code(
-                                label="Innovation Techniques (JSON)",
-                                language="json",
-                                lines=15
+                        with gr.Tab("Stage 3: Insights"):
+                            stage3_output = gr.Markdown(
+                                value="Run pipeline to generate insights..."
                             )
 
-                        with gr.Tab("Stage 4: Concepts"):
-                            stage4_output = gr.Code(
-                                label="Directional Concepts (JSON)",
-                                language="json",
-                                lines=15
+                        with gr.Tab("Stage 4: Ideation"):
+                            stage4_output = gr.Markdown(
+                                value="Run pipeline to create preliminary concepts..."
                             )
 
-                        with gr.Tab("Stage 5: Competitive"):
-                            stage5_output = gr.Code(
-                                label="Competitive Intelligence (JSON)",
-                                language="json",
-                                lines=15
-                            )
-
-                        with gr.Tab("Stage 6: Cards"):
-                            stage6_output = gr.Markdown(
-                                label="Opportunity Cards",
+                        with gr.Tab("Stage 5: Opportunity Cards"):
+                            stage5_output = gr.Markdown(
                                 value="Run pipeline to generate opportunity cards..."
+                            )
+
+                        with gr.Tab("Stage 6: Export"):
+                            stage6_output = gr.Markdown(
+                                value="Run pipeline to export results..."
                             )
 
                         # Story 11.3c: Add curation interface tab
@@ -597,6 +731,44 @@ class GradioLab:
                                     usage_tracker=self.usage_tracker
                                 )
                                 # Note: curation_content is a gr.Blocks that renders inside this tab
+
+                        # Story 11.4b: Add data management tab
+                        with gr.Tab("💾 Data Management"):
+                            gr.Markdown("## Export & Backup")
+                            gr.Markdown("Export experiments to JSON/CSV or create database backups")
+
+                            with gr.Row():
+                                with gr.Column():
+                                    gr.Markdown("### Export Filters")
+                                    export_quality = gr.Dropdown(
+                                        choices=["All", "Good", "Needs Work", "Failed"],
+                                        label="Quality Tag Filter",
+                                        value="All"
+                                    )
+                                    export_brand = gr.Dropdown(
+                                        choices=["All"] + self.load_available_brands(),
+                                        label="Brand Filter",
+                                        value="All"
+                                    )
+                                    export_start_date = gr.Textbox(
+                                        label="Start Date (ISO format, optional)",
+                                        placeholder="2025-11-01T00:00:00Z"
+                                    )
+                                    export_end_date = gr.Textbox(
+                                        label="End Date (ISO format, optional)",
+                                        placeholder="2025-11-30T23:59:59Z"
+                                    )
+
+                                with gr.Column():
+                                    gr.Markdown("### Export Actions")
+                                    export_json_btn = gr.Button("📄 Export to JSON", variant="primary")
+                                    export_csv_btn = gr.Button("📊 Export to CSV", variant="primary")
+                                    gr.Markdown("---")
+                                    gr.Markdown("### Backup")
+                                    backup_btn = gr.Button("💾 Create Full Backup", variant="secondary")
+
+                            export_file = gr.File(label="Download Export/Backup")
+                            export_status = gr.Textbox(label="Status", interactive=False, lines=3)
 
                     gr.Markdown("### Quality Assessment")
 
@@ -663,6 +835,7 @@ class GradioLab:
                 )
 
                 # Update state with results for later save
+                # Stage outputs are now markdown strings, not JSON
                 state["run_id"] = str(uuid.uuid4())[:8]
                 state["brand_profile"] = {
                     "brand_name": brand_name_val,
@@ -671,12 +844,12 @@ class GradioLab:
                     "product_portfolio": portfolio_val.split("\n") if portfolio_val else []
                 }
                 state["stage_outputs"] = {
-                    "stage_0": json.loads(stage0) if stage0 else {},
-                    "stage_1": json.loads(stage1) if stage1 else {},
-                    "stage_2": json.loads(stage2) if stage2 else {},
-                    "stage_3": json.loads(stage3) if stage3 else {},
-                    "stage_4": json.loads(stage4) if stage4 else {},
-                    "stage_5": json.loads(stage5) if stage5 else {},
+                    "stage_0": {"markdown": stage0} if stage0 else {},
+                    "stage_1": {"markdown": stage1} if stage1 else {},
+                    "stage_2": {"markdown": stage2} if stage2 else {},
+                    "stage_3": {"markdown": stage3} if stage3 else {},
+                    "stage_4": {"markdown": stage4} if stage4 else {},
+                    "stage_5": {"markdown": stage5} if stage5 else {},
                     "stage_6": {"markdown": stage6} if stage6 else {}
                 }
                 # Note: stage_inputs and prompts_used would be populated by actual pipeline
@@ -719,6 +892,47 @@ class GradioLab:
                 outputs=save_status
             )
 
+            # Export and Backup event listeners (Story 11.4b)
+            async def export_json_wrapper(quality, brand, start, end):
+                file_path, status = await self.export_experiments_json(
+                    quality_filter=quality,
+                    brand_filter=brand,
+                    start_date=start if start else None,
+                    end_date=end if end else None
+                )
+                return file_path, status
+
+            async def export_csv_wrapper(quality, brand, start, end):
+                file_path, status = await self.export_experiments_csv(
+                    quality_filter=quality,
+                    brand_filter=brand,
+                    start_date=start if start else None,
+                    end_date=end if end else None
+                )
+                return file_path, status
+
+            async def backup_wrapper():
+                file_path, status = await self.create_backup()
+                return file_path, status
+
+            export_json_btn.click(
+                export_json_wrapper,
+                inputs=[export_quality, export_brand, export_start_date, export_end_date],
+                outputs=[export_file, export_status]
+            )
+
+            export_csv_btn.click(
+                export_csv_wrapper,
+                inputs=[export_quality, export_brand, export_start_date, export_end_date],
+                outputs=[export_file, export_status]
+            )
+
+            backup_btn.click(
+                backup_wrapper,
+                inputs=[],
+                outputs=[export_file, export_status]
+            )
+
         return demo
 
     def launch(self, share=False):
@@ -728,6 +942,8 @@ class GradioLab:
             share: Create public Gradio share link
         """
         demo = self.build_interface()
+
+        # Configure queue and launch
         demo.queue(
             max_size=10,
             default_concurrency_limit=3

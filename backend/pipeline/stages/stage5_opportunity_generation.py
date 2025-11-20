@@ -138,35 +138,43 @@ class Stage5Chain:
         logging.debug(f"Brand: {brand_name}, Input Source: {input_source}")
 
         last_error = None
+        previous_count = None
         for attempt in range(max_retries + 1):
             try:
                 if attempt > 0:
                     logging.warning(f"Retry attempt {attempt}/{max_retries} for Stage 5")
 
-                # Execute chain
-                result = self.chain.invoke({
-                    "stage4_output": stage4_output,
+                # Build retry-aware prompt addition
+                retry_instruction = ""
+                if attempt > 0 and previous_count is not None:
+                    retry_instruction = f"\n\nPREVIOUS ATTEMPT FAILED: Generated {previous_count} opportunities instead of 5. You MUST generate exactly 5 opportunities. Return ONLY valid JSON without markdown."
+
+                # Execute chain with retry awareness
+                chain_input = {
+                    "stage4_output": stage4_output + retry_instruction,
                     "brand_name": brand_name,
                     "input_source": input_source
-                })
+                }
+                result = self.chain.invoke(chain_input)
 
                 raw_output = result[self.output_key]
 
                 # Save raw output for debugging
                 self._save_raw_output_debug(raw_output, input_source, attempt)
 
-                # Parse structured output to extract 5 opportunities
+                # Parse structured output to extract opportunities
                 try:
                     parsed_output = self.parser.parse(raw_output)
                     opportunities = parsed_output.get('opportunities', [])
 
-                    # Validate exactly 5 opportunities
-                    if len(opportunities) != 5:
+                    # Validate reasonable opportunity count (3-7 range)
+                    if not (3 <= len(opportunities) <= 7):
                         logging.error(
-                            f"Expected exactly 5 opportunities, got {len(opportunities)}"
+                            f"Expected 3-7 opportunities, got {len(opportunities)}"
                         )
+                        previous_count = len(opportunities)  # Track for retry
                         raise ValueError(
-                            f"Stage 5 must generate exactly 5 opportunities. "
+                            f"Stage 5 should generate 3-7 opportunities. "
                             f"Got {len(opportunities)} instead."
                         )
 
@@ -205,11 +213,14 @@ class Stage5Chain:
                             parsed_output = self.parser.parse(repaired_output)
                             opportunities = parsed_output.get('opportunities', [])
 
-                            if len(opportunities) == 5:
-                                logging.warning("JSON repair successful! Continuing with repaired output.")
+                            if 3 <= len(opportunities) <= 7:
+                                logging.warning(f"JSON repair successful! Got {len(opportunities)} opportunities.")
+                                opportunities_with_markdown = self._add_markdown_to_opportunities(
+                                    opportunities, brand_name, input_source
+                                )
                                 return {
                                     "stage5_output": repaired_output,
-                                    "opportunities": opportunities
+                                    "opportunities": opportunities_with_markdown
                                 }
                         except Exception as repair_error:
                             logging.error(f"JSON repair failed: {repair_error}")
@@ -270,51 +281,60 @@ class Stage5Chain:
     def _attempt_json_repair(self, raw_output: str) -> Optional[str]:
         """Attempt to repair common JSON formatting errors from LLM output.
 
+        Uses multiple extraction patterns to find valid JSON in various formats
+        (markdown blocks, bare JSON, text-wrapped JSON).
+
         Args:
             raw_output: Malformed JSON string from LLM
 
         Returns:
             Repaired JSON string if successful, None otherwise
         """
+        # Strategy 1: Try direct JSON parse (no wrapper)
         try:
-            # Extract JSON from markdown code block if present
-            json_match = re.search(r'```json\s*(\{.*?\})\s*```', raw_output, re.DOTALL)
-            if json_match:
-                json_str = json_match.group(1)
-            else:
-                json_str = raw_output
+            json.loads(raw_output)
+            logging.info("JSON is already valid, no repair needed")
+            return raw_output
+        except:
+            pass
 
-            # Common repair strategies
-            repaired = json_str
+        # Strategy 2: Extract from various markdown/text patterns
+        json_patterns = [
+            r'```json\s*(\{.*?\})\s*```',  # ```json {...} ```
+            r'```\s*(\{.*?\})\s*```',       # ``` {...} ```
+            r'(\{[^{}]*"opportunities"[^{}]*\[.*?\]\s*\})',  # {...opportunities...}
+            r'(\{.*\})',                    # Greedy bare {...}
+        ]
 
-            # 1. Fix missing commas between array elements (most common LLM error)
-            # Pattern: }\n\s*{ should be },\n{
-            repaired = re.sub(r'\}\s*\n\s*\{', '},\n{', repaired)
+        for pattern in json_patterns:
+            match = re.search(pattern, raw_output, re.DOTALL)
+            if match:
+                json_str = match.group(1)
 
-            # 2. Fix missing commas between object properties
-            # Pattern: "\n\s*" should be ",\n"
-            repaired = re.sub(r'"\s*\n\s*"', '",\n"', repaired)
+                # Apply repair strategies to extracted JSON
+                repaired = json_str
 
-            # 3. Fix unescaped quotes in strings (basic attempt)
-            # This is tricky - only handle apostrophes for now
-            # Pattern: 's in strings should be \'s
-            # (Skip this for now as it's complex)
+                # 1. Fix missing commas between array elements (most common LLM error)
+                repaired = re.sub(r'\}\s*\n\s*\{', '},\n{', repaired)
 
-            # 4. Remove trailing commas before closing braces/brackets
-            repaired = re.sub(r',\s*\}', '}', repaired)
-            repaired = re.sub(r',\s*\]', ']', repaired)
+                # 2. Fix missing commas between object properties
+                repaired = re.sub(r'"\s*\n\s*"', '",\n"', repaired)
 
-            # Validate the repair worked
-            json.loads(repaired)
-            logging.info("JSON repair successful")
-            return f"```json\n{repaired}\n```"
+                # 3. Remove trailing commas before closing braces/brackets
+                repaired = re.sub(r',\s*\}', '}', repaired)
+                repaired = re.sub(r',\s*\]', ']', repaired)
 
-        except json.JSONDecodeError as e:
-            logging.error(f"JSON repair validation failed: {e}")
-            return None
-        except Exception as e:
-            logging.error(f"Unexpected error during JSON repair: {e}")
-            return None
+                # Validate the repair worked
+                try:
+                    json.loads(repaired)
+                    logging.info(f"JSON repair successful using pattern: {pattern[:30]}...")
+                    return f"```json\n{repaired}\n```"
+                except json.JSONDecodeError:
+                    # Try next pattern
+                    continue
+
+        logging.error("JSON repair validation failed: No valid JSON found in response")
+        return None
 
     def _add_markdown_to_opportunities(
         self,
