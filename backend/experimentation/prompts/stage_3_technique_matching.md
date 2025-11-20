@@ -4,6 +4,8 @@
 
 Match each consumer insight to appropriate innovation techniques from SIT, TRIZ, and Doblin frameworks. Select techniques that are **defensible** (hard for competitors to copy) and **applicable** to the brand's resources and category.
 
+{few_shot_examples}
+
 ---
 
 ## Inputs

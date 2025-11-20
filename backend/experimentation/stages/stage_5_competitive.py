@@ -29,6 +29,7 @@ import httpx
 from typing import Dict, Any, List, Optional
 from ..schemas import Stage4Output, DirectionalConcept
 from ..prompt_template_library import load_prompt_template
+from ..few_shot_integration import inject_examples_into_stage_prompt
 
 
 class CompetitiveFinding(Dict[str, Any]):
@@ -45,7 +46,8 @@ class Stage5CompetitiveIntelligence:
         self,
         stage4_output: Stage4Output,
         brand_context: Dict[str, Any],
-        openrouter_client: Any
+        openrouter_client: Any,
+        run_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Execute Stage 5: Competitive Intelligence Search.
 
@@ -53,6 +55,7 @@ class Stage5CompetitiveIntelligence:
             stage4_output: Directional concepts from Stage 4
             brand_context: Enriched brand profile from Stage 0
             openrouter_client: OpenRouter API client (for query generation)
+            run_id: Optional pipeline run ID (for usage tracking)
 
         Returns:
             Dict with competitive_intel array containing search findings
@@ -82,7 +85,8 @@ class Stage5CompetitiveIntelligence:
             queries = await self._generate_search_queries(
                 concept=concept,
                 brand_context=brand_context,
-                openrouter_client=openrouter_client
+                openrouter_client=openrouter_client,
+                run_id=run_id
             )
 
             # Step 2: Execute searches via Perplexity API
@@ -116,7 +120,8 @@ class Stage5CompetitiveIntelligence:
         self,
         concept: DirectionalConcept,
         brand_context: Dict[str, Any],
-        openrouter_client: Any
+        openrouter_client: Any,
+        run_id: Optional[str] = None
     ) -> List[str]:
         """Generate 3 search queries: Direct, Analogous, Competitive.
 
@@ -124,13 +129,22 @@ class Stage5CompetitiveIntelligence:
             concept: Directional concept to search for
             brand_context: Brand profile for competitive query
             openrouter_client: OpenRouter API client
+            run_id: Optional pipeline run ID (for usage tracking)
 
         Returns:
             List of 3 search queries
         """
         prompt_template = load_prompt_template("stage_5_competitive_search")
 
-        prompt = prompt_template.format(
+        # Inject few-shot examples
+        enhanced_template = inject_examples_into_stage_prompt(
+            prompt_template=prompt_template,
+            stage=5,
+            brand_context=brand_context,
+            run_id=run_id
+        )
+
+        prompt = enhanced_template.format(
             concept_name=concept.concept_name,
             concept_statement=concept.concept_statement,
             mechanism=concept.mechanism,

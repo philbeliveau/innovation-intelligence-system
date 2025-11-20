@@ -24,7 +24,7 @@ Performance Target: < 90 seconds
 import json
 import os
 import uuid
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from ..schemas import (
     Stage2Output,
     Stage3Output,
@@ -32,6 +32,7 @@ from ..schemas import (
     DirectionalConcept
 )
 from ..prompt_template_library import load_prompt_template
+from ..few_shot_integration import inject_examples_into_stage_prompt
 
 
 class Stage4ConceptGeneration:
@@ -49,7 +50,8 @@ class Stage4ConceptGeneration:
         stage2_output: Stage2Output,
         stage3_output: Stage3Output,
         brand_context: Dict[str, Any],
-        openrouter_client: Any
+        openrouter_client: Any,
+        run_id: Optional[str] = None
     ) -> Stage4Output:
         """Execute Stage 4: Directional Concept Generation.
 
@@ -58,6 +60,7 @@ class Stage4ConceptGeneration:
             stage3_output: Matched techniques from Stage 3
             brand_context: Enriched brand profile from Stage 0
             openrouter_client: OpenRouter API client
+            run_id: Optional pipeline run ID (for usage tracking)
 
         Returns:
             Stage4Output with 3-5 directional concepts
@@ -65,8 +68,16 @@ class Stage4ConceptGeneration:
         # Load prompt template
         prompt_template = load_prompt_template("stage_4_concept_generation")
 
+        # Inject few-shot examples
+        enhanced_template = inject_examples_into_stage_prompt(
+            prompt_template=prompt_template,
+            stage=4,
+            brand_context=brand_context,
+            run_id=run_id
+        )
+
         # Build prompt with no-hallucination constraints embedded
-        prompt = prompt_template.format(
+        prompt = enhanced_template.format(
             insights=json.dumps([insight.model_dump() for insight in stage2_output.insights], indent=2),
             matched_techniques=json.dumps(
                 [match.model_dump() for match in stage3_output.matched_techniques],

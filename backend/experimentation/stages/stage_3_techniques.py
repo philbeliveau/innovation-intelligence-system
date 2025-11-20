@@ -15,7 +15,7 @@ Performance Target: < 90 seconds
 import json
 import os
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from ..schemas import (
     Stage2Output,
     Stage3Output,
@@ -24,6 +24,7 @@ from ..schemas import (
     TechniqueTransferability
 )
 from ..prompt_template_library import load_prompt_template
+from ..few_shot_integration import inject_examples_into_stage_prompt
 
 
 class Stage3TechniqueMatching:
@@ -49,7 +50,8 @@ class Stage3TechniqueMatching:
         self,
         stage2_output: Stage2Output,
         brand_context: Dict[str, Any],
-        openrouter_client: Any
+        openrouter_client: Any,
+        run_id: Optional[str] = None
     ) -> Stage3Output:
         """Execute Stage 3: Technique Matching.
 
@@ -57,6 +59,7 @@ class Stage3TechniqueMatching:
             stage2_output: Consumer insights from Stage 2
             brand_context: Enriched brand profile from Stage 0
             openrouter_client: OpenRouter API client
+            run_id: Optional pipeline run ID (for usage tracking)
 
         Returns:
             Stage3Output with matched techniques
@@ -64,13 +67,21 @@ class Stage3TechniqueMatching:
         # Load prompt template
         prompt_template = load_prompt_template("stage_3_technique_matching")
 
+        # Inject few-shot examples
+        enhanced_template = inject_examples_into_stage_prompt(
+            prompt_template=prompt_template,
+            stage=3,
+            brand_context=brand_context,
+            run_id=run_id
+        )
+
         # Prepare technique library summaries for LLM
         sit_summary = self._format_sit_library()
         triz_summary = self._format_triz_library()
         doblin_summary = self._format_doblin_library()
 
         # Build prompt
-        prompt = prompt_template.format(
+        prompt = enhanced_template.format(
             insights=json.dumps([insight.model_dump() for insight in stage2_output.insights], indent=2),
             brand_context=json.dumps(brand_context, indent=2),
             sit_techniques=sit_summary,

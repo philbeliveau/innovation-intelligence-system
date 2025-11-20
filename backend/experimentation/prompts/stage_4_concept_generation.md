@@ -4,6 +4,8 @@
 
 Generate 3-5 **directional concepts** (NOT detailed specifications) by applying matched innovation techniques to consumer insights. Each concept must remain at the "30-second pitch" level.
 
+{few_shot_examples}
+
 ---
 
 ## 🚨 CRITICAL: No-Hallucination Boundaries

@@ -4,11 +4,12 @@ Generates brand-specific consumer insights by identifying multi-trend convergenc
 """
 import json
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from backend.pipeline.utils import create_llm
 from backend.experimentation.schemas import Stage1Output, Stage0Output, Stage2Output, ConsumerInsight
 from backend.experimentation.prompt_template_library import load_prompt_template
+from backend.experimentation.few_shot_integration import inject_examples_into_stage_prompt
 
 
 logger = logging.getLogger(__name__)
@@ -30,13 +31,15 @@ class Stage2Insights:
     async def run(
         self,
         stage1_output: Stage1Output,
-        stage0_output: Stage0Output
+        stage0_output: Stage0Output,
+        run_id: Optional[str] = None
     ) -> Stage2Output:
         """Generate consumer insights from trends and brand context.
 
         Args:
             stage1_output: Trends from Stage 1
             stage0_output: Brand context from Stage 0
+            run_id: Optional pipeline run ID (for usage tracking)
 
         Returns:
             Stage2Output with consumer insights
@@ -55,11 +58,20 @@ class Stage2Insights:
             # Fallback: treat each trend as single-trend "convergence"
             convergences = [{"trends": [trend], "shared_emotions": []} for trend in stage1_output.trends]
 
+        # Inject few-shot examples into prompt
+        enhanced_template = inject_examples_into_stage_prompt(
+            prompt_template=self.prompt_template,
+            stage=2,
+            brand_context=stage0_output.brand_context.dict(),
+            run_id=run_id
+        )
+        logger.debug("Few-shot examples injected into Stage 2 prompt")
+
         # Build prompt with convergences and brand context
         trends_json = json.dumps([trend.dict() for trend in stage1_output.trends], indent=2)
         brand_context_json = json.dumps(stage0_output.brand_context.dict(), indent=2)
 
-        prompt = self.prompt_template.format(
+        prompt = enhanced_template.format(
             trends=trends_json,
             brand_context=brand_context_json
         )

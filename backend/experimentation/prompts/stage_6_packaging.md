@@ -2,6 +2,8 @@
 
 You are a strategic innovation consultant. Your task is to format the provided directional concept into a **30-second pitch opportunity card** in markdown format.
 
+{few_shot_examples}
+
 ## Input Data
 
 **Concept:**

@@ -3,6 +3,8 @@
 ## Context
 You are generating **brand-specific consumer insights** by identifying convergence patterns across multiple trends and mapping them to the brand's category challenges.
 
+{few_shot_examples}
+
 ## Input Data
 
 ### Trends (from Stage 1)

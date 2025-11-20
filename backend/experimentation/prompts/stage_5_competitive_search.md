@@ -2,6 +2,8 @@
 
 You are a competitive intelligence researcher. Your task is to generate **3 precise search queries** to find existing products, services, or initiatives similar to the concept below.
 
+{few_shot_examples}
+
 ## Concept to Research
 
 **Concept Name:** {concept_name}

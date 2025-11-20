@@ -4,11 +4,12 @@ Extracts trends from report text with full abstraction levels for transferabilit
 """
 import json
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from backend.pipeline.utils import create_llm
-from backend.experimentation.schemas import Stage1Output, Trend
+from backend.experimentation.schemas import Stage1Output, Trend, Stage0Output
 from backend.experimentation.prompt_template_library import load_prompt_template
+from backend.experimentation.few_shot_integration import inject_examples_into_stage_prompt
 
 
 logger = logging.getLogger(__name__)
@@ -27,11 +28,18 @@ class Stage1Decomposition:
         self.llm = create_llm(temperature=temperature, max_tokens=max_tokens)
         self.prompt_template = load_prompt_template("stage_1_extraction")
 
-    async def run(self, report_text: str) -> Stage1Output:
+    async def run(
+        self,
+        report_text: str,
+        brand_context: Optional[Stage0Output] = None,
+        run_id: Optional[str] = None
+    ) -> Stage1Output:
         """Extract trends with L1-L4 abstraction from report.
 
         Args:
             report_text: Full text content from trend report PDF
+            brand_context: Optional brand context from Stage 0 (for few-shot selection)
+            run_id: Optional pipeline run ID (for usage tracking)
 
         Returns:
             Stage1Output with structured trend objects
@@ -41,8 +49,20 @@ class Stage1Decomposition:
         """
         logger.info("Running Stage 1: Trend Decomposition with L1-L4 abstraction")
 
-        # Build prompt with report text
-        prompt = self.prompt_template.format(report_text=report_text)
+        # Inject few-shot examples if brand context available
+        if brand_context:
+            enhanced_template = inject_examples_into_stage_prompt(
+                prompt_template=self.prompt_template,
+                stage=1,
+                brand_context=brand_context.brand_context.dict(),
+                run_id=run_id
+            )
+            prompt = enhanced_template.format(report_text=report_text)
+            logger.debug("Few-shot examples injected into Stage 1 prompt")
+        else:
+            # Fallback: use original template without examples
+            prompt = self.prompt_template.format(report_text=report_text)
+            logger.debug("No brand context provided, skipping few-shot injection")
 
         # Call LLM
         try:

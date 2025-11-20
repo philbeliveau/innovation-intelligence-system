@@ -3,6 +3,8 @@
 ## Context
 You are enriching a basic brand profile with additional context from recent news and market analysis.
 
+{few_shot_examples}
+
 ## Input Brand Profile
 ```
 {brand_profile}

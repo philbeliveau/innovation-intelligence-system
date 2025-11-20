@@ -22,7 +22,7 @@ Performance Target: < 30 seconds (3-5 cards)
 import json
 import os
 import uuid
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from datetime import datetime
 from ..schemas import (
     Stage1Output,
@@ -34,6 +34,7 @@ from ..schemas import (
     DirectionalConcept
 )
 from ..prompt_template_library import load_prompt_template
+from ..few_shot_integration import inject_examples_into_stage_prompt
 
 
 class Stage6OpportunityCards:
@@ -106,7 +107,8 @@ This is a **directional concept** generated from trend analysis and systematic i
         stage5_output: Dict[str, Any],
         brand_context: Dict[str, Any],
         openrouter_client: Any,
-        source_report_name: str = "Unknown Report"
+        source_report_name: str = "Unknown Report",
+        run_id: Optional[str] = None
     ) -> Stage6Output:
         """Execute Stage 6: Opportunity Card Packaging.
 
@@ -117,6 +119,7 @@ This is a **directional concept** generated from trend analysis and systematic i
             stage4_output: Directional concepts from Stage 4
             stage5_output: Competitive intelligence from Stage 5
             brand_context: Enriched brand profile from Stage 0
+            run_id: Optional pipeline run ID (for usage tracking)
             openrouter_client: OpenRouter API client (for card generation)
             source_report_name: Name of source trend report
 
@@ -135,6 +138,9 @@ This is a **directional concept** generated from trend analysis and systematic i
                 stage5_output=stage5_output,
                 brand_context=brand_context
             )
+
+            # Add run_id to context for few-shot injection
+            context["run_id"] = run_id
 
             # Generate markdown card
             markdown_card = await self._generate_opportunity_card(
@@ -245,8 +251,16 @@ This is a **directional concept** generated from trend analysis and systematic i
         # Load prompt template
         prompt_template = load_prompt_template("stage_6_packaging")
 
+        # Inject few-shot examples
+        enhanced_template = inject_examples_into_stage_prompt(
+            prompt_template=prompt_template,
+            stage=6,
+            brand_context=context["brand_context"],
+            run_id=context.get("run_id")
+        )
+
         # Build prompt with all context
-        prompt = prompt_template.format(
+        prompt = enhanced_template.format(
             concept=json.dumps(concept.model_dump(), indent=2),
             insight=json.dumps(context["insight"].model_dump() if context["insight"] else {}, indent=2),
             technique=json.dumps(context["technique"].model_dump() if context["technique"] else {}, indent=2),

@@ -3,6 +3,8 @@
 ## Context
 You are extracting structured trends from a WGSN/Mintel trend report with **multi-level abstraction** (L1-L4) to enable transferability across industries.
 
+{few_shot_examples}
+
 ## Input Report Text
 ```
 {report_text}
