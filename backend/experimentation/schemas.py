@@ -93,6 +93,67 @@ class Stage2Output(BaseModel):
 
 
 # ============================================================
+# STAGE 3: Innovation Technique Matching
+# ============================================================
+
+class TechniqueTransferability(BaseModel):
+    """Transferability mapping from L1 to L4."""
+    L1_domain: str = Field(description="Domain-specific application")
+    L4_universal: str = Field(description="Universal principle")
+
+
+class InnovationTechnique(BaseModel):
+    """Primary or secondary innovation technique."""
+    framework: str = Field(description="SIT, TRIZ, or Doblin")
+    technique: str = Field(description="Technique name")
+    rationale: str = Field(description="Why this technique applies")
+    defensibility_score: Optional[float] = Field(ge=0.0, le=1.0, default=None)
+
+
+class MatchedTechnique(BaseModel):
+    """Technique match for a consumer insight."""
+    insight_id: str = Field(description="Reference to ConsumerInsight.insight_id")
+    primary_technique: InnovationTechnique
+    secondary_technique: Optional[InnovationTechnique] = None
+    doblin_type: str = Field(description="Doblin innovation type for strategic classification")
+    transferability: TechniqueTransferability
+
+
+class Stage3Output(BaseModel):
+    """Output from Stage 3: Technique Matching."""
+    matched_techniques: List[MatchedTechnique]
+    sit_matches: int = Field(description="Number of SIT matches")
+    triz_matches: int = Field(description="Number of TRIZ matches (conditional)")
+
+
+# ============================================================
+# STAGE 4: Directional Concept Generation
+# ============================================================
+
+class DirectionalConcept(BaseModel):
+    """Directional concept from Stage 4 (NOT detailed specs)."""
+    concept_id: str
+    insight_id: str = Field(description="Reference to ConsumerInsight.insight_id")
+    technique_id: str = Field(description="Reference to matched technique")
+    concept_name: str = Field(description="Clear, memorable name")
+    concept_statement: str = Field(description="1-sentence what-is-it")
+    mechanism: str = Field(description="How it works (mechanism only, not implementation)")
+    why_it_works: str = Field(description="Why it addresses the insight")
+    boundary_disclosure: str = Field(
+        description="Explicit statement of what is NOT included (no financials, no validation)"
+    )
+
+
+class Stage4Output(BaseModel):
+    """Output from Stage 4: Directional Concepts."""
+    concepts: List[DirectionalConcept]
+    total_concepts: int = Field(description="Should be 3-5 concepts")
+    boundary_enforcement_applied: bool = Field(
+        description="Confirms no-hallucination boundaries were enforced"
+    )
+
+
+# ============================================================
 # PIPELINE RUN STATE
 # ============================================================
 
