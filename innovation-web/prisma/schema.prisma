@@ -13,7 +13,7 @@ model Document {
   fileName    String
   fileSize    Int
   blobUrl     String
-  contentHash String?  // SHA-256 hash of file content
+  contentHash String? // SHA-256 hash of file content
   uploadedAt  DateTime
   createdAt   DateTime @default(now())
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -54,25 +54,25 @@ model OpportunityCard {
 }
 
 model PipelineRun {
-  id                String             @id @default(uuid())
-  userId            String
-  documentName      String
-  documentUrl       String?
-  companyName       String
-  status            RunStatus          @default(PROCESSING)
-  pipelineVersion   String
-  createdAt         DateTime           @default(now())
-  completedAt       DateTime?
-  duration          Int?
+  id              String    @id @default(uuid())
+  userId          String
+  documentName    String
+  documentUrl     String?
+  companyName     String
+  status          RunStatus @default(PROCESSING)
+  pipelineVersion String
+  createdAt       DateTime  @default(now())
+  completedAt     DateTime?
+  duration        Int?
 
   // Stage Outputs - JSON storage for pipeline analysis data
-  stage1Output       Json?              // { extractedText: string, mechanisms: array }
-  stage2Output       Json?              // { signals: array }
-  stage3Output       Json?              // { insights: array }
-  stage4Output       Json?              // { preliminary: array }
+  stage1Output Json? // { extractedText: string, mechanisms: array }
+  stage2Output Json? // { signals: array }
+  stage3Output Json? // { insights: array }
+  stage4Output Json? // { preliminary: array }
 
   // Full Report - Complete markdown report
-  fullReportMarkdown String?            @db.Text
+  fullReportMarkdown String? @db.Text
 
   inspirationReport InspirationReport?
   opportunityCards  OpportunityCard[]
@@ -109,6 +109,47 @@ model User {
   pipelineRuns PipelineRun[]
 
   @@index([clerkId])
+}
+
+model Experiment {
+  id        String   @id @default(uuid())
+  runId     String   @unique @map("run_id")
+  timestamp DateTime @default(now())
+
+  // Input Data
+  reportText String? @map("report_text") @db.Text
+  reportName String? @map("report_name")
+
+  // Brand Profile (JSONB)
+  brandProfile Json @map("brand_profile")
+
+  // Pipeline Outputs (JSONB for all stages)
+  stageOutputs Json @map("stage_outputs")
+
+  // User Assessment
+  experimentNotes String? @map("experiment_notes") @db.Text
+  qualityTag      String? @map("quality_tag")
+
+  // Metadata
+  pipelineVersion      String?  @map("pipeline_version")
+  executionTimeSeconds Int?     @map("execution_time_seconds")
+  tokenUsage           Json?    @map("token_usage")
+  costUsd              Decimal? @map("cost_usd") @db.Decimal(10, 4)
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([timestamp(sort: Desc)])
+  @@index([qualityTag])
+  @@index([pipelineVersion])
+  @@map("experiments")
+}
+
+enum QualityTag {
+  good
+  needs_work
+  failed
 }
 
 enum RunStatus {

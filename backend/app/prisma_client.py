@@ -257,3 +257,134 @@ class PrismaAPIClient:
             status="PROCESSING",
             output=""
         )
+
+    def save_experiment(
+        self,
+        run_id: str,
+        brand_profile: Dict[str, Any],
+        stage_outputs: Dict[str, Any],
+        report_text: Optional[str] = None,
+        report_name: Optional[str] = None,
+        quality_tag: Optional[str] = None,
+        notes: Optional[str] = None,
+        execution_time: Optional[int] = None,
+        token_usage: Optional[Dict[str, Any]] = None,
+        cost_usd: Optional[float] = None,
+        pipeline_version: str = "1.0"
+    ) -> bool:
+        """Save complete pipeline experiment to database via Next.js API.
+
+        Args:
+            run_id: Unique run identifier
+            brand_profile: Brand context dict
+            stage_outputs: All stage outputs (dict with stage_0 to stage_6)
+            report_text: Full PDF text (optional)
+            report_name: Original filename (optional)
+            quality_tag: "good" | "needs_work" | "failed" (optional)
+            notes: User notes (optional)
+            execution_time: Total seconds (optional)
+            token_usage: Token tracking dict (optional)
+            cost_usd: Estimated cost (optional)
+            pipeline_version: Pipeline version (default: "1.0")
+
+        Returns:
+            True if save successful, False otherwise
+        """
+        url = f"{self.frontend_url}/api/experiments"
+
+        payload = {
+            "runId": run_id,
+            "brandProfile": brand_profile,
+            "stageOutputs": stage_outputs,
+            "reportText": report_text,
+            "reportName": report_name,
+            "qualityTag": quality_tag,
+            "experimentNotes": notes,
+            "executionTimeSeconds": execution_time,
+            "tokenUsage": token_usage,
+            "costUsd": cost_usd,
+            "pipelineVersion": pipeline_version
+        }
+
+        try:
+            logger.info(f"[{run_id}] Saving experiment to database via API")
+            response = self.session.post(url, json=payload, timeout=30)
+
+            if response.ok:
+                logger.info(f"[{run_id}] Successfully saved experiment")
+                return True
+            else:
+                logger.error(
+                    f"[{run_id}] Failed to save experiment: {response.status_code} - {response.text}"
+                )
+                return False
+
+        except Exception as e:
+            logger.error(f"[{run_id}] Error saving experiment: {e}")
+            return False
+
+    def get_experiments(
+        self,
+        quality_tag: Optional[str] = None,
+        brand_name: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        pipeline_version: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 20,
+        order_by: str = "timestamp_desc"
+    ) -> Optional[Dict[str, Any]]:
+        """Retrieve experiments from database with filtering and pagination.
+
+        Args:
+            quality_tag: Filter by quality ("good", "needs_work", "failed")
+            brand_name: Filter by brand name
+            start_date: Filter by timestamp >= start_date (ISO format)
+            end_date: Filter by timestamp <= end_date (ISO format)
+            pipeline_version: Filter by pipeline version
+            page: Page number (default: 1)
+            page_size: Results per page (default: 20, max: 100)
+            order_by: Sort order ("timestamp_desc", "timestamp_asc", "cost_desc")
+
+        Returns:
+            Dict with experiments and pagination info, or None if error
+        """
+        url = f"{self.frontend_url}/api/experiments"
+
+        params = {
+            "page": page,
+            "pageSize": page_size,
+            "orderBy": order_by
+        }
+
+        if quality_tag:
+            params["qualityTag"] = quality_tag
+        if brand_name:
+            params["brandName"] = brand_name
+        if start_date:
+            params["startDate"] = start_date
+        if end_date:
+            params["endDate"] = end_date
+        if pipeline_version:
+            params["pipelineVersion"] = pipeline_version
+
+        try:
+            logger.info(f"Retrieving experiments with filters: {params}")
+            response = self.session.get(url, params=params, timeout=30)
+
+            if response.ok:
+                data = response.json()
+                logger.info(
+                    f"Retrieved {len(data.get('experiments', []))} experiments "
+                    f"(page {page}/{data.get('pagination', {}).get('totalPages', '?')})"
+                )
+                return data
+            else:
+                logger.error(
+                    f"Failed to retrieve experiments: {response.status_code} - {response.text}"
+                )
+                return None
+
+        except Exception as e:
+            logger.error(f"Error retrieving experiments: {e}")
+            return None
