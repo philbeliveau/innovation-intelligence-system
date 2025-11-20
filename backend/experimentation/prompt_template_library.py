@@ -584,6 +584,27 @@ def save_successful_prompt(
     return None
 
 
+def load_prompt_template(template_name: str) -> str:
+    """Load prompt template from markdown file.
+
+    Args:
+        template_name: Template filename without .md extension
+                      (e.g., 'stage_0_enrichment', 'stage_1_extraction')
+
+    Returns:
+        Template content as string
+
+    Raises:
+        FileNotFoundError: If template file doesn't exist
+    """
+    template_path = Path(__file__).parent / "prompts" / f"{template_name}.md"
+
+    if not template_path.exists():
+        raise FileNotFoundError(f"Prompt template not found: {template_path}")
+
+    return template_path.read_text(encoding='utf-8')
+
+
 if __name__ == "__main__":
     # Test the library
     library = PromptTemplateLibrary()
