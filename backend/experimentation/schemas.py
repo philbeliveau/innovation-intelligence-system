@@ -154,6 +154,56 @@ class Stage4Output(BaseModel):
 
 
 # ============================================================
+# STAGE 5: Competitive Intelligence
+# ============================================================
+
+class CompetitiveFinding(BaseModel):
+    """Single competitive intelligence finding from Stage 5."""
+    match_type: str = Field(description="Direct Match, Analogous, or Novel")
+    query: str = Field(description="Search query that generated this finding")
+    description: str = Field(description="Search result content")
+    source_urls: List[str] = Field(description="Citation URLs from search")
+    what_we_know: str = Field(description="Factual information with sources")
+    what_we_infer: str = Field(description="Interpretive or comparative statements")
+
+
+class CompetitiveIntelligence(BaseModel):
+    """Competitive intelligence for a single concept."""
+    concept_id: str = Field(description="Reference to DirectionalConcept.concept_id")
+    search_queries: List[str] = Field(description="3 search queries: Direct, Analogous, Competitive")
+    findings: List[CompetitiveFinding]
+    novelty_assessment: str = Field(description="Overall novelty assessment")
+
+
+class Stage5Output(BaseModel):
+    """Output from Stage 5: Competitive Intelligence."""
+    competitive_intel: List[CompetitiveIntelligence]
+    search_enabled: bool = Field(description="Whether Perplexity search was enabled")
+    total_queries_executed: int
+
+
+# ============================================================
+# STAGE 6: Opportunity Card Packaging
+# ============================================================
+
+class OpportunityCard(BaseModel):
+    """Final opportunity card in markdown format from Stage 6."""
+    card_id: str
+    concept_id: str = Field(description="Reference to DirectionalConcept.concept_id")
+    markdown_content: str = Field(description="Full markdown-formatted opportunity card")
+    card_sections: Dict[str, str] = Field(
+        description="Parsed sections: concept_name, consumer_insight, mechanism, why_now, why_brand, competitive_landscape, boundary_disclosure"
+    )
+
+
+class Stage6Output(BaseModel):
+    """Output from Stage 6: Opportunity Cards."""
+    opportunity_cards: List[OpportunityCard]
+    total_cards: int
+    markdown_format_validated: bool = Field(description="Confirms markdown structure is valid")
+
+
+# ============================================================
 # PIPELINE RUN STATE
 # ============================================================
 

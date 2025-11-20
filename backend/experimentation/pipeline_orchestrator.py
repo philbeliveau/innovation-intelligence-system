@@ -12,8 +12,24 @@ from datetime import datetime
 
 from backend.app.prisma_client import PrismaAPIClient
 from backend.pipeline.utils import send_webhook_sync
-from backend.experimentation.stages import Stage0Enrichment, Stage1Decomposition, Stage2Insights
-from backend.experimentation.schemas import Stage0Output, Stage1Output, Stage2Output
+from backend.experimentation.stages import (
+    Stage0Enrichment,
+    Stage1Decomposition,
+    Stage2Insights,
+    Stage3TechniqueMatching,
+    Stage4ConceptGeneration,
+    Stage5CompetitiveIntelligence,
+    Stage6OpportunityCards
+)
+from backend.experimentation.schemas import (
+    Stage0Output,
+    Stage1Output,
+    Stage2Output,
+    Stage3Output,
+    Stage4Output,
+    Stage5Output,
+    Stage6Output
+)
 
 
 logger = logging.getLogger(__name__)
@@ -98,18 +114,33 @@ class PipelineOrchestrator:
                     logger.error(f"[{self.run_id}] Stage {stage_num} failed after {self.max_retries} attempts")
                     raise
 
+    def _get_stage_model(self, stage_num: int) -> str:
+        """Get model configuration for specific stage from environment variables.
+
+        Args:
+            stage_num: Stage number (0-6)
+
+        Returns:
+            Model identifier (e.g., "anthropic/claude-3-5-sonnet-20240620")
+        """
+        stage_model_env = f"STAGE_{stage_num}_MODEL"
+        default_model = os.getenv("OPENROUTER_MODEL", "anthropic/claude-3-5-sonnet-20240620")
+        return os.getenv(stage_model_env, default_model)
+
     async def run_pipeline(
         self,
         pdf_text: str,
         brand_profile: Dict[str, Any],
-        enrichment_mode: str = "basic"
+        enrichment_mode: str = "basic",
+        source_report_name: str = "Unknown Report"
     ) -> Dict[str, Any]:
-        """Execute 7-stage pipeline (currently implements stages 0-2).
+        """Execute complete 7-stage pipeline.
 
         Args:
             pdf_text: Extracted PDF text content
             brand_profile: Brand profile YAML data
             enrichment_mode: Stage 0 enrichment mode ('basic' or 'perplexity_enriched')
+            source_report_name: Name of source trend report (for Stage 6 cards)
 
         Returns:
             Dictionary with all stage outputs
@@ -207,20 +238,119 @@ class PipelineOrchestrator:
             send_webhook_sync(self.run_id, "stage-update", webhook_payload)
 
             # ============================================================
-            # STAGES 3-6: Placeholder (to be implemented in Story 11.2b-c)
+            # STAGE 3: Innovation Technique Matching
             # ============================================================
-            logger.info(f"[{self.run_id}] Stages 3-6 not yet implemented (Story 11.2b-c)")
+            from backend.experimentation.openrouter_client import OpenRouterClient
+            openrouter_client = OpenRouterClient()
+
+            stage3 = Stage3TechniqueMatching()
+            stage3_output = await self.execute_stage_with_retry(
+                stage_num=3,
+                stage_name="Technique Matching",
+                stage_func=stage3.execute,
+                stage2_output=stage2_output,
+                brand_context=stage0_output.brand_context.model_dump(),
+                openrouter_client=openrouter_client
+            )
+
+            self.stage_outputs["stage_3"] = stage3_output.model_dump()
+            self.prisma_client.mark_stage_complete(self.run_id, 4, self.stage_outputs["stage_3"])
+            webhook_payload = {
+                "stageNumber": 3,
+                "stageName": "Technique Matching",
+                "status": "COMPLETE",
+                "output": {"total_matches": len(stage3_output.matched_techniques)}
+            }
+            send_webhook_sync(self.run_id, "stage-update", webhook_payload)
+
+            # ============================================================
+            # STAGE 4: Directional Concept Generation
+            # ============================================================
+            stage4 = Stage4ConceptGeneration()
+            stage4_output = await self.execute_stage_with_retry(
+                stage_num=4,
+                stage_name="Concept Generation",
+                stage_func=stage4.execute,
+                stage2_output=stage2_output,
+                stage3_output=stage3_output,
+                brand_context=stage0_output.brand_context.model_dump(),
+                openrouter_client=openrouter_client
+            )
+
+            self.stage_outputs["stage_4"] = stage4_output.model_dump()
+            self.prisma_client.mark_stage_complete(self.run_id, 5, self.stage_outputs["stage_4"])
+            webhook_payload = {
+                "stageNumber": 4,
+                "stageName": "Concept Generation",
+                "status": "COMPLETE",
+                "output": {"total_concepts": stage4_output.total_concepts}
+            }
+            send_webhook_sync(self.run_id, "stage-update", webhook_payload)
+
+            # ============================================================
+            # STAGE 5: Competitive Intelligence Search
+            # ============================================================
+            stage5 = Stage5CompetitiveIntelligence()
+            stage5_output_dict = await self.execute_stage_with_retry(
+                stage_num=5,
+                stage_name="Competitive Intelligence",
+                stage_func=stage5.execute,
+                stage4_output=stage4_output,
+                brand_context=stage0_output.brand_context.model_dump(),
+                openrouter_client=openrouter_client
+            )
+
+            self.stage_outputs["stage_5"] = stage5_output_dict
+            self.prisma_client.mark_stage_complete(self.run_id, 6, self.stage_outputs["stage_5"])
+            webhook_payload = {
+                "stageNumber": 5,
+                "stageName": "Competitive Intelligence",
+                "status": "COMPLETE",
+                "output": {
+                    "search_enabled": stage5_output_dict["search_enabled"],
+                    "total_queries": stage5_output_dict["total_queries_executed"]
+                }
+            }
+            send_webhook_sync(self.run_id, "stage-update", webhook_payload)
+
+            # ============================================================
+            # STAGE 6: Opportunity Card Packaging
+            # ============================================================
+            stage6 = Stage6OpportunityCards()
+            stage6_output = await self.execute_stage_with_retry(
+                stage_num=6,
+                stage_name="Opportunity Cards",
+                stage_func=stage6.execute,
+                stage1_output=stage1_output,
+                stage2_output=stage2_output,
+                stage3_output=stage3_output,
+                stage4_output=stage4_output,
+                stage5_output=stage5_output_dict,
+                brand_context=stage0_output.brand_context.model_dump(),
+                openrouter_client=openrouter_client,
+                source_report_name=source_report_name
+            )
+
+            self.stage_outputs["stage_6"] = stage6_output.model_dump()
+            self.prisma_client.mark_stage_complete(self.run_id, 7, self.stage_outputs["stage_6"])
+            webhook_payload = {
+                "stageNumber": 6,
+                "stageName": "Opportunity Cards",
+                "status": "COMPLETE",
+                "output": {"total_cards": stage6_output.total_cards}
+            }
+            send_webhook_sync(self.run_id, "stage-update", webhook_payload)
 
             # Calculate duration
             end_time = datetime.utcnow()
             duration_ms = int((end_time - start_time).total_seconds() * 1000)
 
-            logger.info(f"[{self.run_id}] Pipeline completed in {duration_ms}ms")
+            logger.info(f"[{self.run_id}] Complete 7-stage pipeline finished in {duration_ms}ms")
 
             return {
                 "run_id": self.run_id,
-                "status": "PARTIAL_COMPLETE",  # Only stages 0-2 implemented
-                "completed_stages": [0, 1, 2],
+                "status": "COMPLETED",
+                "completed_stages": [0, 1, 2, 3, 4, 5, 6],
                 "stage_outputs": self.stage_outputs,
                 "duration_ms": duration_ms
             }
