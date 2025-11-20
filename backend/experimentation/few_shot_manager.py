@@ -1,13 +1,25 @@
 """
 Few-Shot Example Manager
 Dynamically inject successful examples into prompts to improve LLM performance
+
+Extended for Story 11.3a: Few-Shot Storage + Auto-Save
 """
 
 import json
 import sqlite3
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
+from pathlib import Path
 import os
+import hashlib
+from pydantic import ValidationError
+
+# Import schemas for validation
+try:
+    from .schemas import FewShotExample, StageMetadata, FewShotExampleMetadata, BrandEnrichment
+except ImportError:
+    # Allow running as standalone script
+    from schemas import FewShotExample, StageMetadata, FewShotExampleMetadata, BrandEnrichment
 
 class FewShotExampleManager:
     """
@@ -350,6 +362,211 @@ DEFAULT_EXAMPLES = {
 }
 
 
+class FileSystemExampleStorage:
+    """
+    File-based storage for few-shot examples (Story 11.3a)
+    Saves examples to /backend/experimentation/successful_examples/
+    """
+
+    def __init__(self, storage_path: str = None):
+        if storage_path is None:
+            # Default to successful_examples directory
+            self.storage_path = Path(__file__).parent / "successful_examples"
+        else:
+            self.storage_path = Path(storage_path)
+
+        self.storage_path.mkdir(exist_ok=True)
+
+    def generate_example_id(self, stage: int, brand_name: str) -> str:
+        """Generate unique example ID with timestamp and hash
+
+        Format: example_{timestamp}_{hash}
+        """
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        hash_input = f"{stage}_{brand_name}_{datetime.now().isoformat()}"
+        hash_suffix = hashlib.md5(hash_input.encode()).hexdigest()[:6]
+
+        return f"example_{timestamp}_{hash_suffix}"
+
+    def save_example(
+        self,
+        stage: int,
+        run_id: str,
+        brand_context: Dict[str, Any],
+        input_data: Dict[str, Any],
+        output_data: Dict[str, Any],
+        prompt_used: str,
+        quality_score: str = "good",
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> Tuple[bool, str]:
+        """Save example to filesystem with validation
+
+        Args:
+            stage: Pipeline stage (0-6)
+            run_id: Pipeline run identifier
+            brand_context: Brand profile data
+            input_data: Stage input
+            output_data: Stage output
+            prompt_used: Prompt template used
+            quality_score: Quality tag (good/needs_work/failed)
+            metadata: Additional metadata
+
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        try:
+            # Generate unique ID
+            example_id = self.generate_example_id(stage, brand_context.get("brand_name", "unknown"))
+
+            # Construct example object
+            example_dict = {
+                "id": example_id,
+                "created_at": datetime.now().isoformat(),
+                "stage": stage,
+                "quality_score": quality_score,
+                "usage_count": 0,
+                "last_used_at": None,
+                "brand_context": brand_context,
+                "input": input_data,
+                "prompt_used": prompt_used,
+                "output": output_data,
+                "metadata": metadata or {
+                    "pipeline_version": "1.0",
+                    "execution_time_seconds": None,
+                    "token_usage": None,
+                    "model_used": None
+                }
+            }
+
+            # Validate schema
+            try:
+                FewShotExample(**example_dict)
+            except ValidationError as e:
+                return False, f"Validation error: {str(e)}"
+
+            # Save to stage folder
+            stage_dir = self.storage_path / f"stage_{stage}"
+            stage_dir.mkdir(exist_ok=True)
+
+            example_file = stage_dir / f"{example_id}.json"
+            with open(example_file, 'w') as f:
+                json.dump(example_dict, f, indent=2)
+
+            # Update metadata
+            self._update_stage_metadata(stage, example_id, quality_score, brand_context.get("brand_name", "unknown"))
+
+            return True, f"Example saved: {example_id}"
+
+        except Exception as e:
+            # Log error but don't break pipeline
+            error_msg = f"Failed to save example: {str(e)}"
+            print(f"ERROR: {error_msg}")
+            return False, error_msg
+
+    def _update_stage_metadata(self, stage: int, example_id: str, quality_score: str, brand_name: str):
+        """Update metadata.json for stage"""
+        stage_dir = self.storage_path / f"stage_{stage}"
+        metadata_file = stage_dir / "metadata.json"
+
+        # Load existing metadata
+        if metadata_file.exists():
+            with open(metadata_file, 'r') as f:
+                metadata = json.load(f)
+        else:
+            metadata = {
+                "stage": stage,
+                "total_examples": 0,
+                "last_updated": None,
+                "usage_stats": {
+                    "total_uses": 0,
+                    "examples_by_quality": {
+                        "good": 0,
+                        "needs_work": 0,
+                        "failed": 0
+                    }
+                },
+                "top_performers": []
+            }
+
+        # Update counts
+        metadata["total_examples"] += 1
+        metadata["last_updated"] = datetime.now().isoformat()
+        metadata["usage_stats"]["examples_by_quality"][quality_score] = \
+            metadata["usage_stats"]["examples_by_quality"].get(quality_score, 0) + 1
+
+        # Save updated metadata
+        with open(metadata_file, 'w') as f:
+            json.dump(metadata, f, indent=2)
+
+    def load_examples(self, stage: int) -> List[Dict[str, Any]]:
+        """Load all examples for a stage"""
+        stage_dir = self.storage_path / f"stage_{stage}"
+
+        if not stage_dir.exists():
+            return []
+
+        examples = []
+        for example_file in stage_dir.glob("example_*.json"):
+            try:
+                with open(example_file, 'r') as f:
+                    examples.append(json.load(f))
+            except Exception as e:
+                print(f"Warning: Failed to load {example_file}: {e}")
+                continue
+
+        return examples
+
+    def get_stage_metadata(self, stage: int) -> Optional[Dict[str, Any]]:
+        """Load metadata for a stage"""
+        metadata_file = self.storage_path / f"stage_{stage}" / "metadata.json"
+
+        if not metadata_file.exists():
+            return None
+
+        with open(metadata_file, 'r') as f:
+            return json.load(f)
+
+
+# Helper function for Gradio integration
+def save_good_example_from_gradio(
+    stage: int,
+    run_id: str,
+    brand_context: Dict[str, Any],
+    input_data: Dict[str, Any],
+    output_data: Dict[str, Any],
+    prompt_used: str,
+    storage_path: Optional[str] = None
+) -> Tuple[bool, str]:
+    """
+    Save a "Good" tagged example from Gradio UI
+
+    This is the main integration point for Story 11.3a
+
+    Args:
+        stage: Pipeline stage (0-6)
+        run_id: Pipeline run ID
+        brand_context: Brand profile
+        input_data: Stage inputs
+        output_data: Stage outputs
+        prompt_used: Prompt template
+        storage_path: Optional custom storage path
+
+    Returns:
+        Tuple of (success, message)
+    """
+    storage = FileSystemExampleStorage(storage_path)
+
+    return storage.save_example(
+        stage=stage,
+        run_id=run_id,
+        brand_context=brand_context,
+        input_data=input_data,
+        output_data=output_data,
+        prompt_used=prompt_used,
+        quality_score="good"
+    )
+
+
 if __name__ == "__main__":
     # Test the manager
     manager = FewShotExampleManager()
@@ -373,3 +590,33 @@ if __name__ == "__main__":
     # Show statistics
     print("\nExample Statistics:")
     print(json.dumps(manager.get_statistics(), indent=2))
+
+    # Test new filesystem storage (Story 11.3a)
+    print("\n=== Testing Filesystem Storage ===")
+    storage = FileSystemExampleStorage()
+
+    # Test save
+    success, msg = storage.save_example(
+        stage=1,
+        run_id="test_run_001",
+        brand_context={
+            "brand_name": "Test Brand",
+            "industry": "Test Industry",
+            "country": "Canada",
+            "product_portfolio": ["Product A", "Product B"]
+        },
+        input_data={"test": "input"},
+        output_data={"test": "output"},
+        prompt_used="Test prompt template",
+        quality_score="good"
+    )
+
+    print(f"Save result: {success} - {msg}")
+
+    # Test load
+    examples = storage.load_examples(1)
+    print(f"Loaded {len(examples)} examples from stage 1")
+
+    # Test metadata
+    metadata = storage.get_stage_metadata(1)
+    print(f"Stage 1 metadata: {json.dumps(metadata, indent=2) if metadata else 'None'}")

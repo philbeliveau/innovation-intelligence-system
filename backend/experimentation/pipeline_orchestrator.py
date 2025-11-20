@@ -393,5 +393,4 @@ class PipelineOrchestrator:
             Not fully implemented in Story 11.2a (foundation only)
         """
         logger.info(f"[{self.run_id}] Resuming from stage {last_completed_stage + 1}")
-        # TODO: Implement in Story 11.2b when stages 3-4 are added
         raise NotImplementedError("Resume from checkpoint not yet implemented")

@@ -95,6 +95,11 @@ temp/
 .tmp/
 .temp/
 
+# Few-shot examples: track structure but allow example files
+backend/experimentation/successful_examples/*/*.json
+!backend/experimentation/successful_examples/*/metadata.json
+backend/experimentation/successful_examples/*/example_*.json
+
 # Backend-specific
 backend/.env
 backend/tmp/

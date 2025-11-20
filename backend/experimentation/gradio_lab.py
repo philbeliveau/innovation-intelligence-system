@@ -22,6 +22,14 @@ import httpx
 import os
 import uuid
 
+# Import few-shot storage (Story 11.3a)
+# Note: This import will work once few_shot_manager.py is created in Story 11.3a
+try:
+    from backend.experimentation.few_shot_manager import FileSystemExampleStorage
+except ImportError:
+    # Graceful degradation if few_shot_manager not yet implemented
+    FileSystemExampleStorage = None
+
 # Backend API configuration
 BACKEND_API_URL = os.getenv("BACKEND_API_URL", "http://localhost:8000")
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -306,16 +314,20 @@ class GradioLab:
         pdf_text: str,
         brand_profile: Dict[str, Any],
         stage_outputs: Dict[str, Any],
+        stage_inputs: Dict[str, Any],
+        prompts_used: Dict[str, str],
         quality_tag: str,
         notes: str
     ) -> str:
-        """Save experiment to database
+        """Save experiment to database (Story 11.3a: Auto-save integration)
 
         Args:
             run_id: Run identifier
             pdf_text: Original report text
             brand_profile: Brand configuration
             stage_outputs: All stage outputs
+            stage_inputs: All stage inputs
+            prompts_used: Prompts used for each stage
             quality_tag: Good/Needs Work/Failed
             notes: User notes
 
@@ -341,35 +353,84 @@ class GradioLab:
                 if response.status_code != 200:
                     return f"Error: Save failed: {response.text}"
 
-                # Auto-export "Good" examples
+                # Auto-export "Good" examples (Story 11.3a)
                 if quality_tag == "Good":
-                    await self._export_few_shot_examples(run_id, stage_outputs)
-                    return f"Success: Experiment saved and exported to few-shot examples!"
+                    saved_count, failed_count = await self._export_few_shot_examples(
+                        run_id=run_id,
+                        brand_context=brand_profile,
+                        stage_outputs=stage_outputs,
+                        stage_inputs=stage_inputs,
+                        prompts_used=prompts_used
+                    )
+
+                    if failed_count > 0:
+                        return f"Success: Experiment saved! Exported {saved_count} examples ({failed_count} failed)"
+                    else:
+                        return f"Success: Experiment saved and {saved_count} examples exported to few-shot library!"
 
                 return f"Success: Experiment saved successfully!"
 
         except Exception as e:
-            return f"Error: Save failed: {str(e)}"
+            # Graceful error handling - don't break pipeline
+            error_msg = f"Error: Save operation encountered issues: {str(e)}"
+            print(f"SAVE ERROR: {error_msg}")
+            return error_msg
 
-    async def _export_few_shot_examples(self, run_id: str, stage_outputs: Dict[str, Any]):
-        """Export outputs to few-shot learning directory
+    async def _export_few_shot_examples(
+        self,
+        run_id: str,
+        brand_context: Dict[str, Any],
+        stage_outputs: Dict[str, Any],
+        stage_inputs: Dict[str, Any],
+        prompts_used: Dict[str, str]
+    ):
+        """Export outputs to few-shot learning directory (Story 11.3a integration)
 
         Args:
             run_id: Run identifier
+            brand_context: Brand profile used
             stage_outputs: All stage outputs
+            stage_inputs: All stage inputs
+            prompts_used: Prompts used for each stage
         """
-        examples_dir = Path(__file__).parent / "successful_examples"
-        examples_dir.mkdir(exist_ok=True)
+        # Graceful degradation if few_shot_manager not available yet
+        if FileSystemExampleStorage is None:
+            return 0, 7  # 0 saved, 7 failed (all stages skipped)
+
+        storage = FileSystemExampleStorage()
+
+        saved_count = 0
+        failed_count = 0
 
         for stage_num in range(7):
             stage_key = f"stage_{stage_num}"
-            if stage_key in stage_outputs:
-                stage_dir = examples_dir / stage_key
-                stage_dir.mkdir(exist_ok=True)
 
-                output_file = stage_dir / f"{run_id}.json"
-                with open(output_file, 'w') as f:
-                    json.dump(stage_outputs[stage_key], f, indent=2)
+            if stage_key not in stage_outputs:
+                continue
+
+            # Get stage-specific data
+            output_data = stage_outputs[stage_key]
+            input_data = stage_inputs.get(stage_key, {})
+            prompt = prompts_used.get(stage_key, "")
+
+            # Save using FileSystemExampleStorage
+            success, msg = storage.save_example(
+                stage=stage_num,
+                run_id=run_id,
+                brand_context=brand_context,
+                input_data=input_data,
+                output_data=output_data,
+                prompt_used=prompt,
+                quality_score="good"
+            )
+
+            if success:
+                saved_count += 1
+            else:
+                failed_count += 1
+                print(f"Failed to save stage {stage_num}: {msg}")
+
+        return saved_count, failed_count
 
     def build_interface(self) -> gr.Blocks:
         """Build Gradio interface
@@ -382,12 +443,15 @@ class GradioLab:
             gr.Markdown("# Innovation Intelligence Experimentation Lab")
             gr.Markdown("Upload trend reports and generate innovation concepts for your brand")
 
-            # Session state for caching
+            # Session state for caching (Story 11.3a: Added stage_inputs and prompts_used)
             cached_data = gr.State({
                 "pdf_text": None,
                 "pdf_filename": None,
                 "brand_profile": None,
-                "run_id": None
+                "run_id": None,
+                "stage_outputs": {},
+                "stage_inputs": {},
+                "prompts_used": {}
             })
 
             with gr.Row():
@@ -564,12 +628,38 @@ class GradioLab:
                 outputs=[brand_name, industry, geography, product_portfolio, yaml_upload_status]
             )
 
-            # Pipeline execution
+            # Pipeline execution (Story 11.3a: Update state with outputs)
             async def run_pipeline_wrapper(state, brand_name_val, industry_val, geography_val, portfolio_val):
                 pdf_text = state.get("pdf_text", "")
-                return await self.run_pipeline(
+
+                # Run pipeline
+                stage0, stage1, stage2, stage3, stage4, stage5, stage6, status = await self.run_pipeline(
                     pdf_text, brand_name_val, industry_val, geography_val, portfolio_val
                 )
+
+                # Update state with results for later save
+                state["run_id"] = str(uuid.uuid4())[:8]
+                state["brand_profile"] = {
+                    "brand_name": brand_name_val,
+                    "industry": industry_val,
+                    "country": geography_val,
+                    "product_portfolio": portfolio_val.split("\n") if portfolio_val else []
+                }
+                state["stage_outputs"] = {
+                    "stage_0": json.loads(stage0) if stage0 else {},
+                    "stage_1": json.loads(stage1) if stage1 else {},
+                    "stage_2": json.loads(stage2) if stage2 else {},
+                    "stage_3": json.loads(stage3) if stage3 else {},
+                    "stage_4": json.loads(stage4) if stage4 else {},
+                    "stage_5": json.loads(stage5) if stage5 else {},
+                    "stage_6": {"markdown": stage6} if stage6 else {}
+                }
+                # Note: stage_inputs and prompts_used would be populated by actual pipeline
+                # For now, these are placeholders until backend integration is complete
+                state["stage_inputs"] = {}
+                state["prompts_used"] = {}
+
+                return stage0, stage1, stage2, stage3, stage4, stage5, stage6, status
 
             run_button.click(
                 run_pipeline_wrapper,
@@ -578,17 +668,24 @@ class GradioLab:
                         stage4_output, stage5_output, stage6_output, pipeline_status]
             )
 
-            # Save experiment
+            # Save experiment (Story 11.3a: Pass stage_inputs and prompts_used)
             async def save_experiment_wrapper(state, quality, notes_text):
                 run_id = state.get("run_id", str(uuid.uuid4())[:8])
                 pdf_text = state.get("pdf_text", "")
                 brand_profile = state.get("brand_profile", {})
-
-                # Collect stage outputs from interface (simplified)
-                stage_outputs = {}
+                stage_outputs = state.get("stage_outputs", {})
+                stage_inputs = state.get("stage_inputs", {})
+                prompts_used = state.get("prompts_used", {})
 
                 return await self.save_experiment(
-                    run_id, pdf_text, brand_profile, stage_outputs, quality, notes_text
+                    run_id=run_id,
+                    pdf_text=pdf_text,
+                    brand_profile=brand_profile,
+                    stage_outputs=stage_outputs,
+                    stage_inputs=stage_inputs,
+                    prompts_used=prompts_used,
+                    quality_tag=quality,
+                    notes=notes_text
                 )
 
             save_button.click(

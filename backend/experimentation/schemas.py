@@ -228,3 +228,63 @@ class PipelineRunState(BaseModel):
     created_at: str
     completed_at: Optional[str] = None
     total_duration_ms: Optional[int] = None
+
+
+# ============================================================
+# FEW-SHOT LEARNING SCHEMAS (Story 11.3a)
+# ============================================================
+
+class FewShotExampleMetadata(BaseModel):
+    """Metadata for a few-shot example."""
+    pipeline_version: str = Field(default="1.0", description="Pipeline version")
+    execution_time_seconds: Optional[int] = None
+    token_usage: Optional[Dict[str, int]] = None
+    model_used: Optional[str] = None
+
+
+class FewShotExample(BaseModel):
+    """Individual few-shot learning example stored in successful_examples/"""
+    id: str = Field(description="Unique example ID: example_{timestamp}_{hash}")
+    created_at: str = Field(description="ISO 8601 timestamp")
+    stage: int = Field(ge=0, le=6, description="Pipeline stage number (0-6)")
+    quality_score: str = Field(description="good | needs_work | failed")
+    usage_count: int = Field(default=0, description="Number of times used in prompts")
+    last_used_at: Optional[str] = None
+
+    brand_context: BrandEnrichment = Field(description="Brand profile used")
+
+    input: Dict[str, Any] = Field(description="Stage input data")
+    prompt_used: str = Field(description="Exact prompt template used")
+    output: Dict[str, Any] = Field(description="Stage output data")
+
+    metadata: FewShotExampleMetadata
+
+
+class StageMetadata(BaseModel):
+    """Metadata tracking for a pipeline stage's examples."""
+    stage: int = Field(ge=0, le=6)
+    total_examples: int = Field(default=0)
+    last_updated: Optional[str] = None
+
+    usage_stats: Dict[str, Any] = Field(
+        default={
+            "total_uses": 0,
+            "examples_by_quality": {
+                "good": 0,
+                "needs_work": 0,
+                "failed": 0
+            }
+        }
+    )
+
+    top_performers: List[Dict[str, Any]] = Field(
+        default=[],
+        description="Top examples by usage and success correlation"
+    )
+
+
+class BrandDistribution(BaseModel):
+    """Brand distribution in examples."""
+    brand_name: str
+    count: int
+    percentage: float
