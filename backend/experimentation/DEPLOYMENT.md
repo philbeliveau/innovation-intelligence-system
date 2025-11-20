@@ -76,6 +76,9 @@ railway up --service gradio-lab
 Add these to Railway dashboard:
 
 ```bash
+# REQUIRED for persistent storage
+DATABASE_URL=your_existing_railway_postgres_url  # Use same DB as main app
+
 # For pipeline stages
 OPENROUTER_API_KEY=your_key_here
 PERPLEXITY_API_KEY=your_key_here  # If using Stage 0 enrichment
@@ -130,15 +133,36 @@ insights = await synthesize_insights(trends, enriched_brand, stage_2_version)
 5. **See All Outputs**: Toggle to show/hide intermediate stages
 6. **Track Quality**: Automatic scoring of outputs
 
-## Database Location
+## Database Configuration
 
-Experiments are saved to `experiments.db` in the working directory.
+⚠️ **IMPORTANT**: By default, the system uses SQLite which is **NOT persistent on Railway**.
+Data will be lost on each redeploy unless you configure PostgreSQL.
 
-To backup/download from Railway:
+### Option A: PostgreSQL (Recommended for Railway)
+
+Add your Railway PostgreSQL DATABASE_URL to environment variables:
 
 ```bash
-railway run --service gradio-lab -- cat experiments.db > local_backup.db
+# In Railway dashboard, add:
+DATABASE_URL=postgresql://user:pass@host:5432/railway
+
+# The experimentation system will automatically use PostgreSQL if DATABASE_URL is set
 ```
+
+This ensures:
+- ✅ Experiments persist across deployments
+- ✅ Few-shot examples accumulate over time
+- ✅ Template library grows with usage
+- ✅ All data accessible from any deployment
+
+### Option B: SQLite (Local testing only)
+
+For local development, SQLite files are created automatically:
+- `experiments.db` - Pipeline experiments
+- `few_shot_examples.db` - Successful examples
+- `prompt_templates.db` - Template library
+
+**Note**: These files are lost when Railway redeploys!
 
 ## Troubleshooting
 

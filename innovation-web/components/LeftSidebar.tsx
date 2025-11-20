@@ -19,13 +19,20 @@ interface Track {
 export function LeftSidebar() {
   const router = useRouter()
   const pathname = usePathname()
-  const [isVisible, setIsVisible] = useState(true) // Start visible for debugging
+  const [isVisible, setIsVisible] = useState(false)
   const [nonSelectedTrack, setNonSelectedTrack] = useState<Track | null>(null)
   const {
     isSidebarSticky: isSticky,
     setIsSidebarSticky: setIsSticky,
     isMobile,
   } = useSidebarContext()
+
+  // Auto-hide sidebar when switching to mobile view
+  useEffect(() => {
+    if (isMobile && isVisible) {
+      setIsVisible(false)
+    }
+  }, [isMobile])
 
   // Enable polling on all pages to show runs in sidebar
   const { runs, loading, error } = useRuns({

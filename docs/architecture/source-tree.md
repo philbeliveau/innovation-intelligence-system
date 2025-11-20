@@ -11,85 +11,137 @@ This document provides a comprehensive guide to navigating the Innovation Intell
 ```
 innovation-intelligence-system/
 ├── .bmad-core/              # BMAD agent system configuration
+├── backend/                 # FastAPI backend + Gradio experimentation (NEW - ACTIVE DEV)
+│   ├── app/                 # FastAPI application
+│   ├── experimentation/     # Gradio lab + pipeline stages
+│   ├── pipeline/            # Original 5-stage pipeline (REFERENCE)
+│   └── tests/               # Backend tests
 ├── data/                    # Static data files (YAML, Markdown)
+│   └── brand-profiles/      # Brand YAML configs (4 brands)
 ├── docs/                    # Documentation (architecture, PRD, stories)
-├── innovation-web/          # Next.js web application (TO BE CREATED)
-├── pipeline/                # Python LLM pipeline (EXISTING - DO NOT MODIFY)
-├── scripts/                 # Python utility scripts
-└── tests/                   # Test files
+│   ├── architecture/        # Technical specifications
+│   └── stories/             # User stories (11.1, 11.2a-c, 11.3a-c, 11.4a-b)
+├── innovation-web/          # Next.js web application (Vercel deployment)
+└── scripts/                 # Utility scripts
 ```
 
 **Critical Distinction:**
-- **`innovation-web/`** - New Next.js application (hackathon build)
-- **`pipeline/`** - Existing Python implementation (FROZEN - minimal changes only)
+- **`backend/experimentation/`** - NEW Gradio lab + 7-stage pipeline (Stories 11.1-11.4)
+- **`backend/pipeline/`** - Original 5-stage pipeline (REFERENCE ONLY - DO NOT MODIFY)
+- **`innovation-web/`** - Next.js frontend (separate from Gradio experimentation)
 
 ---
 
-## Python Pipeline (Existing Code)
+## Backend Structure (Gradio Experimentation + FastAPI)
 
-### Pipeline Structure
-
-```
-pipeline/
-├── __init__.py
-├── chains.py                # LangChain configurations
-├── utils.py                 # Shared utilities
-└── stages/
-    ├── stage1_input_processing.py        # Extract 2 inspirations
-    ├── stage2_signal_amplification.py    # Identify trends
-    ├── stage3_general_translation.py     # Universal lessons
-    ├── stage4_brand_contextualization.py # Brand-specific insights
-    └── stage5_opportunity_generation.py  # Generate 5 opportunity cards
-```
-
-**⚠️ DO NOT MODIFY STAGES:**
-- These files are validated and working
-- Only modify if absolutely critical for integration
-- Changes require regression testing
-
-### Scripts Directory
+### Backend Directory Overview
 
 ```
-scripts/
-├── run_pipeline.py          # ✏️ MODIFY THIS - Pipeline entry point
-└── test_pipeline.py         # Optional test runner
+backend/
+├── app/                     # FastAPI application (Railway deployment)
+│   ├── main.py              # FastAPI entry point
+│   ├── routes.py            # /pipeline/run, /pipeline/status endpoints
+│   ├── pipeline_runner.py   # Background pipeline execution
+│   ├── pipeline_errors.py   # Error classification
+│   ├── prisma_client.py     # Database client (PostgreSQL)
+│   └── models.py            # Database schema
+├── experimentation/         # 🔬 GRADIO LAB + NEW 7-STAGE PIPELINE
+│   ├── gradio_lab.py        # Gradio interface (Story 11.1)
+│   ├── enhanced_gradio_lab.py # Reference implementation
+│   ├── stages/              # New 7-stage implementations (Stories 11.2a-c)
+│   │   ├── stage_0_enrichment.py      # Brand enrichment (11.2a)
+│   │   ├── stage_1_decomposition.py   # Trend decomposition (11.2a)
+│   │   ├── stage_2_insights.py        # Consumer insights (11.2a)
+│   │   ├── stage_3_techniques.py      # Technique matching (11.2b)
+│   │   ├── stage_4_concepts.py        # Concept generation (11.2b)
+│   │   ├── stage_5_competitive.py     # Competitive intel (11.2c)
+│   │   └── stage_6_packaging.py       # Opportunity cards (11.2c)
+│   ├── prompts/             # Prompt templates per stage
+│   ├── technique_libraries/ # SIT, TRIZ, Doblin JSON definitions
+│   ├── successful_examples/ # Few-shot learning examples (Story 11.3a)
+│   │   ├── stage_0/
+│   │   ├── stage_1/
+│   │   └── ... stage_6/
+│   ├── few_shot_manager.py  # Example management (Story 11.3a)
+│   ├── example_selector.py  # Relevance algorithm (Story 11.3b)
+│   ├── db/                  # Database operations (Story 11.4a)
+│   │   ├── experiments_manager.py
+│   │   └── queries.py
+│   ├── export/              # Export utilities (Story 11.4b)
+│   │   ├── json_export.py
+│   │   └── csv_export.py
+│   └── schemas.py           # Pydantic models
+├── pipeline/                # ⚠️ ORIGINAL 5-STAGE PIPELINE (REFERENCE ONLY)
+│   ├── stages/              # DO NOT MODIFY - Use as reference only
+│   │   ├── stage1_input_processing.py
+│   │   ├── stage2_signal_amplification.py
+│   │   ├── stage3_general_translation.py
+│   │   ├── stage4_brand_contextualization.py
+│   │   └── stage5_opportunity_generation.py
+│   └── utils.py             # send_webhook_sync, load_research_data
+├── tests/
+│   └── experimentation/     # Tests for Gradio lab + new pipeline
+│       ├── test_gradio_lab.py
+│       ├── pipeline/
+│       ├── few_shot/
+│       └── database/
+├── Dockerfile               # Railway deployment
+├── requirements.txt         # Python dependencies
+└── railway.json             # Railway configuration
 ```
 
-**Modifications Allowed:**
-- `run_pipeline.py` - Add CLI arguments, logging, JSON output
-- Add new wrapper scripts (e.g., `status_checker.py`)
+**Key Development Areas:**
+- **`backend/experimentation/`** - Active development (Stories 11.1-11.4)
+- **`backend/pipeline/`** - Reference only, DO NOT MODIFY
+
+### Gradio Lab Entry Point
+
+```bash
+# Run Gradio experimentation interface locally
+cd backend/experimentation
+python gradio_lab.py
+
+# Access at http://localhost:7860
+# Optional: Set GRADIO_SHARE=true for public link
+```
+
+**Key Files:**
+- **`backend/experimentation/gradio_lab.py`** - Main Gradio application (Story 11.1)
+- **`backend/experimentation/enhanced_gradio_lab.py`** - Reference implementation with advanced features
 
 ### Data Directory
 
 ```
 data/
-├── brand-profiles/          # 🔍 READ THESE - Company YAML configs
-│   ├── lactalis-canada.yaml
-│   ├── pepsico.yaml
-│   └── ...
-├── brand-research/          # 📚 CONTEXT DATA - Markdown research files
-│   ├── lactalis-canada.md
-│   ├── pepsico.md
-│   └── ...
-└── test-outputs/            # 📂 PIPELINE OUTPUTS
-    └── {run_id}/
-        ├── logs/
-        │   └── pipeline.log
-        ├── stage1/
-        │   ├── inspiration-analysis.md
-        │   └── inspirations.json
-        ├── stage2/ ... stage5/
-        └── stage5/
-            ├── opportunity-1.md
-            ├── opportunity-2.md
-            ├── opportunity-3.md
-            ├── opportunity-4.md
-            └── opportunity-5.md
+├── brand-profiles/          # 🔍 BRAND YAML CONFIGS (Used in Gradio UI)
+│   ├── lactalis-canada.yaml # Dairy/Food & Beverage (Canada)
+│   ├── decathlon.yaml        # Sporting Goods Retail (Global)
+│   ├── columbia-sportswear.yaml # Outdoor Apparel (USA)
+│   ├── mccormick-usa.yaml    # Spices & Seasonings (USA)
+│   ├── Lactalis/            # Supporting documentation
+│   ├── decathlon/           # Supporting documentation
+│   ├── colombia/            # Supporting documentation
+│   └── Mcormik/             # Supporting documentation
+└── test-data/               # Test trend reports
+    └── WGSN - FC27-Emotions - Report.pdf
 ```
 
 **Key Files to Reference:**
-- **`brand-profiles/*.yaml`** - Used in onboarding company selection
-- **`test-outputs/{run_id}/`** - Pipeline execution results
+- **`brand-profiles/*.yaml`** - 4 brand profiles available for Gradio dropdown (Story 11.1)
+- **`test-data/`** - Sample trend reports for pipeline testing
+
+**Brand Profile YAML Structure:**
+```yaml
+brand_name: "Lactalis Canada"
+country: "Canada"
+industry: "Dairy/Food & Beverage"
+product_portfolio:
+  - "Milk products"
+  - "Cheese"
+  - "Yogurt"
+positioning: "Quality dairy products for Canadian families"
+target_customers: "Health-conscious families"
+```
 
 ---
 
@@ -585,61 +637,55 @@ background-image: url('/images/icons/upload-icon.svg');
 
 ```
 docs/
-├── architecture/            # 📐 Technical specifications (15 files)
-│   ├── index.md            # Master table of contents
-│   ├── 1-introduction.md
-│   ├── 2-architecture-overview.md
-│   ├── 3-tech-stack.md
-│   ├── 31-project-directory-structure.md
-│   ├── 4-user-journey.md
-│   ├── 5-ui-specifications.md
-│   ├── 6-api-design.md
-│   ├── 7-pipeline-integration.md
-│   ├── 8-deployment.md
-│   ├── 9-implementation-roadmap.md
-│   ├── 10-component-specifications-shadcnui-mcp.md
-│   ├── 11-coding-standards.md          # ⭐ THIS SECTION
-│   ├── 12-source-tree-guide.md         # ⭐ YOU ARE HERE
-│   ├── risk-mitigation.md
-│   └── success-metrics.md
-├── prd/                     # 📋 Product requirements (5 files)
-│   ├── index.md
-│   ├── 1-executive-summary.md
-│   ├── 2-product-context.md
-│   ├── 3-product-overview.md
-│   └── 4-detailed-feature-requirements.md
-└── stories/                 # 📖 User stories (implementation tasks)
-    ├── 1.1.landing-page-company-selection.md
-    ├── 1.2.file-upload-vercel-blob.md
-    ├── 1.3.upload-page-ui-company-badge.md
-    ├── 2.1.stage-1-input-processing.md
-    ├── 2.2.intermediary-card-ui.md
-    ├── 3.1.run-api-endpoint.md
-    ├── 3.2.python-pipeline-modifications.md
-    ├── 3.3.status-polling-monitoring.md
-    ├── 4.1.vertical-pipeline-viewer-ui.md
-    └── 5.1.results-page-opportunity-cards.md
+├── architecture/            # 📐 Technical specifications
+│   ├── source-tree.md       # ⭐ YOU ARE HERE - Source tree navigation guide
+│   ├── pipeline-architecture.md # 7-stage pipeline technical specs
+│   ├── few-shot-algorithm-design.md # Few-shot learning system design
+│   ├── database-design.md   # Experiment database schema
+│   ├── gradio-implementation-guide.md # Gradio UI patterns
+│   ├── coding-standards.md  # Code style guide
+│   ├── tech-stack.md        # Technology choices
+│   └── project-structure.md # Directory organization
+└── stories/                 # 📖 User stories (Gradio experimentation framework)
+                             # Each story contains its own Dependencies section
+    ├── 11.1.gradio-experimentation-ui.md # Gradio UI (Foundation)
+    ├── 11.2a.pipeline-orchestration-stages-0-2.md # Pipeline Part 1
+    ├── 11.2b.pipeline-stages-3-4.md # Pipeline Part 2
+    ├── 11.2c.pipeline-stages-5-6-config.md # Pipeline Part 3
+    ├── 11.3a.few-shot-storage-autosave.md # Few-shot Part 1
+    ├── 11.3b.few-shot-selection-injection.md # Few-shot Part 2
+    ├── 11.3c.few-shot-tracking-curation.md # Few-shot Part 3
+    ├── 11.4a.database-schema-core-operations.md # Database Part 1
+    ├── 11.4b.database-export-retention-backup.md # Database Part 2
+    ├── 11.2.pipeline-implementation.md # DEPRECATED (split into 11.2a-c)
+    ├── 11.3.few-shot-learning.md # DEPRECATED (split into 11.3a-c)
+    ├── 11.4.experiment-database.md # DEPRECATED (split into 11.4a-b)
+    └── epic-1-context.md       # Epic overview
 ```
 
-**Documentation Reading Order (For Developers):**
+**Documentation Reading Order (For Gradio Experimentation):**
 
 **1. Pre-Implementation (REQUIRED):**
-- `docs/architecture/11-coding-standards.md` (THIS IS CRITICAL)
-- `docs/architecture/12-source-tree-guide.md` (YOU ARE HERE)
-- `docs/architecture/3-tech-stack.md`
-- `docs/architecture/31-project-directory-structure.md`
+- `docs/architecture/source-tree.md` (YOU ARE HERE)
+- `docs/architecture/coding-standards.md` (Code style)
+- Check Dependencies section in each story file
 
-**2. Feature Implementation:**
-- `docs/architecture/9-implementation-roadmap.md` (Hour-by-hour tasks)
-- `docs/stories/{story-number}.md` (Specific feature requirements)
+**2. Architecture Deep Dive:**
+- `docs/architecture/pipeline-architecture.md` (7-stage pipeline specs)
+- `docs/architecture/few-shot-algorithm-design.md` (Few-shot learning)
+- `docs/architecture/database-design.md` (Experiment database)
+- `docs/architecture/gradio-implementation-guide.md` (UI patterns)
 
-**3. Component Development:**
-- `docs/architecture/5-ui-specifications.md`
-- `docs/architecture/10-component-specifications-shadcnui-mcp.md`
+**3. Story Implementation:**
+- `docs/stories/11.1.gradio-experimentation-ui.md` (Start here)
+- `docs/stories/11.2a-c.pipeline-*.md` (Pipeline implementation)
+- `docs/stories/11.3a-c.few-shot-*.md` (Few-shot learning)
+- `docs/stories/11.4a-b.database-*.md` (Database operations)
 
-**4. API Development:**
-- `docs/architecture/6-api-design.md`
-- `docs/architecture/7-pipeline-integration.md`
+**4. Reference Materials:**
+- `backend/experimentation/enhanced_gradio_lab.py` (Reference implementation)
+- `backend/pipeline/stages/` (Original 5-stage pipeline reference)
+- `data/brand-profiles/*.yaml` (Brand configurations)
 
 ---
 
@@ -1006,5 +1052,13 @@ scripts/run_pipeline.py                 # Python pipeline
 3. Use grep/find to search for files
 4. Ask the architect agent (`/BMad:agents:architect`)
 
-**Last Updated**: 2025-10-19
-**Maintained By**: Winston (Architect Agent)
+**Last Updated**: 2025-11-20
+**Maintained By**: Bob (Scrum Master Agent)
+
+**Changes in This Update:**
+- Added Gradio experimentation framework structure (`backend/experimentation/`)
+- Added 7-stage pipeline architecture documentation
+- Split Stories 11.2, 11.3, 11.4 into 8 manageable stories
+- Added Dependencies section to each story (11.1, 11.2a-c, 11.3a-c, 11.4a-b)
+- Updated data directory with brand profile structure
+- Marked original 5-stage pipeline as reference only
