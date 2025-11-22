@@ -8,16 +8,19 @@ import logging
 import time
 from pathlib import Path
 from threading import Thread
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 import requests
 import yaml
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 from app.models import (
     RunPipelineRequest,
     RunPipelineResponse,
     PipelineStatus,
-    HealthResponse
+    HealthResponse,
+    SaveExperimentRequest,
+    SaveExperimentResponse
 )
 from app.pipeline_runner import execute_pipeline_background
 
@@ -192,6 +195,67 @@ async def health_check():
     return HealthResponse(status=status, version="1.0.0", details=details if details else None)
 
 
+class RunPipelineLocalRequest(BaseModel):
+    """Request model for local development - accepts PDF text directly"""
+    pdf_text: str = Field(..., description="Extracted PDF text content")
+    brand_profile: Dict[str, Any] = Field(..., description="Brand profile dict")
+    run_id: Optional[str] = Field(None, description="Optional run ID")
+
+
+@router.post("/run/local", response_model=RunPipelineResponse, operation_id="run_pipeline_local")
+async def run_pipeline_local(request: RunPipelineLocalRequest):
+    """
+    Start pipeline execution (LOCAL DEVELOPMENT ONLY)
+
+    Accepts PDF text and brand profile directly instead of blob URL.
+    Used by Gradio experimentation UI.
+    """
+    # Use frontend-provided run_id or generate new one
+    run_id = request.run_id or generate_run_id()
+    logger.info(f"[LOCAL] Pipeline run_id: {run_id}")
+
+    # Save PDF text to temp file
+    run_dir = Path("/tmp/runs") / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    pdf_path = run_dir / "input.txt"
+    with open(pdf_path, "w") as f:
+        f.write(request.pdf_text)
+
+    logger.info(f"[LOCAL] Saved PDF text to {pdf_path}")
+
+    # Use provided brand profile directly
+    brand_profile = request.brand_profile
+    logger.info(f"[LOCAL] Using brand profile: {brand_profile.get('brand_name', 'Unknown')}")
+
+    # Create initial status file before starting background thread
+    status_file = run_dir / "status.json"
+    initial_status = {
+        "run_id": run_id,
+        "status": "running",
+        "current_stage": 0,
+        "stages": {},
+        "brand_id": brand_profile.get("brand_name", "unknown"),
+        "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    }
+    with open(status_file, "w") as f:
+        json.dump(initial_status, f, indent=2)
+
+    logger.info(f"[LOCAL] Created initial status file: {status_file}")
+
+    # Start background execution with pre-extracted text
+    thread = Thread(
+        target=execute_pipeline_background,
+        args=(run_id, str(pdf_path), brand_profile, request.pdf_text),
+        daemon=True
+    )
+    thread.start()
+
+    logger.info(f"[LOCAL] Started pipeline execution for run {run_id}")
+
+    return RunPipelineResponse(run_id=run_id, status="running")
+
+
 @router.post("/run", response_model=RunPipelineResponse, operation_id="run_pipeline")
 async def run_pipeline(request: RunPipelineRequest):
     """
@@ -201,7 +265,6 @@ async def run_pipeline(request: RunPipelineRequest):
     5-stage pipeline in background.
 
     If run_id is provided by frontend, use it (prevents race condition).
-    Otherwise, generate one here (backward compatibility).
     """
     # Validate blob URL
     if not validate_blob_url(request.blob_url):
@@ -473,4 +536,64 @@ async def get_stage_output(run_id: str, stage_num: int):
         raise HTTPException(
             status_code=500,
             detail=f"Error reading stage output: {str(e)}"
+        )
+
+
+# ============================================
+# Experiment Storage (Gradio Integration)
+# ============================================
+
+@router.post("/experiments/save", response_model=SaveExperimentResponse, operation_id="save_experiment")
+async def save_experiment(request: SaveExperimentRequest):
+    """Save experiment data from Gradio UI to PostgreSQL database
+
+    Stores experiment results with quality tagging for later retrieval
+    and few-shot learning. Data saved to PostgreSQL via Next.js Prisma API.
+
+    Args:
+        request: Experiment data including run_id, outputs, quality tag
+
+    Returns:
+        Success status and experiment ID
+    """
+    try:
+        from app.prisma_client import PrismaAPIClient
+
+        # Initialize Prisma client
+        prisma = PrismaAPIClient()
+
+        # Save experiment to database via Next.js API
+        success = prisma.save_experiment(
+            run_id=request.run_id,
+            brand_profile=request.brand_profile,
+            stage_outputs=request.stage_outputs,
+            report_text=request.report_text,
+            quality_tag=request.quality_tag,
+            notes=request.notes,
+            pipeline_version="1.0"
+        )
+
+        if not success:
+            logger.error(f"Database save failed for run_id: {request.run_id}")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to save experiment to database"
+            )
+
+        # Generate experiment ID for response (matches database format)
+        experiment_id = f"exp-{int(time.time())}-{request.run_id[:8]}"
+
+        logger.info(f"Saved experiment {experiment_id} to database with quality tag '{request.quality_tag}'")
+
+        return SaveExperimentResponse(
+            success=True,
+            message=f"Experiment saved to database with tag '{request.quality_tag}'",
+            experiment_id=experiment_id
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to save experiment to database: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to save experiment: {str(e)}"
         )
