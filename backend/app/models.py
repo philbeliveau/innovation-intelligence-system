@@ -1,5 +1,5 @@
 """Pydantic Models for Request/Response Schemas"""
-from typing import Optional, Literal, Dict, Any
+from typing import Optional, Literal, Dict, Any, Union
 from pydantic import BaseModel, Field
 
 
@@ -21,7 +21,7 @@ class StageInfo(BaseModel):
     status: Literal["pending", "running", "complete", "failed"]
     started_at: Optional[str] = None
     completed_at: Optional[str] = None
-    output: Optional[Dict[str, Any]] = None
+    output: Optional[Union[Dict[str, Any], str]] = None  # Accept both dict and markdown string
 
 
 class PipelineStatus(BaseModel):
