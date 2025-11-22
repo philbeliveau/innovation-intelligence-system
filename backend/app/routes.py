@@ -643,7 +643,7 @@ async def list_experiments(
 ):
     """List experiments from database with filtering and pagination
 
-    Proxies to Next.js Prisma API for database queries.
+    Direct PostgreSQL query for Gradio UI.
 
     Args:
         quality_tag: Filter by quality (good/needs_work/failed)
@@ -659,72 +659,137 @@ async def list_experiments(
         List of experiments with pagination metadata
     """
     try:
-        from app.prisma_client import PrismaAPIClient
+        import psycopg2
+        import psycopg2.extras
+        import json
 
-        prisma = PrismaAPIClient()
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url:
+            raise HTTPException(status_code=500, detail="DATABASE_URL not configured")
 
-        result = prisma.get_experiments(
-            quality_tag=quality_tag,
-            brand_name=brand_name,
-            start_date=start_date,
-            end_date=end_date,
-            pipeline_version=pipeline_version,
-            page=page,
-            page_size=min(page_size, 100),
-            order_by=order_by
-        )
+        # Build WHERE clause
+        where_clauses = []
+        params = []
 
-        if result is None:
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to retrieve experiments from database"
-            )
+        if quality_tag:
+            where_clauses.append('"quality_tag" = %s')
+            params.append(quality_tag)
 
-        return result
+        if pipeline_version:
+            where_clauses.append('"pipeline_version" = %s')
+            params.append(pipeline_version)
 
+        if start_date:
+            where_clauses.append('"timestamp" >= %s')
+            params.append(start_date)
+
+        if end_date:
+            where_clauses.append('"timestamp" <= %s')
+            params.append(end_date)
+
+        if brand_name:
+            where_clauses.append('"brand_profile"::jsonb->>\'brand_name\' = %s')
+            params.append(brand_name)
+
+        where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+
+        # Build ORDER BY clause
+        order_sql = '"timestamp" DESC'
+        if order_by == "timestamp_asc":
+            order_sql = '"timestamp" ASC'
+        elif order_by == "cost_desc":
+            order_sql = '"cost_usd" DESC NULLS LAST'
+
+        # Calculate pagination
+        page_size = min(page_size, 100)
+        offset = (page - 1) * page_size
+
+        conn = psycopg2.connect(database_url)
+        try:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                # Get total count
+                count_sql = f'SELECT COUNT(*) FROM "Experiment" {where_sql}'
+                cur.execute(count_sql, params)
+                total = cur.fetchone()['count']
+
+                # Get experiments
+                query_sql = f'''
+                    SELECT * FROM "Experiment"
+                    {where_sql}
+                    ORDER BY {order_sql}
+                    LIMIT %s OFFSET %s
+                '''
+                cur.execute(query_sql, params + [page_size, offset])
+                experiments = cur.fetchall()
+
+                return {
+                    "experiments": experiments,
+                    "pagination": {
+                        "page": page,
+                        "pageSize": page_size,
+                        "total": total,
+                        "totalPages": (total + page_size - 1) // page_size
+                    }
+                }
+
+        finally:
+            conn.close()
+
+    except psycopg2.Error as db_error:
+        logger.error(f"PostgreSQL error listing experiments: {db_error}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(db_error)}")
     except Exception as e:
         logger.error(f"Failed to list experiments: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to list experiments: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to list experiments: {str(e)}")
 
 
 @router.get("/experiments/{experiment_id}", operation_id="get_experiment_by_id")
 async def get_experiment_by_id(experiment_id: str):
     """Get a single experiment by ID
 
-    Proxies to Next.js Prisma API for database queries.
+    Direct PostgreSQL query for Gradio UI.
 
     Args:
-        experiment_id: Experiment UUID
+        experiment_id: Experiment UUID or short ID (first 8 chars)
 
     Returns:
         Complete experiment data including all fields
     """
     try:
-        from app.prisma_client import PrismaAPIClient
+        import psycopg2
+        import psycopg2.extras
 
-        prisma = PrismaAPIClient()
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url:
+            raise HTTPException(status_code=500, detail="DATABASE_URL not configured")
 
-        experiment = prisma.get_experiment_by_id(experiment_id)
+        conn = psycopg2.connect(database_url)
+        try:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                # Support both full UUID and short ID (first 8 chars)
+                if len(experiment_id) == 8:
+                    cur.execute('SELECT * FROM "Experiment" WHERE "id" LIKE %s LIMIT 1', (f'{experiment_id}%',))
+                else:
+                    cur.execute('SELECT * FROM "Experiment" WHERE "id" = %s', (experiment_id,))
 
-        if experiment is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Experiment {experiment_id} not found"
-            )
+                experiment = cur.fetchone()
 
-        return experiment
+                if not experiment:
+                    raise HTTPException(status_code=404, detail=f"Experiment {experiment_id} not found")
+
+                return dict(experiment)
+
+        finally:
+            conn.close()
 
     except HTTPException:
         raise
+    except psycopg2.Error as db_error:
+        logger.error(f"PostgreSQL error getting experiment {experiment_id}: {db_error}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(db_error)}")
     except Exception as e:
         logger.error(f"Failed to get experiment {experiment_id}: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get experiment: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get experiment: {str(e)}")
 
 
 @router.put("/experiments/{experiment_id}/rename", operation_id="rename_experiment")
@@ -734,41 +799,63 @@ async def rename_experiment(experiment_id: str, request: RenameExperimentRequest
     Updates the experimentNotes field with a custom name prefix.
 
     Args:
-        experiment_id: Experiment UUID
+        experiment_id: Experiment UUID or short ID
         request: New name for the experiment
 
     Returns:
         Success status and updated experiment ID
     """
     try:
-        from app.prisma_client import PrismaAPIClient
+        import psycopg2
 
-        prisma = PrismaAPIClient()
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url:
+            raise HTTPException(status_code=500, detail="DATABASE_URL not configured")
 
-        success = prisma.rename_experiment(experiment_id, request.new_name)
+        conn = psycopg2.connect(database_url)
+        try:
+            with conn.cursor() as cur:
+                # Get current notes
+                if len(experiment_id) == 8:
+                    cur.execute('SELECT "experiment_notes", "id" FROM "Experiment" WHERE "id" LIKE %s LIMIT 1', (f'{experiment_id}%',))
+                else:
+                    cur.execute('SELECT "experiment_notes", "id" FROM "Experiment" WHERE "id" = %s', (experiment_id,))
 
-        if not success:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Experiment {experiment_id} not found or rename failed"
-            )
+                row = cur.fetchone()
+                if not row:
+                    raise HTTPException(status_code=404, detail=f"Experiment {experiment_id} not found")
 
-        logger.info(f"Renamed experiment {experiment_id} to '{request.new_name}'")
+                current_notes, full_id = row
 
-        return RenameExperimentResponse(
-            success=True,
-            message=f"Experiment renamed to '{request.new_name}'",
-            experiment_id=experiment_id
-        )
+                # Remove existing [NAME: ...] prefix if present
+                notes_without_prefix = (current_notes or "").replace(r'^\[NAME: .*?\]\s*', '', 1) if current_notes else ""
+
+                # Add new name prefix
+                updated_notes = f"[NAME: {request.new_name}] {notes_without_prefix}".strip()
+
+                # Update experiment
+                cur.execute('UPDATE "Experiment" SET "experiment_notes" = %s WHERE "id" = %s', (updated_notes, full_id))
+                conn.commit()
+
+                logger.info(f"Renamed experiment {full_id} to '{request.new_name}'")
+
+                return RenameExperimentResponse(
+                    success=True,
+                    message=f"Experiment renamed to '{request.new_name}'",
+                    experiment_id=full_id
+                )
+
+        finally:
+            conn.close()
 
     except HTTPException:
         raise
+    except psycopg2.Error as db_error:
+        logger.error(f"PostgreSQL error renaming experiment {experiment_id}: {db_error}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(db_error)}")
     except Exception as e:
         logger.error(f"Failed to rename experiment {experiment_id}: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to rename experiment: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to rename experiment: {str(e)}")
 
 
 @router.delete("/experiments/{experiment_id}", operation_id="delete_experiment")
@@ -778,38 +865,54 @@ async def delete_experiment(experiment_id: str):
     Permanently removes experiment from database.
 
     Args:
-        experiment_id: Experiment UUID
+        experiment_id: Experiment UUID or short ID
 
     Returns:
         Success status
     """
     try:
-        from app.prisma_client import PrismaAPIClient
+        import psycopg2
 
-        prisma = PrismaAPIClient()
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url:
+            raise HTTPException(status_code=500, detail="DATABASE_URL not configured")
 
-        success = prisma.delete_experiment(experiment_id)
+        conn = psycopg2.connect(database_url)
+        try:
+            with conn.cursor() as cur:
+                # Get full ID first
+                if len(experiment_id) == 8:
+                    cur.execute('SELECT "id" FROM "Experiment" WHERE "id" LIKE %s LIMIT 1', (f'{experiment_id}%',))
+                else:
+                    cur.execute('SELECT "id" FROM "Experiment" WHERE "id" = %s', (experiment_id,))
 
-        if not success:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Experiment {experiment_id} not found or delete failed"
-            )
+                row = cur.fetchone()
+                if not row:
+                    raise HTTPException(status_code=404, detail=f"Experiment {experiment_id} not found")
 
-        logger.info(f"Deleted experiment {experiment_id}")
+                full_id = row[0]
 
-        from app.models import DeleteExperimentResponse
-        return DeleteExperimentResponse(
-            success=True,
-            message=f"Experiment deleted successfully",
-            experiment_id=experiment_id
-        )
+                # Delete experiment
+                cur.execute('DELETE FROM "Experiment" WHERE "id" = %s', (full_id,))
+                conn.commit()
+
+                logger.info(f"Deleted experiment {full_id}")
+
+                from app.models import DeleteExperimentResponse
+                return DeleteExperimentResponse(
+                    success=True,
+                    message="Experiment deleted successfully",
+                    experiment_id=full_id
+                )
+
+        finally:
+            conn.close()
 
     except HTTPException:
         raise
+    except psycopg2.Error as db_error:
+        logger.error(f"PostgreSQL error deleting experiment {experiment_id}: {db_error}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(db_error)}")
     except Exception as e:
         logger.error(f"Failed to delete experiment {experiment_id}: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to delete experiment: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to delete experiment: {str(e)}")
