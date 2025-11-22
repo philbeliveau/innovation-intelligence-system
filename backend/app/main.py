@@ -68,7 +68,10 @@ async def startup_event():
 # Railway deployment will need environment variable ALLOWED_ORIGINS for dynamic origins
 allowed_origins = [
     "http://localhost:3000",  # Local dev
-    "https://innovation-web.vercel.app"  # Production frontend
+    "http://localhost:7860",  # Local Gradio
+    "https://innovation-web.vercel.app",  # Production frontend
+    "https://huggingface.co",  # HF Spaces iframe
+    "https://philbeli-mboi-experiment.hf.space"  # HF Space direct URL
 ]
 
 # Add environment-based origins (for Vercel preview deployments)
@@ -101,6 +104,9 @@ mcp = FastApiMCP(
         # Brand profile operations
         "list_brands",
         "get_brand_profile",
+        # Experiment database operations (Story 11.4a)
+        "save_experiment",
+        "list_experiments",
         # Environment & configuration
         "check_environment",
         # Debug & introspection tools
