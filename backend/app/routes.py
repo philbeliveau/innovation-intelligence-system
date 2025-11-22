@@ -20,7 +20,9 @@ from app.models import (
     PipelineStatus,
     HealthResponse,
     SaveExperimentRequest,
-    SaveExperimentResponse
+    SaveExperimentResponse,
+    RenameExperimentRequest,
+    RenameExperimentResponse
 )
 from app.pipeline_runner import execute_pipeline_background
 
@@ -548,7 +550,7 @@ async def save_experiment(request: SaveExperimentRequest):
     """Save experiment data from Gradio UI to PostgreSQL database
 
     Stores experiment results with quality tagging for later retrieval
-    and few-shot learning. Data saved to PostgreSQL via Next.js Prisma API.
+    and few-shot learning. Uses direct PostgreSQL connection for Gradio-only mode.
 
     Args:
         request: Experiment data including run_id, outputs, quality tag
@@ -557,43 +559,257 @@ async def save_experiment(request: SaveExperimentRequest):
         Success status and experiment ID
     """
     try:
-        from app.prisma_client import PrismaAPIClient
+        import psycopg2
+        import psycopg2.extras
+        import json
+        from datetime import datetime, timezone
 
-        # Initialize Prisma client
-        prisma = PrismaAPIClient()
-
-        # Save experiment to database via Next.js API
-        success = prisma.save_experiment(
-            run_id=request.run_id,
-            brand_profile=request.brand_profile,
-            stage_outputs=request.stage_outputs,
-            report_text=request.report_text,
-            quality_tag=request.quality_tag,
-            notes=request.notes,
-            pipeline_version="1.0"
-        )
-
-        if not success:
-            logger.error(f"Database save failed for run_id: {request.run_id}")
+        # Get database URL from environment
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url:
             raise HTTPException(
                 status_code=500,
-                detail="Failed to save experiment to database"
+                detail="DATABASE_URL not configured"
             )
 
-        # Generate experiment ID for response (matches database format)
+        # Generate experiment ID
         experiment_id = f"exp-{int(time.time())}-{request.run_id[:8]}"
 
-        logger.info(f"Saved experiment {experiment_id} to database with quality tag '{request.quality_tag}'")
+        # Connect to PostgreSQL and save experiment
+        conn = psycopg2.connect(database_url)
+        try:
+            with conn.cursor() as cur:
+                # Insert into Experiment table
+                # Schema: id, runId, reportText, reportName, brandProfile (JSONB),
+                #         stageOutputs (JSONB), qualityTag, experimentNotes, pipelineVersion, createdAt
+                cur.execute("""
+                    INSERT INTO "Experiment" (
+                        id, "runId", "reportText", "reportName", "brandProfile",
+                        "stageOutputs", "qualityTag", "experimentNotes",
+                        "pipelineVersion", "createdAt"
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                """, (
+                    experiment_id,
+                    request.run_id,
+                    request.report_text,
+                    None,  # reportName
+                    json.dumps(request.brand_profile),  # JSONB
+                    json.dumps(request.stage_outputs),  # JSONB
+                    request.quality_tag,
+                    request.notes,
+                    "1.0",  # pipelineVersion
+                    datetime.now(timezone.utc)
+                ))
 
-        return SaveExperimentResponse(
-            success=True,
-            message=f"Experiment saved to database with tag '{request.quality_tag}'",
-            experiment_id=experiment_id
+                conn.commit()
+                saved_id = cur.fetchone()[0]
+
+            logger.info(f"Saved experiment {saved_id} to PostgreSQL with quality tag '{request.quality_tag}'")
+
+            return SaveExperimentResponse(
+                success=True,
+                message=f"Experiment saved to database with tag '{request.quality_tag}'",
+                experiment_id=saved_id
+            )
+
+        finally:
+            conn.close()
+
+    except psycopg2.Error as db_error:
+        logger.error(f"PostgreSQL error saving experiment: {db_error}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database error: {str(db_error)}"
         )
-
     except Exception as e:
         logger.error(f"Failed to save experiment to database: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to save experiment: {str(e)}"
+        )
+
+
+@router.get("/experiments/list", operation_id="list_experiments")
+async def list_experiments(
+    quality_tag: Optional[str] = None,
+    brand_name: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    pipeline_version: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 20,
+    order_by: str = "timestamp_desc"
+):
+    """List experiments from database with filtering and pagination
+
+    Proxies to Next.js Prisma API for database queries.
+
+    Args:
+        quality_tag: Filter by quality (good/needs_work/failed)
+        brand_name: Filter by brand name
+        start_date: Filter by timestamp >= start_date (ISO format)
+        end_date: Filter by timestamp <= end_date (ISO format)
+        pipeline_version: Filter by pipeline version
+        page: Page number (default: 1)
+        page_size: Results per page (default: 20, max: 100)
+        order_by: Sort order (timestamp_desc/timestamp_asc/cost_desc)
+
+    Returns:
+        List of experiments with pagination metadata
+    """
+    try:
+        from app.prisma_client import PrismaAPIClient
+
+        prisma = PrismaAPIClient()
+
+        result = prisma.get_experiments(
+            quality_tag=quality_tag,
+            brand_name=brand_name,
+            start_date=start_date,
+            end_date=end_date,
+            pipeline_version=pipeline_version,
+            page=page,
+            page_size=min(page_size, 100),
+            order_by=order_by
+        )
+
+        if result is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to retrieve experiments from database"
+            )
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Failed to list experiments: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to list experiments: {str(e)}"
+        )
+
+
+@router.get("/experiments/{experiment_id}", operation_id="get_experiment_by_id")
+async def get_experiment_by_id(experiment_id: str):
+    """Get a single experiment by ID
+
+    Proxies to Next.js Prisma API for database queries.
+
+    Args:
+        experiment_id: Experiment UUID
+
+    Returns:
+        Complete experiment data including all fields
+    """
+    try:
+        from app.prisma_client import PrismaAPIClient
+
+        prisma = PrismaAPIClient()
+
+        experiment = prisma.get_experiment_by_id(experiment_id)
+
+        if experiment is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Experiment {experiment_id} not found"
+            )
+
+        return experiment
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get experiment {experiment_id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get experiment: {str(e)}"
+        )
+
+
+@router.put("/experiments/{experiment_id}/rename", operation_id="rename_experiment")
+async def rename_experiment(experiment_id: str, request: RenameExperimentRequest):
+    """Rename an experiment
+
+    Updates the experimentNotes field with a custom name prefix.
+
+    Args:
+        experiment_id: Experiment UUID
+        request: New name for the experiment
+
+    Returns:
+        Success status and updated experiment ID
+    """
+    try:
+        from app.prisma_client import PrismaAPIClient
+
+        prisma = PrismaAPIClient()
+
+        success = prisma.rename_experiment(experiment_id, request.new_name)
+
+        if not success:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Experiment {experiment_id} not found or rename failed"
+            )
+
+        logger.info(f"Renamed experiment {experiment_id} to '{request.new_name}'")
+
+        return RenameExperimentResponse(
+            success=True,
+            message=f"Experiment renamed to '{request.new_name}'",
+            experiment_id=experiment_id
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to rename experiment {experiment_id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to rename experiment: {str(e)}"
+        )
+
+
+@router.delete("/experiments/{experiment_id}", operation_id="delete_experiment")
+async def delete_experiment(experiment_id: str):
+    """Delete an experiment
+
+    Permanently removes experiment from database.
+
+    Args:
+        experiment_id: Experiment UUID
+
+    Returns:
+        Success status
+    """
+    try:
+        from app.prisma_client import PrismaAPIClient
+
+        prisma = PrismaAPIClient()
+
+        success = prisma.delete_experiment(experiment_id)
+
+        if not success:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Experiment {experiment_id} not found or delete failed"
+            )
+
+        logger.info(f"Deleted experiment {experiment_id}")
+
+        from app.models import DeleteExperimentResponse
+        return DeleteExperimentResponse(
+            success=True,
+            message=f"Experiment deleted successfully",
+            experiment_id=experiment_id
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete experiment {experiment_id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete experiment: {str(e)}"
         )

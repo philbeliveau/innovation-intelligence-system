@@ -13,7 +13,7 @@ Provides web interface for non-technical innovation researchers to:
 import gradio as gr
 import json
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 import PyPDF2
@@ -54,6 +54,16 @@ except ImportError:
     export_experiments_summary = None
     backup_experiments = None
     archive_to_blob = None
+
+# Import PDF export functionality
+try:
+    from export.pdf_export import generate_stage_pdf, generate_all_stages_pdf
+    PDF_EXPORT_AVAILABLE = True
+except ImportError:
+    # Graceful degradation
+    generate_stage_pdf = None
+    generate_all_stages_pdf = None
+    PDF_EXPORT_AVAILABLE = False
 
 # Backend API configuration
 BACKEND_API_URL = os.getenv("BACKEND_API_URL", "http://localhost:8000")
@@ -209,6 +219,139 @@ class GradioLab:
         except Exception as e:
             return "", "", "", "", f"Error: Failed to load profile: {str(e)}"
 
+    async def fetch_saved_experiments(
+        self,
+        quality_filter: Optional[str] = None,
+        brand_filter: Optional[str] = None,
+        limit: int = 20
+    ) -> List[List[str]]:
+        """Fetch saved experiments from Railway database
+
+        Args:
+            quality_filter: Filter by quality tag (good/needs work/failed/all)
+            brand_filter: Filter by brand name
+            limit: Max number of experiments to return
+
+        Returns:
+            List of experiment rows [id, brand, date, quality] for Dataframe display
+        """
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                params = {"limit": limit}
+                if quality_filter and quality_filter.lower() != "all":
+                    params["quality_tag"] = quality_filter.lower()
+                if brand_filter and brand_filter != "All":
+                    params["brand_name"] = brand_filter
+
+                response = await client.get(
+                    f"{self.backend_url}/experiments/list",
+                    params=params
+                )
+
+                if response.status_code != 200:
+                    return []
+
+                experiments = response.json()
+
+                # Format for Gradio Dataframe
+                rows = []
+                for exp in experiments:
+                    brand_profile = exp.get("brand_profile", {})
+                    brand_name = brand_profile.get("brand_name", "Unknown") if isinstance(brand_profile, dict) else "Unknown"
+                    timestamp = exp.get("timestamp", exp.get("created_at", ""))
+                    date_str = timestamp[:10] if timestamp else "N/A"  # Extract date only
+                    quality = exp.get("quality_tag", "N/A")
+                    quality_display = quality.capitalize() if quality else "N/A"
+
+                    rows.append([
+                        exp.get("id", "")[:8],  # Short ID (first 8 chars)
+                        brand_name,
+                        date_str,
+                        quality_display
+                    ])
+
+                return rows
+
+        except Exception as e:
+            print(f"Failed to fetch experiments: {e}")
+            return []
+
+    async def load_experiment(self, experiment_id: str) -> Optional[Dict[str, Any]]:
+        """Load full experiment data by ID
+
+        Args:
+            experiment_id: UUID or short ID of experiment
+
+        Returns:
+            Complete experiment data or None if not found
+        """
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(
+                    f"{self.backend_url}/experiments/{experiment_id}"
+                )
+
+                if response.status_code != 200:
+                    return None
+
+                return response.json()
+
+        except Exception as e:
+            print(f"Failed to load experiment: {e}")
+            return None
+
+    async def rename_experiment(self, experiment_id: str, new_name: str) -> str:
+        """Rename an experiment
+
+        Args:
+            experiment_id: UUID or short ID of experiment
+            new_name: New name for the experiment
+
+        Returns:
+            Status message
+        """
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.put(
+                    f"{self.backend_url}/experiments/{experiment_id}/rename",
+                    json={"new_name": new_name}
+                )
+
+                if response.status_code == 200:
+                    return f"✅ Renamed to '{new_name}'"
+                elif response.status_code == 404:
+                    return f"❌ Experiment {experiment_id} not found"
+                else:
+                    return f"❌ Rename failed: {response.text}"
+
+        except Exception as e:
+            return f"❌ Error: {str(e)}"
+
+    async def delete_experiment(self, experiment_id: str) -> str:
+        """Delete an experiment
+
+        Args:
+            experiment_id: UUID or short ID of experiment
+
+        Returns:
+            Status message
+        """
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.delete(
+                    f"{self.backend_url}/experiments/{experiment_id}"
+                )
+
+                if response.status_code == 200:
+                    return f"✅ Experiment deleted successfully"
+                elif response.status_code == 404:
+                    return f"❌ Experiment {experiment_id} not found"
+                else:
+                    return f"❌ Delete failed: {response.text}"
+
+        except Exception as e:
+            return f"❌ Error: {str(e)}"
+
     async def run_pipeline(
         self,
         pdf_text: str,
@@ -315,10 +458,11 @@ class GradioLab:
             # Format outputs for display (prefer markdown over JSON)
             def get_stage_display(stage_key: str) -> str:
                 """Get markdown or JSON fallback for stage display"""
-                if stage_key not in stage_outputs:
-                    return ""
-
+                # Get stage data from status response
                 stage_data = stages.get(stage_key, {})
+
+                if not stage_data:
+                    return ""
 
                 # Prefer markdown if available
                 if "markdown" in stage_data:
@@ -381,7 +525,7 @@ class GradioLab:
                     f"{self.backend_url}/experiments/save",
                     json={
                         "run_id": run_id,
-                        "timestamp": datetime.utcnow().isoformat(),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
                         "report_text": pdf_text,
                         "brand_profile": brand_profile,
                         "stage_outputs": stage_outputs,
@@ -478,7 +622,7 @@ class GradioLab:
         brand_filter: Optional[str] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None
-    ) -> Tuple[str, str]:
+    ) -> Tuple[Optional[str], str]:
         """Export experiments to JSON format (Story 11.4b)
 
         Args:
@@ -491,7 +635,7 @@ class GradioLab:
             Tuple of (file_path, status_message)
         """
         if not self.prisma_client or not export_to_json:
-            return "", "Export functionality not available (PrismaAPIClient not initialized)"
+            return None, "Export functionality not available (PrismaAPIClient not initialized)"
 
         try:
             # Generate output filename
@@ -511,9 +655,9 @@ class GradioLab:
             return result_path, f"Success: Exported to {Path(result_path).name}"
 
         except ValueError as e:
-            return "", f"No experiments found with given filters"
+            return None, f"No experiments found with given filters"
         except Exception as e:
-            return "", f"Export failed: {str(e)}"
+            return None, f"Export failed: {str(e)}"
 
     async def export_experiments_csv(
         self,
@@ -521,7 +665,7 @@ class GradioLab:
         brand_filter: Optional[str] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None
-    ) -> Tuple[str, str]:
+    ) -> Tuple[Optional[str], str]:
         """Export experiments to CSV format (Story 11.4b)
 
         Args:
@@ -534,7 +678,7 @@ class GradioLab:
             Tuple of (file_path, status_message)
         """
         if not self.prisma_client or not export_to_csv:
-            return "", "Export functionality not available (PrismaAPIClient not initialized)"
+            return None, "Export functionality not available (PrismaAPIClient not initialized)"
 
         try:
             # Generate output filename
@@ -554,18 +698,75 @@ class GradioLab:
             return result_path, f"Success: Exported to {Path(result_path).name}"
 
         except ValueError as e:
-            return "", f"No experiments found with given filters"
+            return None, f"No experiments found with given filters"
         except Exception as e:
-            return "", f"Export failed: {str(e)}"
+            return None, f"Export failed: {str(e)}"
 
-    async def create_backup(self) -> Tuple[str, str]:
+    def generate_stage_pdf_file(
+        self,
+        stage_num: int,
+        markdown_content: str,
+        brand_name: str
+    ) -> Optional[str]:
+        """Generate PDF for a specific stage.
+
+        Args:
+            stage_num: Stage number (0-6)
+            markdown_content: Markdown content to convert
+            brand_name: Brand name for PDF header
+
+        Returns:
+            Path to generated PDF file or None if failed
+        """
+        if not PDF_EXPORT_AVAILABLE or not markdown_content:
+            return None
+
+        try:
+            pdf_path = generate_stage_pdf(
+                stage_num=stage_num,
+                markdown_content=markdown_content,
+                brand_name=brand_name
+            )
+            return str(pdf_path)
+        except Exception as e:
+            print(f"PDF generation failed for Stage {stage_num}: {e}")
+            return None
+
+    def generate_all_stages_pdf_file(
+        self,
+        stage_markdowns: Dict[int, str],
+        brand_name: str
+    ) -> Optional[str]:
+        """Generate combined PDF with all pipeline stages.
+
+        Args:
+            stage_markdowns: Dict mapping stage numbers to markdown content
+            brand_name: Brand name for PDF header
+
+        Returns:
+            Path to generated PDF file or None if failed
+        """
+        if not PDF_EXPORT_AVAILABLE:
+            return None
+
+        try:
+            pdf_path = generate_all_stages_pdf(
+                stage_markdowns=stage_markdowns,
+                brand_name=brand_name
+            )
+            return str(pdf_path)
+        except Exception as e:
+            print(f"Combined PDF generation failed: {e}")
+            return None
+
+    async def create_backup(self) -> Tuple[Optional[str], str]:
         """Create manual backup of all experiments (Story 11.4b)
 
         Returns:
             Tuple of (file_path, status_message)
         """
         if not self.prisma_client or not backup_experiments:
-            return "", "Backup functionality not available (PrismaAPIClient not initialized)"
+            return None, "Backup functionality not available (PrismaAPIClient not initialized)"
 
         try:
             # Create compressed backup (using PrismaAPIClient HTTP wrapper)
@@ -590,9 +791,9 @@ class GradioLab:
             return backup_path, status_msg
 
         except ValueError as e:
-            return "", f"No experiments to backup"
+            return None, f"No experiments to backup"
         except Exception as e:
-            return "", f"Backup failed: {str(e)}"
+            return None, f"Backup failed: {str(e)}"
 
     def build_interface(self) -> gr.Blocks:
         """Build Gradio interface
@@ -617,176 +818,219 @@ class GradioLab:
             })
 
             with gr.Row():
-                # LEFT COLUMN - INPUTS
-                with gr.Column(scale=1):
-                    gr.Markdown("## 📤 Inputs")
+                # COLLAPSIBLE SIDEBAR - SAVED EXPERIMENTS
+                with gr.Sidebar():
+                    gr.Markdown("## 📚 Saved Runs")
+                    gr.Markdown("Access your previous experiments")
 
-                    # PDF Upload
-                    trend_report = gr.File(
-                        label="Trend Report PDF (max 50MB)",
-                        file_types=[".pdf"],
-                        file_count="single"
-                    )
-                    extraction_status = gr.Textbox(
-                        label="Extraction Status",
+                    # Filters
+                    with gr.Accordion("🔍 Filters", open=True):
+                        sidebar_quality_filter = gr.Dropdown(
+                            choices=["All", "Good", "Needs Work", "Failed"],
+                            value="All",
+                            label="Quality Tag"
+                        )
+                        sidebar_brand_filter = gr.Dropdown(
+                            choices=["All"] + [b for b in self.load_available_brands() if b != "Custom (Manual Entry)"],
+                            value="All",
+                            label="Brand"
+                        )
+                        refresh_experiments_btn = gr.Button("🔄 Refresh List", size="sm")
+
+                    # Experiments list
+                    experiments_list = gr.Dataframe(
+                        headers=["ID", "Brand", "Date", "Quality"],
+                        datatype=["str", "str", "str", "str"],
+                        label="Recent Experiments",
                         interactive=False,
-                        lines=2
+                        wrap=True,
+                        max_height=300
                     )
 
-                    gr.Markdown("### Brand Profile")
-
-                    # Brand selection dropdown
-                    brand_dropdown = gr.Dropdown(
-                        choices=self.load_available_brands(),
-                        label="Select Pre-configured Brand",
-                        value=self.load_available_brands()[0] if self.load_available_brands() else None
-                    )
-
-                    # YAML upload
-                    brand_yaml_upload = gr.File(
-                        label="OR Upload Custom Brand Profile (YAML)",
-                        file_types=[".yaml", ".yml"],
-                        file_count="single"
-                    )
-                    yaml_upload_status = gr.Textbox(
-                        label="Upload Status",
-                        interactive=False,
+                    # Load controls
+                    selected_experiment_id = gr.Textbox(
+                        label="Experiment ID",
+                        placeholder="Copy ID from list above",
                         lines=1
                     )
 
-                    gr.Markdown("### Brand Details (Manual Entry)")
+                    with gr.Row():
+                        load_experiment_btn = gr.Button("📥 Load", variant="primary", scale=2)
+                        rename_experiment_btn = gr.Button("✏️ Rename", variant="secondary", scale=1)
+                        delete_experiment_btn = gr.Button("🗑️ Delete", variant="stop", scale=1)
 
-                    brand_name = gr.Textbox(
-                        label="Company Name *",
-                        placeholder="e.g., Lactalis Canada"
-                    )
-                    industry = gr.Textbox(
-                        label="Industry *",
-                        placeholder="e.g., Dairy/Food & Beverage"
-                    )
-                    geography = gr.Textbox(
-                        label="Geography *",
-                        placeholder="e.g., Canada"
-                    )
-                    product_portfolio = gr.TextArea(
-                        label="Product Portfolio (one per line)",
-                        placeholder="Milk (2%, whole, skim)\nCheese (cheddar, mozzarella)\nYogurt (Greek, regular)",
-                        lines=5
-                    )
+                    # Rename controls (initially hidden)
+                    with gr.Group(visible=False) as rename_group:
+                        rename_input = gr.Textbox(
+                            label="New Name",
+                            placeholder="Enter new name for experiment",
+                            lines=1
+                        )
+                        with gr.Row():
+                            confirm_rename_btn = gr.Button("✅ Confirm", variant="primary", size="sm")
+                            cancel_rename_btn = gr.Button("❌ Cancel", variant="secondary", size="sm")
 
-                    run_button = gr.Button("Run Pipeline", variant="primary", size="lg")
-
-                # RIGHT COLUMN - OUTPUTS
-                with gr.Column(scale=2):
-                    gr.Markdown("## Pipeline Outputs")
-
-                    pipeline_status = gr.Textbox(
-                        label="Pipeline Status",
+                    load_status = gr.Textbox(
+                        label="Status",
                         interactive=False,
                         lines=2
                     )
 
-                    with gr.Tabs():
-                        with gr.Tab("Stage 0: Brand Context"):
-                            stage0_output = gr.Markdown(
-                                value="Run pipeline to generate brand context..."
+                # MAIN CONTENT AREA
+                with gr.Column(scale=3):
+                    with gr.Row():
+                        # LEFT COLUMN - INPUTS
+                        with gr.Column(scale=1):
+                            gr.Markdown("## 📤 Inputs")
+
+                            # PDF Upload
+                            trend_report = gr.File(
+                                label="Trend Report PDF (max 50MB)",
+                                file_types=[".pdf"],
+                                file_count="single"
+                            )
+                            extraction_status = gr.Textbox(
+                                label="Extraction Status",
+                                interactive=False,
+                                lines=2
                             )
 
-                        with gr.Tab("Stage 1: Extraction"):
-                            stage1_output = gr.Markdown(
-                                value="Run pipeline to extract mechanisms..."
+                            gr.Markdown("### Brand Profile")
+
+                            # Brand selection dropdown
+                            brand_dropdown = gr.Dropdown(
+                                choices=self.load_available_brands(),
+                                label="Select Pre-configured Brand",
+                                value=self.load_available_brands()[0] if self.load_available_brands() else None
                             )
 
-                        with gr.Tab("Stage 2: Signals"):
-                            stage2_output = gr.Markdown(
-                                value="Run pipeline to identify signals..."
+                            # YAML upload
+                            brand_yaml_upload = gr.File(
+                                label="OR Upload Custom Brand Profile (YAML)",
+                                file_types=[".yaml", ".yml"],
+                                file_count="single"
+                            )
+                            yaml_upload_status = gr.Textbox(
+                                label="Upload Status",
+                                interactive=False,
+                                lines=1
                             )
 
-                        with gr.Tab("Stage 3: Insights"):
-                            stage3_output = gr.Markdown(
-                                value="Run pipeline to generate insights..."
+                            gr.Markdown("### Brand Details (Manual Entry)")
+
+                            brand_name = gr.Textbox(
+                                label="Company Name *",
+                                placeholder="e.g., Lactalis Canada"
+                            )
+                            industry = gr.Textbox(
+                                label="Industry *",
+                                placeholder="e.g., Dairy/Food & Beverage"
+                            )
+                            geography = gr.Textbox(
+                                label="Geography *",
+                                placeholder="e.g., Canada"
+                            )
+                            product_portfolio = gr.TextArea(
+                                label="Product Portfolio (one per line)",
+                                placeholder="Milk (2%, whole, skim)\nCheese (cheddar, mozzarella)\nYogurt (Greek, regular)",
+                                lines=5
                             )
 
-                        with gr.Tab("Stage 4: Ideation"):
-                            stage4_output = gr.Markdown(
-                                value="Run pipeline to create preliminary concepts..."
+                            run_button = gr.Button("Run Pipeline", variant="primary", size="lg")
+
+                        # RIGHT COLUMN - OUTPUTS
+                        with gr.Column(scale=2):
+                            gr.Markdown("## Pipeline Outputs")
+
+                            pipeline_status = gr.Textbox(
+                                label="Pipeline Status",
+                                interactive=False,
+                                lines=2
                             )
 
-                        with gr.Tab("Stage 5: Opportunity Cards"):
-                            stage5_output = gr.Markdown(
-                                value="Run pipeline to generate opportunity cards..."
-                            )
+                            with gr.Tabs():
+                                with gr.Tab("Stage 0: Brand Context"):
+                                    stage0_output = gr.Markdown(
+                                        value="Run pipeline to generate brand context..."
+                                    )
+                                    download_stage0_btn = gr.Button("📥 Download PDF", size="sm")
+                                    stage0_pdf_file = gr.File(label="Stage 0 PDF", visible=False)
 
-                        with gr.Tab("Stage 6: Export"):
-                            stage6_output = gr.Markdown(
-                                value="Run pipeline to export results..."
-                            )
+                                with gr.Tab("Stage 1: Extraction"):
+                                    stage1_output = gr.Markdown(
+                                        value="Run pipeline to extract mechanisms..."
+                                    )
+                                    download_stage1_btn = gr.Button("📥 Download PDF", size="sm")
+                                    stage1_pdf_file = gr.File(label="Stage 1 PDF", visible=False)
 
-                        # Story 11.3c: Add curation interface tab
-                        if create_curation_tab:
-                            with gr.Tab("📚 Example Curation"):
-                                # Create curation interface
-                                curation_content = create_curation_tab(
-                                    storage_path=str(Path(__file__).parent / "successful_examples"),
-                                    usage_tracker=self.usage_tracker
-                                )
-                                # Note: curation_content is a gr.Blocks that renders inside this tab
+                                with gr.Tab("Stage 2: Signals"):
+                                    stage2_output = gr.Markdown(
+                                        value="Run pipeline to identify signals..."
+                                    )
+                                    download_stage2_btn = gr.Button("📥 Download PDF", size="sm")
+                                    stage2_pdf_file = gr.File(label="Stage 2 PDF", visible=False)
 
-                        # Story 11.4b: Add data management tab
-                        with gr.Tab("💾 Data Management"):
-                            gr.Markdown("## Export & Backup")
-                            gr.Markdown("Export experiments to JSON/CSV or create database backups")
+                                with gr.Tab("Stage 3: Insights"):
+                                    stage3_output = gr.Markdown(
+                                        value="Run pipeline to generate insights..."
+                                    )
+                                    download_stage3_btn = gr.Button("📥 Download PDF", size="sm")
+                                    stage3_pdf_file = gr.File(label="Stage 3 PDF", visible=False)
+
+                                with gr.Tab("Stage 4: Ideation"):
+                                    stage4_output = gr.Markdown(
+                                        value="Run pipeline to create preliminary concepts..."
+                                    )
+                                    download_stage4_btn = gr.Button("📥 Download PDF", size="sm")
+                                    stage4_pdf_file = gr.File(label="Stage 4 PDF", visible=False)
+
+                                with gr.Tab("Stage 5: Opportunity Cards"):
+                                    stage5_output = gr.Markdown(
+                                        value="Run pipeline to generate opportunity cards..."
+                                    )
+                                    download_stage5_btn = gr.Button("📥 Download PDF", size="sm")
+                                    stage5_pdf_file = gr.File(label="Stage 5 PDF", visible=False)
+
+                                with gr.Tab("Stage 6: Executive Summary"):
+                                    stage6_output = gr.Markdown(
+                                        value="Run pipeline to generate executive summary..."
+                                    )
+                                    download_stage6_btn = gr.Button("📥 Download PDF", size="sm")
+                                    stage6_pdf_file = gr.File(label="Stage 6 PDF", visible=False)
+
+                                with gr.Tab("📦 Download All"):
+                                    gr.Markdown("### Download Complete Report")
+                                    gr.Markdown("Generate a single PDF containing all pipeline stages")
+                                    download_all_btn = gr.Button("📥 Download Full Report PDF", variant="primary")
+                                    all_stages_pdf_file = gr.File(label="Full Report PDF")
+
+                                # Story 11.3c: Add curation interface tab
+                                if create_curation_tab:
+                                    with gr.Tab("📚 Example Curation"):
+                                        # Create curation interface
+                                        curation_content = create_curation_tab(
+                                            storage_path=str(Path(__file__).parent / "successful_examples"),
+                                            usage_tracker=self.usage_tracker
+                                        )
+                                        # Note: curation_content is a gr.Blocks that renders inside this tab
+
+                            gr.Markdown("### Quality Assessment")
 
                             with gr.Row():
-                                with gr.Column():
-                                    gr.Markdown("### Export Filters")
-                                    export_quality = gr.Dropdown(
-                                        choices=["All", "Good", "Needs Work", "Failed"],
-                                        label="Quality Tag Filter",
-                                        value="All"
-                                    )
-                                    export_brand = gr.Dropdown(
-                                        choices=["All"] + self.load_available_brands(),
-                                        label="Brand Filter",
-                                        value="All"
-                                    )
-                                    export_start_date = gr.Textbox(
-                                        label="Start Date (ISO format, optional)",
-                                        placeholder="2025-11-01T00:00:00Z"
-                                    )
-                                    export_end_date = gr.Textbox(
-                                        label="End Date (ISO format, optional)",
-                                        placeholder="2025-11-30T23:59:59Z"
-                                    )
+                                quality_tag = gr.Radio(
+                                    choices=["Good", "Needs Work", "Failed"],
+                                    label="Quality Tag",
+                                    value="Needs Work"
+                                )
 
-                                with gr.Column():
-                                    gr.Markdown("### Export Actions")
-                                    export_json_btn = gr.Button("📄 Export to JSON", variant="primary")
-                                    export_csv_btn = gr.Button("📊 Export to CSV", variant="primary")
-                                    gr.Markdown("---")
-                                    gr.Markdown("### Backup")
-                                    backup_btn = gr.Button("💾 Create Full Backup", variant="secondary")
+                            notes = gr.TextArea(
+                                label="Notes (optional)",
+                                placeholder="Add any observations or feedback...",
+                                lines=3
+                            )
 
-                            export_file = gr.File(label="Download Export/Backup")
-                            export_status = gr.Textbox(label="Status", interactive=False, lines=3)
-
-                    gr.Markdown("### Quality Assessment")
-
-                    with gr.Row():
-                        quality_tag = gr.Radio(
-                            choices=["Good", "Needs Work", "Failed"],
-                            label="Quality Tag",
-                            value="Needs Work"
-                        )
-
-                    notes = gr.TextArea(
-                        label="Notes (optional)",
-                        placeholder="Add any observations or feedback...",
-                        lines=3
-                    )
-
-                    save_button = gr.Button("Save Experiment", variant="secondary")
-                    save_status = gr.Textbox(label="Save Status", interactive=False)
+                            save_button = gr.Button("Save Experiment", variant="secondary")
+                            save_status = gr.Textbox(label="Save Status", interactive=False)
 
             # Event Listeners
 
@@ -809,6 +1053,178 @@ class GradioLab:
                 extract_and_cache,
                 inputs=[trend_report, cached_data],
                 outputs=[cached_data, extraction_status]
+            )
+
+            # SIDEBAR EVENT HANDLERS
+
+            # Refresh experiments list
+            async def refresh_experiments_list(quality, brand):
+                """Refresh experiments list based on filters"""
+                return await self.fetch_saved_experiments(
+                    quality_filter=quality,
+                    brand_filter=brand,
+                    limit=20
+                )
+
+            refresh_experiments_btn.click(
+                refresh_experiments_list,
+                inputs=[sidebar_quality_filter, sidebar_brand_filter],
+                outputs=experiments_list
+            )
+
+            sidebar_quality_filter.change(
+                refresh_experiments_list,
+                inputs=[sidebar_quality_filter, sidebar_brand_filter],
+                outputs=experiments_list
+            )
+
+            sidebar_brand_filter.change(
+                refresh_experiments_list,
+                inputs=[sidebar_quality_filter, sidebar_brand_filter],
+                outputs=experiments_list
+            )
+
+            # Load experiment when button clicked
+            async def load_saved_experiment(exp_id, state):
+                """Load complete experiment and populate UI"""
+                if not exp_id or len(exp_id) < 3:
+                    return (
+                        state, "", "", "", "",
+                        "", "", "", "", "", "", "",
+                        "Error: Please enter a valid experiment ID"
+                    )
+
+                # Fetch full experiment data
+                experiment = await self.load_experiment(exp_id)
+
+                if not experiment:
+                    return (
+                        state, "", "", "", "",
+                        "", "", "", "", "", "", "",
+                        f"Error: Experiment {exp_id} not found"
+                    )
+
+                # Extract data
+                brand_profile = experiment.get("brand_profile", {})
+                stage_outputs = experiment.get("stage_outputs", {})
+
+                # Update state
+                state["pdf_text"] = experiment.get("report_text", "")
+                state["brand_profile"] = brand_profile
+                state["run_id"] = experiment.get("run_id", "")
+                state["stage_outputs"] = stage_outputs
+
+                # Extract brand fields
+                brand_name_val = brand_profile.get("brand_name", "")
+                industry_val = brand_profile.get("industry", "")
+                geography_val = brand_profile.get("country", "")
+                portfolio_list = brand_profile.get("product_portfolio", [])
+                portfolio_val = "\n".join(portfolio_list) if isinstance(portfolio_list, list) else ""
+
+                # Extract stage markdown
+                stage0 = stage_outputs.get("stage_0", {}).get("markdown", "")
+                stage1 = stage_outputs.get("stage_1", {}).get("markdown", "")
+                stage2 = stage_outputs.get("stage_2", {}).get("markdown", "")
+                stage3 = stage_outputs.get("stage_3", {}).get("markdown", "")
+                stage4 = stage_outputs.get("stage_4", {}).get("markdown", "")
+                stage5 = stage_outputs.get("stage_5", {}).get("markdown", "")
+                stage6 = stage_outputs.get("stage_6", {}).get("markdown", "")
+
+                status_msg = f"✅ Loaded experiment {exp_id[:8]} - {brand_name_val}"
+
+                return (
+                    state,
+                    brand_name_val, industry_val, geography_val, portfolio_val,
+                    stage0, stage1, stage2, stage3, stage4, stage5, stage6,
+                    status_msg
+                )
+
+            load_experiment_btn.click(
+                load_saved_experiment,
+                inputs=[selected_experiment_id, cached_data],
+                outputs=[
+                    cached_data,
+                    brand_name, industry, geography, product_portfolio,
+                    stage0_output, stage1_output, stage2_output, stage3_output,
+                    stage4_output, stage5_output, stage6_output,
+                    load_status
+                ]
+            )
+
+            # Auto-refresh experiments list on demo load
+            demo.load(
+                refresh_experiments_list,
+                inputs=[sidebar_quality_filter, sidebar_brand_filter],
+                outputs=experiments_list
+            )
+
+            # RENAME AND DELETE HANDLERS
+
+            # Show rename input when rename button clicked
+            def show_rename_ui():
+                return gr.update(visible=True)
+
+            rename_experiment_btn.click(
+                show_rename_ui,
+                outputs=rename_group
+            )
+
+            # Hide rename input when cancel clicked
+            def hide_rename_ui():
+                return gr.update(visible=False), ""
+
+            cancel_rename_btn.click(
+                hide_rename_ui,
+                outputs=[rename_group, rename_input]
+            )
+
+            # Confirm rename
+            async def confirm_rename(exp_id, new_name, quality_filter, brand_filter):
+                if not exp_id or not new_name:
+                    return (
+                        gr.update(visible=False),
+                        "",
+                        "❌ Error: Please provide both experiment ID and new name",
+                        await self.fetch_saved_experiments(quality_filter, brand_filter, 20)
+                    )
+
+                status_msg = await self.rename_experiment(exp_id, new_name)
+
+                # Refresh experiments list
+                updated_list = await self.fetch_saved_experiments(quality_filter, brand_filter, 20)
+
+                return (
+                    gr.update(visible=False),  # Hide rename group
+                    "",  # Clear rename input
+                    status_msg,  # Show status
+                    updated_list  # Refresh list
+                )
+
+            confirm_rename_btn.click(
+                confirm_rename,
+                inputs=[selected_experiment_id, rename_input, sidebar_quality_filter, sidebar_brand_filter],
+                outputs=[rename_group, rename_input, load_status, experiments_list]
+            )
+
+            # Delete experiment
+            async def confirm_delete(exp_id, quality_filter, brand_filter):
+                if not exp_id:
+                    return (
+                        "❌ Error: Please provide experiment ID",
+                        await self.fetch_saved_experiments(quality_filter, brand_filter, 20)
+                    )
+
+                status_msg = await self.delete_experiment(exp_id)
+
+                # Refresh experiments list and clear selection
+                updated_list = await self.fetch_saved_experiments(quality_filter, brand_filter, 20)
+
+                return status_msg, updated_list, ""
+
+            delete_experiment_btn.click(
+                confirm_delete,
+                inputs=[selected_experiment_id, sidebar_quality_filter, sidebar_brand_filter],
+                outputs=[load_status, experiments_list, selected_experiment_id]
             )
 
             # Brand dropdown selection
@@ -852,10 +1268,69 @@ class GradioLab:
                     "stage_5": {"markdown": stage5} if stage5 else {},
                     "stage_6": {"markdown": stage6} if stage6 else {}
                 }
-                # Note: stage_inputs and prompts_used would be populated by actual pipeline
-                # For now, these are placeholders until backend integration is complete
-                state["stage_inputs"] = {}
-                state["prompts_used"] = {}
+
+                # Extract stage inputs and prompts from backend for few-shot learning
+                # This captures the actual pipeline execution metadata needed for training examples
+                stage_inputs = {}
+                prompts_used = {}
+
+                try:
+                    # Get run_id from status response (embedded in message)
+                    run_id_from_status = None
+                    if "Run ID:" in status:
+                        run_id_from_status = status.split("Run ID:")[-1].strip()
+
+                    if run_id_from_status:
+                        # Query backend /status endpoint to get full pipeline metadata
+                        async with httpx.AsyncClient(timeout=30.0) as client:
+                            status_response = await client.get(
+                                f"{self.backend_url}/status/{run_id_from_status}"
+                            )
+
+                            if status_response.status_code == 200:
+                                status_data = status_response.json()
+                                stages = status_data.get("stages", {})
+
+                                # Extract inputs and prompts from each stage
+                                for stage_key, stage_info in stages.items():
+                                    # Try to extract input data
+                                    input_data = None
+                                    for input_key in ["input", "input_data", "input_text", "inputs"]:
+                                        if input_key in stage_info:
+                                            input_data = stage_info[input_key]
+                                            break
+
+                                    # Fallback: populate known stage inputs
+                                    if not input_data:
+                                        if stage_key == "0":
+                                            input_data = state["brand_profile"]
+                                        elif stage_key == "1":
+                                            input_data = {"pdf_text": pdf_text[:1000]}  # First 1000 chars
+
+                                    if input_data:
+                                        stage_inputs[f"stage_{stage_key}"] = input_data
+
+                                    # Try to extract prompt template
+                                    prompt = None
+                                    if "prompt" in stage_info:
+                                        prompt = stage_info["prompt"]
+                                    elif "metadata" in stage_info and isinstance(stage_info["metadata"], dict):
+                                        prompt = stage_info["metadata"].get("prompt")
+
+                                    if prompt:
+                                        prompts_used[f"stage_{stage_key}"] = prompt
+
+                except Exception as e:
+                    print(f"Warning: Failed to extract stage metadata: {e}")
+
+                # Fallback: ensure at least stage 0 and 1 have input data
+                if "stage_0" not in stage_inputs:
+                    stage_inputs["stage_0"] = state["brand_profile"]
+                if "stage_1" not in stage_inputs:
+                    stage_inputs["stage_1"] = {"pdf_text": pdf_text[:1000]}
+
+                state["stage_inputs"] = stage_inputs
+                state["prompts_used"] = prompts_used
 
                 return stage0, stage1, stage2, stage3, stage4, stage5, stage6, status
 
@@ -892,6 +1367,94 @@ class GradioLab:
                 outputs=save_status
             )
 
+            # PDF Download Event Handlers
+            def download_stage_pdf(stage_num, state):
+                """Generate PDF for specific stage"""
+                if state is None:
+                    return None
+
+                brand_name = state.get("brand_profile", {}).get("brand_name", "Unknown Brand")
+                stage_key = f"stage_{stage_num}"
+                markdown = state.get("stage_outputs", {}).get(stage_key, {}).get("markdown", "")
+
+                if not markdown:
+                    return None
+
+                pdf_path = self.generate_stage_pdf_file(stage_num, markdown, brand_name)
+                return pdf_path
+
+            # Wire up individual stage downloads
+            download_stage0_btn.click(
+                lambda s: download_stage_pdf(0, s),
+                inputs=[cached_data],
+                outputs=[stage0_pdf_file]
+            )
+
+            download_stage1_btn.click(
+                lambda s: download_stage_pdf(1, s),
+                inputs=[cached_data],
+                outputs=[stage1_pdf_file]
+            )
+
+            download_stage2_btn.click(
+                lambda s: download_stage_pdf(2, s),
+                inputs=[cached_data],
+                outputs=[stage2_pdf_file]
+            )
+
+            download_stage3_btn.click(
+                lambda s: download_stage_pdf(3, s),
+                inputs=[cached_data],
+                outputs=[stage3_pdf_file]
+            )
+
+            download_stage4_btn.click(
+                lambda s: download_stage_pdf(4, s),
+                inputs=[cached_data],
+                outputs=[stage4_pdf_file]
+            )
+
+            download_stage5_btn.click(
+                lambda s: download_stage_pdf(5, s),
+                inputs=[cached_data],
+                outputs=[stage5_pdf_file]
+            )
+
+            download_stage6_btn.click(
+                lambda s: download_stage_pdf(6, s),
+                inputs=[cached_data],
+                outputs=[stage6_pdf_file]
+            )
+
+            # Download all stages combined
+            def download_all_stages_pdf(state):
+                """Generate combined PDF with all stages"""
+                if state is None:
+                    return None
+
+                brand_name = state.get("brand_profile", {}).get("brand_name", "Unknown Brand")
+                stage_outputs = state.get("stage_outputs", {})
+
+                # Collect markdown from all stages
+                markdowns = {}
+                for i in range(7):
+                    stage_key = f"stage_{i}"
+                    markdown = stage_outputs.get(stage_key, {}).get("markdown", "")
+                    if markdown:
+                        markdowns[i] = markdown
+
+                if not markdowns:
+                    return None
+
+                pdf_path = self.generate_all_stages_pdf_file(markdowns, brand_name)
+                return pdf_path
+
+            download_all_btn.click(
+                download_all_stages_pdf,
+                inputs=[cached_data],
+                outputs=[all_stages_pdf_file]
+            )
+
             # Export and Backup event listeners (Story 11.4b)
             async def export_json_wrapper(quality, brand, start, end):
                 file_path, status = await self.export_experiments_json(
@@ -911,27 +1474,28 @@ class GradioLab:
                 )
                 return file_path, status
 
-            async def backup_wrapper():
-                file_path, status = await self.create_backup()
-                return file_path, status
-
-            export_json_btn.click(
-                export_json_wrapper,
-                inputs=[export_quality, export_brand, export_start_date, export_end_date],
-                outputs=[export_file, export_status]
-            )
-
-            export_csv_btn.click(
-                export_csv_wrapper,
-                inputs=[export_quality, export_brand, export_start_date, export_end_date],
-                outputs=[export_file, export_status]
-            )
-
-            backup_btn.click(
-                backup_wrapper,
-                inputs=[],
-                outputs=[export_file, export_status]
-            )
+            # TODO: Add export UI controls (Story 11.4b)
+            # async def backup_wrapper():
+            #     file_path, status = await self.create_backup()
+            #     return file_path, status
+            #
+            # export_json_btn.click(
+            #     export_json_wrapper,
+            #     inputs=[export_quality, export_brand, export_start_date, export_end_date],
+            #     outputs=[export_file, export_status]
+            # )
+            #
+            # export_csv_btn.click(
+            #     export_csv_wrapper,
+            #     inputs=[export_quality, export_brand, export_start_date, export_end_date],
+            #     outputs=[export_file, export_status]
+            # )
+            #
+            # backup_btn.click(
+            #     backup_wrapper,
+            #     inputs=[],
+            #     outputs=[export_file, export_status]
+            # )
 
         return demo
 
