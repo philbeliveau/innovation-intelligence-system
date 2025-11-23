@@ -198,13 +198,6 @@ async def health_check():
     return HealthResponse(status=status, version="1.0.0", details=details if details else None)
 
 
-class RunPipelineLocalRequest(BaseModel):
-    """Request model for local development - accepts PDF text directly"""
-    pdf_text: str = Field(..., description="Extracted PDF text content")
-    brand_profile: Dict[str, Any] = Field(..., description="Brand profile dict")
-    run_id: Optional[str] = Field(None, description="Optional run ID")
-
-
 @router.post("/run/local", response_model=RunPipelineResponse, operation_id="run_pipeline_local")
 async def run_pipeline_local(request: RunPipelineLocalRequest):
     """
