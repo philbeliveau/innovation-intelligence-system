@@ -10,6 +10,13 @@ class RunPipelineRequest(BaseModel):
     run_id: Optional[str] = Field(None, description="Pre-generated run ID from frontend (prevents race condition)")
 
 
+class RunPipelineLocalRequest(BaseModel):
+    """Request model for POST /run/local endpoint (for HuggingFace Spaces and local dev)"""
+    pdf_text: str = Field(..., description="Raw PDF text content")
+    brand_profile: Dict[str, Any] = Field(..., description="Brand profile configuration object")
+    run_id: Optional[str] = Field(None, description="Pre-generated run ID from frontend")
+
+
 class RunPipelineResponse(BaseModel):
     """Response model for POST /run endpoint"""
     run_id: str

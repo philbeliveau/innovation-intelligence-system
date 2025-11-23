@@ -16,6 +16,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from app.models import (
     RunPipelineRequest,
+    RunPipelineLocalRequest,
     RunPipelineResponse,
     PipelineStatus,
     HealthResponse,
