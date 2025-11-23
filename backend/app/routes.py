@@ -40,6 +40,75 @@ def generate_run_id() -> str:
     return f"run-{timestamp}-{random_suffix}"
 
 
+async def initialize_pipeline_run(
+    run_id: str,
+    brand_name: str,
+    blob_url: str,
+    document_name: str
+) -> bool:
+    """Initialize PipelineRun record in database via Next.js /api/pipeline/init endpoint.
+
+    Args:
+        run_id: Unique run identifier
+        brand_name: Brand name from profile
+        blob_url: PDF blob URL (or placeholder for Gradio)
+        document_name: Original filename
+
+    Returns:
+        True if initialization successful, False otherwise
+    """
+    frontend_url = os.getenv(
+        "FRONTEND_WEBHOOK_URL",
+        "https://innovation-web-rho.vercel.app"
+    )
+    webhook_secret = os.getenv("WEBHOOK_SECRET")
+
+    if not webhook_secret:
+        logger.error(
+            f"[{run_id}] WEBHOOK_SECRET not set - cannot create PipelineRun record"
+        )
+        return False
+
+    url = f"{frontend_url}/api/pipeline/init"
+    headers = {
+        "Content-Type": "application/json",
+        "X-Webhook-Secret": webhook_secret
+    }
+    payload = {
+        "runId": run_id,
+        "blobUrl": blob_url,
+        "brandName": brand_name,
+        "documentName": document_name
+    }
+
+    try:
+        logger.info(
+            f"[{run_id}] Initializing PipelineRun record via {url}"
+        )
+        response = requests.post(url, json=payload, headers=headers, timeout=30)
+
+        if response.ok:
+            logger.info(
+                f"[{run_id}] Successfully created PipelineRun record"
+            )
+            return True
+        else:
+            logger.error(
+                f"[{run_id}] Failed to create PipelineRun: {response.status_code} - {response.text}"
+            )
+            return False
+
+    except requests.exceptions.Timeout:
+        logger.error(f"[{run_id}] Timeout initializing PipelineRun after 30s")
+        return False
+    except requests.exceptions.RequestException as e:
+        logger.error(f"[{run_id}] Error initializing PipelineRun: {e}")
+        return False
+    except Exception as e:
+        logger.error(f"[{run_id}] Unexpected error initializing PipelineRun: {e}")
+        return False
+
+
 def validate_blob_url(url: str) -> bool:
     """Validate blob URL is from Vercel Blob storage."""
     return url.startswith("https://") and "blob.vercel-storage.com" in url
@@ -222,7 +291,17 @@ async def run_pipeline_local(request: RunPipelineLocalRequest):
 
     # Use provided brand profile directly
     brand_profile = request.brand_profile
-    logger.info(f"[LOCAL] Using brand profile: {brand_profile.get('brand_name', 'Unknown')}")
+    brand_name = brand_profile.get('brand_name', 'Unknown')
+    logger.info(f"[LOCAL] Using brand profile: {brand_name}")
+
+    # Create PipelineRun record in database via Next.js API
+    if not await initialize_pipeline_run(
+        run_id=run_id,
+        brand_name=brand_name,
+        blob_url=f"gradio://local/{run_id}",  # Placeholder URL for Gradio uploads
+        document_name=f"gradio_upload_{run_id}.pdf"
+    ):
+        logger.warning(f"[LOCAL] Failed to create PipelineRun record, but continuing execution")
 
     # Create initial status file before starting background thread
     status_file = run_dir / "status.json"
@@ -231,7 +310,7 @@ async def run_pipeline_local(request: RunPipelineLocalRequest):
         "status": "running",
         "current_stage": 0,
         "stages": {},
-        "brand_id": brand_profile.get("brand_name", "unknown"),
+        "brand_id": brand_name,
         "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     }
     with open(status_file, "w") as f:
