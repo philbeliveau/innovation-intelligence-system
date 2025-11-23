@@ -526,6 +526,9 @@ def execute_pipeline_background(
         save_stage_output(run_id, 2, stage2_result)
         prisma_client.mark_stage_complete(run_id, 2, stage2_result)
 
+        # Extract stage2 output text (markdown) for status.json and Stage 3
+        stage2_output_text = stage2_result.get("stage2_output", stage2_result)
+
         # Update status.json for Gradio polling
         update_status_file(
             run_id=run_id,
@@ -533,7 +536,7 @@ def execute_pipeline_background(
             current_stage=2,
             stages={
                 "1": {"status": "complete", "output": flattened_output},
-                "2": {"status": "complete", "output": stage2_result}
+                "2": {"status": "complete", "output": stage2_output_text}
             }
         )
 
@@ -548,9 +551,6 @@ def execute_pipeline_background(
         }
         send_webhook_sync(run_id, "stage-update", webhook_payload)
 
-        # Extract stage2 output text for Stage 3
-        stage2_output_text = stage2_result.get("stage2_output", "")
-
         # Stage 3: General Translation
         logger.info(f"[{run_id}] Starting Stage 3: General Translation")
         current_stage = 3
@@ -562,6 +562,9 @@ def execute_pipeline_background(
         save_stage_output(run_id, 3, stage3_result)
         prisma_client.mark_stage_complete(run_id, 3, stage3_result)
 
+        # Extract stage3 output text (markdown) for status.json and Stage 4
+        stage3_output_text = stage3_result.get("stage3_output", stage3_result)
+
         # Update status.json for Gradio polling
         update_status_file(
             run_id=run_id,
@@ -569,8 +572,8 @@ def execute_pipeline_background(
             current_stage=3,
             stages={
                 "1": {"status": "complete", "output": flattened_output},
-                "2": {"status": "complete", "output": stage2_result},
-                "3": {"status": "complete", "output": stage3_result}
+                "2": {"status": "complete", "output": stage2_output_text},
+                "3": {"status": "complete", "output": stage3_output_text}
             }
         )
 
@@ -584,9 +587,6 @@ def execute_pipeline_background(
             }
         }
         send_webhook_sync(run_id, "stage-update", webhook_payload)
-
-        # Extract stage3 output text for Stage 4
-        stage3_output_text = stage3_result.get("stage3_output", "")
 
         # Load research data for brand (returns empty string if missing)
         # Note: YAML files use 'brand_name' field, convert to filename format
@@ -608,6 +608,9 @@ def execute_pipeline_background(
         save_stage_output(run_id, 4, stage4_result)
         prisma_client.mark_stage_complete(run_id, 4, stage4_result)
 
+        # Extract stage4 output text (markdown) for status.json and Stage 5
+        stage4_output_text = stage4_result.get("stage4_output", stage4_result)
+
         # Update status.json for Gradio polling
         update_status_file(
             run_id=run_id,
@@ -615,9 +618,9 @@ def execute_pipeline_background(
             current_stage=4,
             stages={
                 "1": {"status": "complete", "output": flattened_output},
-                "2": {"status": "complete", "output": stage2_result},
-                "3": {"status": "complete", "output": stage3_result},
-                "4": {"status": "complete", "output": stage4_result}
+                "2": {"status": "complete", "output": stage2_output_text},
+                "3": {"status": "complete", "output": stage3_output_text},
+                "4": {"status": "complete", "output": stage4_output_text}
             }
         )
 
@@ -631,9 +634,6 @@ def execute_pipeline_background(
             }
         }
         send_webhook_sync(run_id, "stage-update", webhook_payload)
-
-        # Extract stage4 output text for Stage 5
-        stage4_output_text = stage4_result.get("stage4_output", "")
 
         # Extract brand name and input source for Stage 5
         brand_name = brand_profile.get("company_name", "Unknown Brand")
@@ -665,9 +665,9 @@ def execute_pipeline_background(
             current_stage=5,
             stages={
                 "1": {"status": "complete", "output": flattened_output},
-                "2": {"status": "complete", "output": stage2_result},
-                "3": {"status": "complete", "output": stage3_result},
-                "4": {"status": "complete", "output": stage4_result},
+                "2": {"status": "complete", "output": stage2_output_text},
+                "3": {"status": "complete", "output": stage3_output_text},
+                "4": {"status": "complete", "output": stage4_output_text},
                 "5": {"status": "complete", "output": opportunities_output}
             }
         )

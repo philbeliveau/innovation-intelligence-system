@@ -74,7 +74,26 @@ class GradioLab:
 
     def __init__(self):
         self.backend_url = BACKEND_API_URL
-        self.brand_profiles_dir = Path("../../data/brand-profiles")
+
+        # Support multiple deployment environments
+        # HF Spaces: /app/data/brand-profiles
+        # Railway: backend/experimentation relative paths
+        # Local: ../../data/brand-profiles
+        possible_paths = [
+            Path("/app/data/brand-profiles"),  # HF Spaces absolute
+            Path("../../data/brand-profiles"),  # Local relative
+            Path("../data/brand-profiles"),     # Alternative relative
+            Path("data/brand-profiles"),        # Current dir relative
+        ]
+
+        self.brand_profiles_dir = None
+        for path in possible_paths:
+            if path.exists():
+                self.brand_profiles_dir = path
+                break
+
+        if self.brand_profiles_dir is None:
+            self.brand_profiles_dir = Path("../../data/brand-profiles")  # Fallback
 
         # Initialize usage tracker for curation interface (Story 11.3c)
         if ExampleUsageTracker:
@@ -1507,14 +1526,17 @@ class GradioLab:
         """
         demo = self.build_interface()
 
+        # Detect HuggingFace Spaces environment
+        is_hf_space = os.getenv("SPACE_ID") is not None
+
         # Configure queue and launch
         demo.queue(
             max_size=10,
             default_concurrency_limit=3
         ).launch(
             server_name="0.0.0.0",
-            server_port=7860,
-            share=share
+            server_port=int(os.getenv("PORT", 7860)),
+            share=share or is_hf_space
         )
 
 

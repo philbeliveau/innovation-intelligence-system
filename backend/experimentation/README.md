@@ -1,6 +1,81 @@
-# Innovation Pipeline Experimentation Lab
+---
+title: Innovation Intelligence Pipeline
+emoji: 💡
+colorFrom: blue
+colorTo: green
+sdk: gradio
+sdk_version: 5.0.0
+app_file: gradio_lab.py
+pinned: false
+---
 
-## 🚀 Overview
+# Innovation Intelligence Pipeline
+
+**7-Stage Extraction Framework** for transforming trend reports into actionable innovation opportunities using Systematic Inventive Thinking (SIT).
+
+## 🚀 Features
+
+- 📄 **Upload Trend Reports** - Drag & drop PDF trend reports (WGSN, Mintel, max 50MB)
+- 🏢 **Brand Profile Selection** - Choose from pre-configured brand profiles or enter manually
+- ⚙️ **7-Stage Pipeline** - Automated extraction from trends to opportunity cards
+- 📊 **Real-time Progress** - Monitor pipeline execution stage-by-stage
+- 💾 **Database Persistence** - Save experiments with quality tagging
+- 🎯 **Few-shot Learning** - Auto-export "Good" examples for continuous improvement
+
+## 🔧 Pipeline Stages
+
+**Stage 0:** Brand Context Enrichment
+**Stage 1:** Trend Decomposition with L1-L4 Abstraction
+**Stage 2:** Consumer Insights Synthesis
+**Stage 3:** SIT Technique Matching
+**Stage 4:** Directional Concept Generation
+**Stage 5:** Competitive Intelligence
+**Stage 6:** Opportunity Card Packaging
+
+## 📖 Usage
+
+1. **Upload PDF** - Drag trend report into upload zone
+2. **Select Brand** - Choose from dropdown (Lactalis, Decathlon, etc.) or enter custom profile
+3. **Run Pipeline** - Click "Run Pipeline" to start 7-stage extraction
+4. **Review Outputs** - Navigate tabs to see each stage's results
+5. **Tag Quality** - Mark as Good/Needs Work/Failed
+6. **Save to Database** - Persist experiment for future reference
+
+## 🔑 Environment Variables
+
+- `BACKEND_API_URL` - FastAPI backend URL (default: http://localhost:8000)
+- `DATABASE_URL` - PostgreSQL connection string
+- `OPENROUTER_API_KEY` - API key for LLM calls
+- `PORT` - Server port (auto-injected by HF Spaces)
+- `SPACE_ID` - HuggingFace Space identifier (auto-injected)
+
+## 🏠 Local Development
+
+```bash
+cd backend/experimentation
+pip install -r requirements.txt
+python gradio_lab.py
+```
+
+Access at http://localhost:7860
+
+## 📐 Architecture
+
+**Frontend:** Gradio 5.x (Python UI framework)
+**Backend:** FastAPI on Railway
+**Database:** PostgreSQL with psycopg2
+**LLM:** Claude Sonnet 4.5 via OpenRouter
+**Pipeline:** 7-stage extraction with few-shot learning
+
+## 🎯 Credits
+
+Built for innovation teams at CPG companies (Lactalis, McCormick, Decathlon) to extract actionable insights from expensive trend reports.
+
+---
+
+# 🧪 Innovation Pipeline Experimentation Lab
+
+## Additional Features
 
 This experimentation framework allows you to test and optimize the innovation pipeline with advanced features:
 
