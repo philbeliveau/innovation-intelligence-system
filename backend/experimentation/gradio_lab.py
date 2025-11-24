@@ -317,16 +317,16 @@ class GradioLab:
                             logger.info(f"[FETCH_EXPERIMENTS] First experiment keys: {list(exp.keys())}")
                             print(f"[FETCH_EXPERIMENTS] Sample experiment structure: {list(exp.keys())}")
 
-                        # Extract brand name from brand_profile JSONB field
-                        brand_profile = exp.get("brand_profile", {})
+                        # Extract brand name from brandProfile JSONB field (camelCase in Experiment table)
+                        brand_profile = exp.get("brandProfile", {})
                         brand_name = brand_profile.get("brand_name", "Unknown") if isinstance(brand_profile, dict) else "Unknown"
 
-                        # Handle both timestamp and created_at (database uses created_at)
-                        timestamp = exp.get("created_at") or exp.get("timestamp") or ""
+                        # Extract timestamp from createdAt field (camelCase in Experiment table)
+                        timestamp = exp.get("createdAt") or exp.get("timestamp") or ""
                         date_str = timestamp[:10] if timestamp else "N/A"
 
-                        # Extract quality tag (check both snake_case and camelCase)
-                        quality = exp.get("quality_tag") or exp.get("qualityTag") or "N/A"
+                        # Extract quality tag from qualityTag field (camelCase in Experiment table)
+                        quality = exp.get("qualityTag") or "N/A"
                         quality_display = quality.capitalize() if quality and quality != "N/A" else "N/A"
 
                         # Extract ID (first 8 chars for display)
@@ -1244,14 +1244,14 @@ class GradioLab:
                         f"Error: Experiment {exp_id} not found"
                     )
 
-                # Extract data
-                brand_profile = experiment.get("brand_profile", {})
-                stage_outputs = experiment.get("stage_outputs", {})
+                # Extract data (camelCase fields from Experiment table)
+                brand_profile = experiment.get("brandProfile", {})
+                stage_outputs = experiment.get("stageOutputs", {})
 
                 # Update state
-                state["pdf_text"] = experiment.get("report_text", "")
+                state["pdf_text"] = experiment.get("reportText", "")
                 state["brand_profile"] = brand_profile
-                state["run_id"] = experiment.get("run_id", "")
+                state["run_id"] = experiment.get("runId", "")
                 state["stage_outputs"] = stage_outputs
 
                 # Extract brand fields
