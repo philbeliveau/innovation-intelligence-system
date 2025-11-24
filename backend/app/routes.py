@@ -652,14 +652,14 @@ async def save_experiment(request: SaveExperimentRequest):
         conn = psycopg2.connect(database_url)
         try:
             with conn.cursor() as cur:
-                # Insert into experiments table (snake_case columns per Prisma @map)
-                # Schema: id, run_id, report_text, report_name, brand_profile (JSONB),
-                #         stage_outputs (JSONB), quality_tag, experiment_notes, pipeline_version, created_at
+                # Insert into Experiment table (using actual Railway table name)
+                # Schema: id, runId, reportText, reportName, brandProfile (JSONB),
+                #         stageOutputs (JSONB), qualityTag, experimentNotes, pipelineVersion, createdAt
                 cur.execute("""
-                    INSERT INTO "experiments" (
-                        id, run_id, report_text, report_name, brand_profile,
-                        stage_outputs, quality_tag, experiment_notes,
-                        pipeline_version, created_at
+                    INSERT INTO "Experiment" (
+                        id, "runId", "reportText", "reportName", "brandProfile",
+                        "stageOutputs", "qualityTag", "experimentNotes",
+                        "pipelineVersion", "createdAt"
                     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                 """, (
@@ -748,33 +748,33 @@ async def list_experiments(
         params = []
 
         if quality_tag:
-            where_clauses.append('"quality_tag" = %s')
+            where_clauses.append('"qualityTag" = %s')
             params.append(quality_tag)
 
         if pipeline_version:
-            where_clauses.append('"pipeline_version" = %s')
+            where_clauses.append('"pipelineVersion" = %s')
             params.append(pipeline_version)
 
         if start_date:
-            where_clauses.append('"created_at" >= %s')
+            where_clauses.append('"createdAt" >= %s')
             params.append(start_date)
 
         if end_date:
-            where_clauses.append('"created_at" <= %s')
+            where_clauses.append('"createdAt" <= %s')
             params.append(end_date)
 
         if brand_name:
-            where_clauses.append('"brand_profile"::jsonb->>\'brand_name\' = %s')
+            where_clauses.append('"brandProfile"::jsonb->>\'brand_name\' = %s')
             params.append(brand_name)
 
         where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
 
         # Build ORDER BY clause
-        order_sql = '"created_at" DESC'
+        order_sql = '"createdAt" DESC'
         if order_by == "timestamp_asc":
-            order_sql = '"created_at" ASC'
+            order_sql = '"createdAt" ASC'
         elif order_by == "cost_desc":
-            order_sql = '"cost_usd" DESC NULLS LAST'
+            order_sql = '"costUsd" DESC NULLS LAST'
 
         # Calculate pagination
         page_size = min(page_size, 100)
@@ -785,7 +785,7 @@ async def list_experiments(
         try:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 # Get total count
-                count_sql = f'SELECT COUNT(*) FROM "experiments" {where_sql}'
+                count_sql = f'SELECT COUNT(*) FROM "Experiment" {where_sql}'
                 logger.info(f"[LIST_EXPERIMENTS] Count query: {count_sql} with params: {params}")
                 cur.execute(count_sql, params)
                 total = cur.fetchone()['count']
@@ -793,7 +793,7 @@ async def list_experiments(
 
                 # Get experiments
                 query_sql = f'''
-                    SELECT * FROM "experiments"
+                    SELECT * FROM "Experiment"
                     {where_sql}
                     ORDER BY {order_sql}
                     LIMIT %s OFFSET %s
