@@ -46,7 +46,7 @@ backend/
 │   ├── prisma_client.py     # Database client (PostgreSQL)
 │   └── models.py            # Database schema
 ├── experimentation/         # 🔬 GRADIO LAB + NEW 7-STAGE PIPELINE
-│   ├── gradio_lab.py        # Gradio interface (Story 11.1)
+│   ├── gradio_lab.py        # Gradio interface (Story 11.1, 11.6.1)
 │   ├── enhanced_gradio_lab.py # Reference implementation
 │   ├── stages/              # New 7-stage implementations (Stories 11.2a-c)
 │   │   ├── stage_0_enrichment.py      # Brand enrichment (11.2a)
@@ -56,7 +56,14 @@ backend/
 │   │   ├── stage_4_concepts.py        # Concept generation (11.2b)
 │   │   ├── stage_5_competitive.py     # Competitive intel (11.2c)
 │   │   └── stage_6_packaging.py       # Opportunity cards (11.2c)
-│   ├── prompts/             # Prompt templates per stage
+│   ├── prompts/             # 📝 PROMPT TEMPLATES (Epic 11.6)
+│   │   ├── stage_0_enrichment.md      # Default prompt for Stage 0
+│   │   ├── stage_1_extraction.md      # Default prompt for Stage 1
+│   │   ├── stage_2_convergence.md     # Default prompt for Stage 2
+│   │   ├── stage_3_technique_matching.md # Default prompt for Stage 3
+│   │   ├── stage_4_concept_generation.md # Default prompt for Stage 4
+│   │   ├── stage_5_competitive_search.md # Default prompt for Stage 5
+│   │   └── stage_6_packaging.md       # Default prompt for Stage 6
 │   ├── technique_libraries/ # SIT, TRIZ, Doblin JSON definitions
 │   ├── successful_examples/ # Few-shot learning examples (Story 11.3a)
 │   │   ├── stage_0/
@@ -657,6 +664,10 @@ docs/
     ├── 11.3c.few-shot-tracking-curation.md # Few-shot Part 3
     ├── 11.4a.database-schema-core-operations.md # Database Part 1
     ├── 11.4b.database-export-retention-backup.md # Database Part 2
+    ├── 11.6.1-prompt-download-upload-validation-ui.md # Custom Prompts UI (Epic 11.6)
+    ├── 11.6.2-backend-custom-prompt-integration.md # Backend prompt integration
+    ├── 11.6.3-database-prompt-traceability.md # Prompt metadata storage
+    ├── epic-11-custom-prompt-upload.md # Epic 11.6: Custom Prompt Upload
     ├── 11.2.pipeline-implementation.md # DEPRECATED (split into 11.2a-c)
     ├── 11.3.few-shot-learning.md # DEPRECATED (split into 11.3a-c)
     ├── 11.4.experiment-database.md # DEPRECATED (split into 11.4a-b)
@@ -1052,10 +1063,17 @@ scripts/run_pipeline.py                 # Python pipeline
 3. Use grep/find to search for files
 4. Ask the architect agent (`/BMad:agents:architect`)
 
-**Last Updated**: 2025-11-20
-**Maintained By**: Bob (Scrum Master Agent)
+**Last Updated**: 2025-11-24
+**Maintained By**: John (Product Manager Agent)
 
 **Changes in This Update:**
+- Added Epic 11.6: Custom Prompt Upload System (3 stories)
+- Added prompt templates directory structure (`backend/experimentation/prompts/`)
+- Added actual prompt template filenames (stage_0_enrichment.md, stage_1_extraction.md, etc.)
+- Updated story list with 11.6.1, 11.6.2, 11.6.3
+- Updated gradio_lab.py reference to include Story 11.6.1 modifications
+
+**Previous Update (2025-11-20):**
 - Added Gradio experimentation framework structure (`backend/experimentation/`)
 - Added 7-stage pipeline architecture documentation
 - Split Stories 11.2, 11.3, 11.4 into 8 manageable stories

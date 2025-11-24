@@ -90,3 +90,6 @@
 │ │ formatted markdown with headings, bullet points, and  │ │
 │ │ sections instead of raw JSON dicts.                   │ │
 │ ╰──────────────────────────────────────────────
+
+
+Now, explain me why when I save the an output run, and when I set the Quality Assessment to good, no examples actually saves.
