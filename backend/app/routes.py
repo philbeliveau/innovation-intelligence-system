@@ -809,7 +809,7 @@ async def list_experiments(
                 if len(experiments) > 0:
                     first_exp = experiments[0]
                     logger.info(f"[LIST_EXPERIMENTS] First experiment columns: {list(first_exp.keys())}")
-                    logger.info(f"[LIST_EXPERIMENTS] Sample data - ID: {first_exp.get('id')[:8]}, Quality: {first_exp.get('quality_tag')}")
+                    logger.info(f"[LIST_EXPERIMENTS] Sample data - ID: {first_exp.get('id')[:8]}, Quality: {first_exp.get('qualityTag')}")
 
                 response_data = {
                     "experiments": experiments,
