@@ -8,6 +8,69 @@ from typing import Dict, Any, List
 from datetime import datetime
 
 
+def format_stage0_to_markdown(stage0_output: Dict[str, Any]) -> str:
+    """Format Stage 0 (Brand Context) output as markdown
+
+    Args:
+        stage0_output: Stage 0 structured output with brand profile data
+
+    Returns:
+        Formatted markdown string
+    """
+    md_parts = []
+
+    # Header
+    md_parts.append("# Stage 0: Brand Context\n")
+    md_parts.append("*Brand profile and market positioning*\n")
+    md_parts.append("\n")
+
+    # Company Overview
+    company_name = stage0_output.get("company_name", "Unknown Brand")
+    industry = stage0_output.get("industry", "Not specified")
+    geography = stage0_output.get("geography", "Not specified")
+
+    md_parts.append("## Company Overview\n")
+    md_parts.append("\n")
+    md_parts.append(f"**Brand Name**: {company_name}\n")
+    md_parts.append(f"**Industry**: {industry}\n")
+    md_parts.append(f"**Geography**: {geography}\n")
+    md_parts.append("\n")
+
+    # Product Portfolio
+    portfolio = stage0_output.get("product_portfolio", "")
+    if portfolio:
+        md_parts.append("## Product Portfolio\n")
+        md_parts.append("\n")
+        md_parts.append(f"{portfolio}\n")
+        md_parts.append("\n")
+
+    # Positioning (optional)
+    positioning = stage0_output.get("positioning", "")
+    if positioning:
+        md_parts.append("## Brand Positioning\n")
+        md_parts.append("\n")
+        md_parts.append(f"{positioning}\n")
+        md_parts.append("\n")
+
+    # Target Customers (optional)
+    target_customers = stage0_output.get("target_customers", "")
+    if target_customers:
+        md_parts.append("## Target Customers\n")
+        md_parts.append("\n")
+        md_parts.append(f"{target_customers}\n")
+        md_parts.append("\n")
+
+    # Recent Innovations (optional)
+    recent_innovations = stage0_output.get("recent_innovations", "")
+    if recent_innovations:
+        md_parts.append("## Recent Innovations\n")
+        md_parts.append("\n")
+        md_parts.append(f"{recent_innovations}\n")
+        md_parts.append("\n")
+
+    return "".join(md_parts)
+
+
 def format_stage1_to_markdown(stage1_output: Dict[str, Any]) -> str:
     """Format Stage 1 (Input Processing) output as markdown
 
@@ -326,11 +389,95 @@ def format_stage5_to_markdown(stage5_output: Dict[str, Any]) -> str:
     return "".join(md_parts)
 
 
+def format_stage6_to_markdown(stage6_output: Dict[str, Any]) -> str:
+    """Format Stage 6 (Executive Summary) output as markdown
+
+    Args:
+        stage6_output: Stage 6 structured output with scorecard and summary
+
+    Returns:
+        Formatted markdown string
+    """
+    md_parts = []
+
+    # Header
+    title = stage6_output.get("title", "Innovation Intelligence Report")
+    generated_at = stage6_output.get("generated_at", "")
+
+    md_parts.append(f"# {title}\n")
+    md_parts.append(f"*Generated: {generated_at}*\n")
+    md_parts.append("\n")
+
+    # Scorecard
+    scorecard = stage6_output.get("scorecard", {})
+    if scorecard:
+        md_parts.append("## Pipeline Scorecard\n")
+        md_parts.append("\n")
+
+        brand_name = scorecard.get("brand_name", "Unknown Brand")
+        md_parts.append(f"**Brand**: {brand_name}\n")
+        md_parts.append("\n")
+
+        # Pipeline Stats
+        stats = scorecard.get("pipeline_stats", {})
+        if stats:
+            md_parts.append("### Pipeline Metrics\n")
+            md_parts.append("\n")
+            md_parts.append(f"- **Mechanisms Extracted**: {stats.get('mechanisms_extracted', 0)}\n")
+            md_parts.append(f"- **Signals Identified**: {stats.get('signals_identified', 0)}\n")
+            md_parts.append(f"- **Insights Generated**: {stats.get('insights_generated', 0)}\n")
+            md_parts.append(f"- **Preliminary Concepts**: {stats.get('preliminary_concepts', 0)}\n")
+            md_parts.append(f"- **Final Opportunities**: {stats.get('final_opportunities', 0)}\n")
+            md_parts.append("\n")
+
+        # Top Opportunities
+        top_opps = scorecard.get("top_opportunities", [])
+        if top_opps:
+            md_parts.append("### Top Opportunities\n")
+            md_parts.append("\n")
+
+            for opp in top_opps:
+                rank = opp.get("rank", 0)
+                title = opp.get("title", "Untitled")
+                opp_type = opp.get("type", "Unknown")
+                summary = opp.get("summary", "")
+
+                md_parts.append(f"#### {rank}. {title}\n")
+                md_parts.append(f"**Type**: {opp_type}\n")
+                md_parts.append(f"\n{summary}\n")
+                md_parts.append("\n")
+
+    # Methodology
+    methodology = stage6_output.get("methodology", {})
+    if methodology:
+        md_parts.append("## Methodology\n")
+        md_parts.append("\n")
+        md_parts.append("This report was generated using a 7-stage innovation intelligence pipeline:\n")
+        md_parts.append("\n")
+
+        for stage_key, stage_desc in methodology.items():
+            stage_num = stage_key.replace("stage_", "")
+            md_parts.append(f"- **Stage {stage_num}**: {stage_desc}\n")
+        md_parts.append("\n")
+
+    # Next Steps
+    next_steps = stage6_output.get("next_steps", [])
+    if next_steps:
+        md_parts.append("## Recommended Next Steps\n")
+        md_parts.append("\n")
+
+        for idx, step in enumerate(next_steps, start=1):
+            md_parts.append(f"{idx}. {step}\n")
+        md_parts.append("\n")
+
+    return "".join(md_parts)
+
+
 def format_stage_output(stage_num: int, stage_output: Dict[str, Any]) -> str:
     """Route stage output to appropriate formatter
 
     Args:
-        stage_num: Stage number (1-5)
+        stage_num: Stage number (0-6)
         stage_output: Structured stage output dictionary or string
 
     Returns:
@@ -343,11 +490,13 @@ def format_stage_output(stage_num: int, stage_output: Dict[str, Any]) -> str:
         return f"# Stage {stage_num}\n\n{stage_output}"
 
     formatters = {
+        0: format_stage0_to_markdown,
         1: format_stage1_to_markdown,
         2: format_stage2_to_markdown,
         3: format_stage3_to_markdown,
         4: format_stage4_to_markdown,
         5: format_stage5_to_markdown,
+        6: format_stage6_to_markdown,
     }
 
     formatter = formatters.get(stage_num)
