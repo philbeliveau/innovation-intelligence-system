@@ -1072,24 +1072,33 @@ async def download_experiment_pdf(experiment_id: str):
         logger.info(f"[PDF_DOWNLOAD] Brand: {brand_name}, Stages: {list(stage_outputs.keys())}")
 
         # Regenerate markdown for all stages using backend formatters
-        # ALWAYS regenerate from output field to ensure proper formatting
-        # (stored markdown may contain old JSON code blocks from before formatters were fixed)
+        # Strategy: Try to regenerate from output field (proper formatting)
+        # Fallback: Use stored markdown if no output exists (old experiments)
         markdowns = {}
         for stage_num in range(7):
             stage_key = f"stage_{stage_num}"
             if stage_key in stage_outputs:
                 stage_data = stage_outputs[stage_key]
 
-                # Always regenerate markdown from output JSON (ignore stored markdown)
-                output = stage_data.get("output", {})
+                # Try to regenerate markdown from output JSON
+                output = stage_data.get("output")
                 if output:
-                    markdown = format_stage_output(stage_num, output)
-                    logger.info(f"[PDF_DOWNLOAD] Stage {stage_num}: Regenerated markdown from output ({len(markdown)} chars)")
+                    try:
+                        markdown = format_stage_output(stage_num, output)
+                        logger.info(f"[PDF_DOWNLOAD] Stage {stage_num}: Regenerated markdown from output ({len(markdown)} chars)")
+                    except Exception as e:
+                        logger.error(f"[PDF_DOWNLOAD] Stage {stage_num}: Failed to regenerate markdown: {e}")
+                        markdown = stage_data.get("markdown", "")
+                        logger.info(f"[PDF_DOWNLOAD] Stage {stage_num}: Fell back to stored markdown")
                 else:
-                    markdown = ""
-                    logger.warning(f"[PDF_DOWNLOAD] Stage {stage_num}: No output data available")
+                    # No output field - use stored markdown (old experiments)
+                    markdown = stage_data.get("markdown", "")
+                    if markdown:
+                        logger.info(f"[PDF_DOWNLOAD] Stage {stage_num}: Using stored markdown (no output field, {len(markdown)} chars)")
+                    else:
+                        logger.warning(f"[PDF_DOWNLOAD] Stage {stage_num}: No output or markdown available")
 
-                if markdown:
+                if markdown and markdown.strip():
                     markdowns[stage_num] = markdown
 
         logger.info(f"[PDF_DOWNLOAD] Collected markdown for {len(markdowns)} stages")
