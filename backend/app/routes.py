@@ -973,9 +973,9 @@ async def delete_experiment(experiment_id: str):
         conn = psycopg2.connect(database_url)
         try:
             with conn.cursor() as cur:
-                # Get full ID first
+                # Get full ID first (match last 8 chars - the unique hash)
                 if len(experiment_id) == 8:
-                    cur.execute('SELECT "id" FROM "Experiment" WHERE "id" LIKE %s LIMIT 1', (f'{experiment_id}%',))
+                    cur.execute('SELECT "id" FROM "Experiment" WHERE "id" LIKE %s LIMIT 1', (f'%{experiment_id}',))
                 else:
                     cur.execute('SELECT "id" FROM "Experiment" WHERE "id" = %s', (experiment_id,))
 
