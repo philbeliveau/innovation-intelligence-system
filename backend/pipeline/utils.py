@@ -38,7 +38,7 @@ def create_llm(temperature: float = 0.5, max_tokens: int = 4000) -> ChatOpenAI:
     # Validate environment variables
     api_key = os.getenv("OPENROUTER_API_KEY")
     base_url = os.getenv("OPENROUTER_BASE_URL")
-    model = os.getenv("LLM_MODEL", "deepseek/deepseek-chat-v3.1")
+    model = os.getenv("LLM_MODEL", "openai/gpt-4o-mini")
 
     if not api_key:
         raise ValueError(
