@@ -859,9 +859,9 @@ async def get_experiment_by_id(experiment_id: str):
         conn = psycopg2.connect(database_url)
         try:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                # Support both full UUID and short ID (first 8 chars)
+                # Support both full UUID and short ID (last 8 chars - the unique hash)
                 if len(experiment_id) == 8:
-                    cur.execute('SELECT * FROM "Experiment" WHERE "id" LIKE %s LIMIT 1', (f'{experiment_id}%',))
+                    cur.execute('SELECT * FROM "Experiment" WHERE "id" LIKE %s LIMIT 1', (f'%{experiment_id}',))
                 else:
                     cur.execute('SELECT * FROM "Experiment" WHERE "id" = %s', (experiment_id,))
 
@@ -908,9 +908,9 @@ async def rename_experiment(experiment_id: str, request: RenameExperimentRequest
         conn = psycopg2.connect(database_url)
         try:
             with conn.cursor() as cur:
-                # Get current notes (use camelCase: experimentNotes)
+                # Get current notes (use camelCase: experimentNotes, match last 8 chars)
                 if len(experiment_id) == 8:
-                    cur.execute('SELECT "experimentNotes", "id" FROM "Experiment" WHERE "id" LIKE %s LIMIT 1', (f'{experiment_id}%',))
+                    cur.execute('SELECT "experimentNotes", "id" FROM "Experiment" WHERE "id" LIKE %s LIMIT 1', (f'%{experiment_id}',))
                 else:
                     cur.execute('SELECT "experimentNotes", "id" FROM "Experiment" WHERE "id" = %s', (experiment_id,))
 
