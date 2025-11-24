@@ -3,15 +3,16 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies for WeasyPrint
+# Install system dependencies for WeasyPrint (official docs)
+# https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#debian-11-ubuntu-20-04
 RUN apt-get update && apt-get install -y \
     libpango-1.0-0 \
+    libharfbuzz0b \
     libpangoft2-1.0-0 \
-    libgdk-pixbuf2.0-0 \
+    libharfbuzz-subset0 \
     libffi-dev \
-    libcairo2 \
-    libgobject-2.0-0 \
-    shared-mime-info \
+    libjpeg-dev \
+    libopenjp2-7-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
