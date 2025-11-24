@@ -26,10 +26,19 @@ import tempfile
 # Import few-shot storage (Story 11.3a)
 # Note: This import will work once few_shot_manager.py is created in Story 11.3a
 try:
-    from backend.experimentation.few_shot_manager import FileSystemExampleStorage
+    # Try HF Spaces flat structure first (all files in same directory)
+    from few_shot_manager import FileSystemExampleStorage
+    print("[IMPORT] ✓ Successfully imported FileSystemExampleStorage (HF Spaces flat structure)")
 except ImportError:
-    # Graceful degradation if few_shot_manager not yet implemented
-    FileSystemExampleStorage = None
+    try:
+        # Fallback to nested structure (local development)
+        from backend.experimentation.few_shot_manager import FileSystemExampleStorage
+        print("[IMPORT] ✓ Successfully imported FileSystemExampleStorage (nested structure)")
+    except ImportError:
+        # Graceful degradation if few_shot_manager not yet implemented
+        FileSystemExampleStorage = None
+        print("[IMPORT] ✗ WARNING: few_shot_manager not available - few-shot export will be skipped")
+        print("[IMPORT] ✗ 'Good' quality experiments will save to database but NOT export examples")
 
 # Import curation interface (Story 11.3c)
 try:
@@ -254,45 +263,102 @@ class GradioLab:
         Returns:
             List of experiment rows [id, brand, date, quality] for Dataframe display
         """
-        try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                params = {"limit": limit}
-                if quality_filter and quality_filter.lower() != "all":
-                    params["quality_tag"] = quality_filter.lower()
-                if brand_filter and brand_filter != "All":
-                    params["brand_name"] = brand_filter
+        import logging
+        logger = logging.getLogger(__name__)
 
-                response = await client.get(
-                    f"{self.backend_url}/experiments/list",
-                    params=params
-                )
+        try:
+            # Build request parameters
+            params = {"limit": limit}
+            if quality_filter and quality_filter.lower() != "all":
+                params["quality_tag"] = quality_filter.lower()
+            if brand_filter and brand_filter != "All":
+                params["brand_name"] = brand_filter
+
+            request_url = f"{self.backend_url}/experiments/list"
+            logger.info(f"[FETCH_EXPERIMENTS] Request: {request_url} with params: {params}")
+            print(f"[FETCH_EXPERIMENTS] Fetching experiments from {request_url}")
+
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(request_url, params=params)
+
+                logger.info(f"[FETCH_EXPERIMENTS] Response status: {response.status_code}")
+                print(f"[FETCH_EXPERIMENTS] Response status: {response.status_code}")
 
                 if response.status_code != 200:
+                    error_msg = f"Backend returned {response.status_code}: {response.text[:200]}"
+                    logger.error(f"[FETCH_EXPERIMENTS] {error_msg}")
+                    print(f"[FETCH_EXPERIMENTS] ERROR: {error_msg}")
                     return []
 
-                experiments = response.json()
+                # Parse response - CRITICAL FIX: Extract "experiments" array from response
+                data = response.json()
+                logger.info(f"[FETCH_EXPERIMENTS] Response keys: {list(data.keys())}")
+                print(f"[FETCH_EXPERIMENTS] Response contains: {list(data.keys())}")
+
+                # Extract experiments array from response object
+                experiments = data.get("experiments", [])
+                pagination = data.get("pagination", {})
+
+                total_count = pagination.get("total", len(experiments))
+                logger.info(f"[FETCH_EXPERIMENTS] Found {len(experiments)} experiments (total: {total_count})")
+                print(f"[FETCH_EXPERIMENTS] Found {len(experiments)} experiments (total DB count: {total_count})")
+
+                if len(experiments) == 0:
+                    logger.warning("[FETCH_EXPERIMENTS] No experiments found in database")
+                    print("[FETCH_EXPERIMENTS] WARNING: Database returned 0 experiments")
+                    return []
 
                 # Format for Gradio Dataframe
                 rows = []
-                for exp in experiments:
-                    brand_profile = exp.get("brand_profile", {})
-                    brand_name = brand_profile.get("brand_name", "Unknown") if isinstance(brand_profile, dict) else "Unknown"
-                    timestamp = exp.get("timestamp", exp.get("created_at", ""))
-                    date_str = timestamp[:10] if timestamp else "N/A"  # Extract date only
-                    quality = exp.get("quality_tag", "N/A")
-                    quality_display = quality.capitalize() if quality else "N/A"
+                for idx, exp in enumerate(experiments):
+                    try:
+                        # Log first experiment structure for debugging
+                        if idx == 0:
+                            logger.info(f"[FETCH_EXPERIMENTS] First experiment keys: {list(exp.keys())}")
+                            print(f"[FETCH_EXPERIMENTS] Sample experiment structure: {list(exp.keys())}")
 
-                    rows.append([
-                        exp.get("id", "")[:8],  # Short ID (first 8 chars)
-                        brand_name,
-                        date_str,
-                        quality_display
-                    ])
+                        # Extract brand name from brand_profile JSONB field
+                        brand_profile = exp.get("brand_profile", {})
+                        brand_name = brand_profile.get("brand_name", "Unknown") if isinstance(brand_profile, dict) else "Unknown"
 
+                        # Handle both timestamp and created_at (database uses created_at)
+                        timestamp = exp.get("created_at") or exp.get("timestamp") or ""
+                        date_str = timestamp[:10] if timestamp else "N/A"
+
+                        # Extract quality tag (check both snake_case and camelCase)
+                        quality = exp.get("quality_tag") or exp.get("qualityTag") or "N/A"
+                        quality_display = quality.capitalize() if quality and quality != "N/A" else "N/A"
+
+                        # Extract ID (first 8 chars for display)
+                        exp_id = exp.get("id", "")[:8]
+
+                        rows.append([exp_id, brand_name, date_str, quality_display])
+
+                    except Exception as row_error:
+                        logger.error(f"[FETCH_EXPERIMENTS] Error parsing experiment {idx}: {row_error}")
+                        print(f"[FETCH_EXPERIMENTS] ERROR parsing experiment {idx}: {row_error}")
+                        continue
+
+                logger.info(f"[FETCH_EXPERIMENTS] Successfully formatted {len(rows)} rows for display")
+                print(f"[FETCH_EXPERIMENTS] ✓ Returning {len(rows)} experiments to UI")
                 return rows
 
+        except httpx.HTTPError as http_err:
+            error_msg = f"HTTP error fetching experiments: {http_err}"
+            logger.error(f"[FETCH_EXPERIMENTS] {error_msg}")
+            print(f"[FETCH_EXPERIMENTS] HTTP ERROR: {error_msg}")
+            return []
+        except json.JSONDecodeError as json_err:
+            error_msg = f"Invalid JSON response: {json_err}"
+            logger.error(f"[FETCH_EXPERIMENTS] {error_msg}")
+            print(f"[FETCH_EXPERIMENTS] JSON ERROR: {error_msg}")
+            return []
         except Exception as e:
-            print(f"Failed to fetch experiments: {e}")
+            error_msg = f"Unexpected error: {type(e).__name__}: {str(e)}"
+            logger.error(f"[FETCH_EXPERIMENTS] {error_msg}", exc_info=True)
+            print(f"[FETCH_EXPERIMENTS] UNEXPECTED ERROR: {error_msg}")
+            import traceback
+            print(traceback.format_exc())
             return []
 
     async def load_experiment(self, experiment_id: str) -> Optional[Dict[str, Any]]:
@@ -537,27 +603,50 @@ class GradioLab:
         Returns:
             Status message
         """
+        import logging
+        logger = logging.getLogger(__name__)
+
         try:
+            logger.info(f"[SAVE_EXPERIMENT] Starting save for run {run_id} with quality tag '{quality_tag}'")
+            print(f"[SAVE_EXPERIMENT] Saving experiment {run_id} (quality: {quality_tag})...")
+
             # Call database save endpoint
             async with httpx.AsyncClient(timeout=30.0) as client:
+                save_payload = {
+                    "run_id": run_id,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "report_text": pdf_text,
+                    "brand_profile": brand_profile,
+                    "stage_outputs": stage_outputs,
+                    "quality_tag": quality_tag.lower(),
+                    "notes": notes
+                }
+
+                logger.info(f"[SAVE_EXPERIMENT] Sending to backend: {self.backend_url}/experiments/save")
+                print(f"[SAVE_EXPERIMENT] Sending to database...")
+
                 response = await client.post(
                     f"{self.backend_url}/experiments/save",
-                    json={
-                        "run_id": run_id,
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                        "report_text": pdf_text,
-                        "brand_profile": brand_profile,
-                        "stage_outputs": stage_outputs,
-                        "quality_tag": quality_tag.lower(),
-                        "notes": notes
-                    }
+                    json=save_payload
                 )
 
+                logger.info(f"[SAVE_EXPERIMENT] Backend response status: {response.status_code}")
+
                 if response.status_code != 200:
-                    return f"Error: Save failed: {response.text}"
+                    error_msg = f"Error: Save failed: {response.text}"
+                    logger.error(f"[SAVE_EXPERIMENT] {error_msg}")
+                    print(f"[SAVE_EXPERIMENT] ✗ {error_msg}")
+                    return error_msg
+
+                logger.info(f"[SAVE_EXPERIMENT] ✓ Database save successful")
+                print(f"[SAVE_EXPERIMENT] ✓ Saved to database")
 
                 # Auto-export "Good" examples (Story 11.3a)
+                logger.info(f"[SAVE_EXPERIMENT] Checking quality tag for few-shot export: '{quality_tag}' == 'Good'?")
                 if quality_tag == "Good":
+                    logger.info("[SAVE_EXPERIMENT] Quality is 'Good' - triggering few-shot export")
+                    print("[SAVE_EXPERIMENT] Quality marked as 'Good' - exporting examples...")
+
                     saved_count, failed_count = await self._export_few_shot_examples(
                         run_id=run_id,
                         brand_context=brand_profile,
@@ -570,13 +659,24 @@ class GradioLab:
                         return f"Success: Experiment saved! Exported {saved_count} examples ({failed_count} failed)"
                     else:
                         return f"Success: Experiment saved and {saved_count} examples exported to few-shot library!"
+                else:
+                    logger.info(f"[SAVE_EXPERIMENT] Quality is '{quality_tag}' (not 'Good') - skipping few-shot export")
+                    print(f"[SAVE_EXPERIMENT] Quality '{quality_tag}' - no few-shot export needed")
 
                 return f"Success: Experiment saved successfully!"
 
+        except httpx.HTTPError as http_err:
+            error_msg = f"Error: HTTP error during save: {str(http_err)}"
+            logger.error(f"[SAVE_EXPERIMENT] {error_msg}", exc_info=True)
+            print(f"[SAVE_EXPERIMENT] ✗ {error_msg}")
+            return error_msg
         except Exception as e:
             # Graceful error handling - don't break pipeline
             error_msg = f"Error: Save operation encountered issues: {str(e)}"
-            print(f"SAVE ERROR: {error_msg}")
+            logger.error(f"[SAVE_EXPERIMENT] {error_msg}", exc_info=True)
+            print(f"[SAVE_EXPERIMENT] ✗ {error_msg}")
+            import traceback
+            print(traceback.format_exc())
             return error_msg
 
     async def _export_few_shot_examples(
@@ -596,9 +696,18 @@ class GradioLab:
             stage_inputs: All stage inputs
             prompts_used: Prompts used for each stage
         """
+        import logging
+        logger = logging.getLogger(__name__)
+
         # Graceful degradation if few_shot_manager not available yet
         if FileSystemExampleStorage is None:
+            error_msg = f"[FEW_SHOT] FileSystemExampleStorage not available - skipping export for run {run_id}"
+            print(error_msg)
+            logger.warning(error_msg)
             return 0, 7  # 0 saved, 7 failed (all stages skipped)
+
+        logger.info(f"[FEW_SHOT] Starting few-shot export for run {run_id}")
+        print(f"[FEW_SHOT] Exporting 'Good' quality examples for run {run_id}...")
 
         storage = FileSystemExampleStorage()
 
@@ -609,12 +718,16 @@ class GradioLab:
             stage_key = f"stage_{stage_num}"
 
             if stage_key not in stage_outputs:
+                logger.debug(f"[FEW_SHOT] Stage {stage_num} not found in outputs, skipping")
                 continue
 
             # Get stage-specific data
             output_data = stage_outputs[stage_key]
             input_data = stage_inputs.get(stage_key, {})
             prompt = prompts_used.get(stage_key, "")
+
+            logger.info(f"[FEW_SHOT] Saving example for stage {stage_num}...")
+            print(f"[FEW_SHOT] Saving stage {stage_num} example...")
 
             # Save using FileSystemExampleStorage
             success, msg = storage.save_example(
@@ -629,9 +742,17 @@ class GradioLab:
 
             if success:
                 saved_count += 1
+                logger.info(f"[FEW_SHOT] ✓ Stage {stage_num} saved successfully")
+                print(f"[FEW_SHOT] ✓ Stage {stage_num} example saved")
             else:
                 failed_count += 1
-                print(f"Failed to save stage {stage_num}: {msg}")
+                error_msg = f"[FEW_SHOT] ✗ Failed to save stage {stage_num}: {msg}"
+                logger.error(error_msg)
+                print(error_msg)
+
+        summary_msg = f"[FEW_SHOT] Export complete: {saved_count} succeeded, {failed_count} failed"
+        logger.info(summary_msg)
+        print(summary_msg)
 
         return saved_count, failed_count
 

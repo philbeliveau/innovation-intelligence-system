@@ -736,8 +736,11 @@ async def list_experiments(
         import psycopg2.extras
         import json
 
+        logger.info(f"[LIST_EXPERIMENTS] Request params: quality={quality_tag}, brand={brand_name}, page={page}, size={page_size}")
+
         database_url = os.getenv("DATABASE_URL")
         if not database_url:
+            logger.error("[LIST_EXPERIMENTS] DATABASE_URL not configured")
             raise HTTPException(status_code=500, detail="DATABASE_URL not configured")
 
         # Build WHERE clause
@@ -753,11 +756,11 @@ async def list_experiments(
             params.append(pipeline_version)
 
         if start_date:
-            where_clauses.append('"createdAt" >= %s')
+            where_clauses.append('"created_at" >= %s')
             params.append(start_date)
 
         if end_date:
-            where_clauses.append('"createdAt" <= %s')
+            where_clauses.append('"created_at" <= %s')
             params.append(end_date)
 
         if brand_name:
@@ -767,9 +770,9 @@ async def list_experiments(
         where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
 
         # Build ORDER BY clause
-        order_sql = '"createdAt" DESC'
+        order_sql = '"created_at" DESC'
         if order_by == "timestamp_asc":
-            order_sql = '"createdAt" ASC'
+            order_sql = '"created_at" ASC'
         elif order_by == "cost_desc":
             order_sql = '"cost_usd" DESC NULLS LAST'
 
@@ -777,13 +780,16 @@ async def list_experiments(
         page_size = min(page_size, 100)
         offset = (page - 1) * page_size
 
+        logger.info(f"[LIST_EXPERIMENTS] Connecting to database...")
         conn = psycopg2.connect(database_url)
         try:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 # Get total count
                 count_sql = f'SELECT COUNT(*) FROM "Experiment" {where_sql}'
+                logger.info(f"[LIST_EXPERIMENTS] Count query: {count_sql} with params: {params}")
                 cur.execute(count_sql, params)
                 total = cur.fetchone()['count']
+                logger.info(f"[LIST_EXPERIMENTS] Total experiments in DB: {total}")
 
                 # Get experiments
                 query_sql = f'''
@@ -792,10 +798,20 @@ async def list_experiments(
                     ORDER BY {order_sql}
                     LIMIT %s OFFSET %s
                 '''
+                logger.info(f"[LIST_EXPERIMENTS] Query: {query_sql}")
+                logger.info(f"[LIST_EXPERIMENTS] Query params: {params + [page_size, offset]}")
                 cur.execute(query_sql, params + [page_size, offset])
                 experiments = cur.fetchall()
 
-                return {
+                logger.info(f"[LIST_EXPERIMENTS] Retrieved {len(experiments)} experiments from database")
+
+                # Log first experiment structure for debugging
+                if len(experiments) > 0:
+                    first_exp = experiments[0]
+                    logger.info(f"[LIST_EXPERIMENTS] First experiment columns: {list(first_exp.keys())}")
+                    logger.info(f"[LIST_EXPERIMENTS] Sample data - ID: {first_exp.get('id')[:8]}, Quality: {first_exp.get('quality_tag')}")
+
+                response_data = {
                     "experiments": experiments,
                     "pagination": {
                         "page": page,
@@ -805,14 +821,18 @@ async def list_experiments(
                     }
                 }
 
+                logger.info(f"[LIST_EXPERIMENTS] Returning response with {len(experiments)} experiments")
+                return response_data
+
         finally:
             conn.close()
+            logger.info("[LIST_EXPERIMENTS] Database connection closed")
 
     except psycopg2.Error as db_error:
-        logger.error(f"PostgreSQL error listing experiments: {db_error}")
+        logger.error(f"[LIST_EXPERIMENTS] PostgreSQL error: {db_error}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Database error: {str(db_error)}")
     except Exception as e:
-        logger.error(f"Failed to list experiments: {e}")
+        logger.error(f"[LIST_EXPERIMENTS] Unexpected error: {type(e).__name__}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to list experiments: {str(e)}")
 
 
