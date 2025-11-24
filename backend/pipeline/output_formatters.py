@@ -327,11 +327,17 @@ def format_stage_output(stage_num: int, stage_output: Dict[str, Any]) -> str:
 
     Args:
         stage_num: Stage number (1-5)
-        stage_output: Structured stage output dictionary
+        stage_output: Structured stage output dictionary or string
 
     Returns:
         Formatted markdown string
     """
+    import json
+
+    # Handle string outputs (fallback for stages returning text instead of dicts)
+    if isinstance(stage_output, str):
+        return f"# Stage {stage_num}\n\n{stage_output}"
+
     formatters = {
         1: format_stage1_to_markdown,
         2: format_stage2_to_markdown,
@@ -345,5 +351,4 @@ def format_stage_output(stage_num: int, stage_output: Dict[str, Any]) -> str:
         return formatter(stage_output)
     else:
         # Fallback to JSON for unknown stages
-        import json
         return f"# Stage {stage_num}\n\n```json\n{json.dumps(stage_output, indent=2)}\n```"
