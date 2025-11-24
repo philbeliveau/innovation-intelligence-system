@@ -908,11 +908,11 @@ async def rename_experiment(experiment_id: str, request: RenameExperimentRequest
         conn = psycopg2.connect(database_url)
         try:
             with conn.cursor() as cur:
-                # Get current notes
+                # Get current notes (use camelCase: experimentNotes)
                 if len(experiment_id) == 8:
-                    cur.execute('SELECT "experiment_notes", "id" FROM "Experiment" WHERE "id" LIKE %s LIMIT 1', (f'{experiment_id}%',))
+                    cur.execute('SELECT "experimentNotes", "id" FROM "Experiment" WHERE "id" LIKE %s LIMIT 1', (f'{experiment_id}%',))
                 else:
-                    cur.execute('SELECT "experiment_notes", "id" FROM "Experiment" WHERE "id" = %s', (experiment_id,))
+                    cur.execute('SELECT "experimentNotes", "id" FROM "Experiment" WHERE "id" = %s', (experiment_id,))
 
                 row = cur.fetchone()
                 if not row:
@@ -926,8 +926,8 @@ async def rename_experiment(experiment_id: str, request: RenameExperimentRequest
                 # Add new name prefix
                 updated_notes = f"[NAME: {request.new_name}] {notes_without_prefix}".strip()
 
-                # Update experiment
-                cur.execute('UPDATE "Experiment" SET "experiment_notes" = %s WHERE "id" = %s', (updated_notes, full_id))
+                # Update experiment (use camelCase: experimentNotes)
+                cur.execute('UPDATE "Experiment" SET "experimentNotes" = %s WHERE "id" = %s', (updated_notes, full_id))
                 conn.commit()
 
                 logger.info(f"Renamed experiment {full_id} to '{request.new_name}'")
