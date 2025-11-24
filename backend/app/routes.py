@@ -1072,25 +1072,22 @@ async def download_experiment_pdf(experiment_id: str):
         logger.info(f"[PDF_DOWNLOAD] Brand: {brand_name}, Stages: {list(stage_outputs.keys())}")
 
         # Regenerate markdown for all stages using backend formatters
+        # ALWAYS regenerate from output field to ensure proper formatting
+        # (stored markdown may contain old JSON code blocks from before formatters were fixed)
         markdowns = {}
         for stage_num in range(7):
             stage_key = f"stage_{stage_num}"
             if stage_key in stage_outputs:
                 stage_data = stage_outputs[stage_key]
 
-                # Check if markdown already exists and is valid
-                if "markdown" in stage_data and isinstance(stage_data["markdown"], str) and stage_data["markdown"].strip():
-                    markdown = stage_data["markdown"]
-                    logger.info(f"[PDF_DOWNLOAD] Stage {stage_num}: Using existing markdown ({len(markdown)} chars)")
+                # Always regenerate markdown from output JSON (ignore stored markdown)
+                output = stage_data.get("output", {})
+                if output:
+                    markdown = format_stage_output(stage_num, output)
+                    logger.info(f"[PDF_DOWNLOAD] Stage {stage_num}: Regenerated markdown from output ({len(markdown)} chars)")
                 else:
-                    # Regenerate markdown from output JSON
-                    output = stage_data.get("output", {})
-                    if output:
-                        markdown = format_stage_output(stage_num, output)
-                        logger.info(f"[PDF_DOWNLOAD] Stage {stage_num}: Regenerated markdown from output ({len(markdown)} chars)")
-                    else:
-                        markdown = ""
-                        logger.warning(f"[PDF_DOWNLOAD] Stage {stage_num}: No output data available")
+                    markdown = ""
+                    logger.warning(f"[PDF_DOWNLOAD] Stage {stage_num}: No output data available")
 
                 if markdown:
                     markdowns[stage_num] = markdown
