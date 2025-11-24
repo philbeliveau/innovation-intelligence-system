@@ -1009,3 +1009,116 @@ async def delete_experiment(experiment_id: str):
     except Exception as e:
         logger.error(f"Failed to delete experiment {experiment_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to delete experiment: {str(e)}")
+
+
+@router.get("/experiments/{experiment_id}/download-pdf", operation_id="download_experiment_pdf")
+async def download_experiment_pdf(experiment_id: str):
+    """Generate PDF for saved experiment
+
+    Loads experiment from database, regenerates markdown using formatters,
+    generates PDF, returns as file download.
+
+    This endpoint bypasses HF Space state management issues by:
+    1. Loading experiment directly from database
+    2. Regenerating markdown using backend formatters (guaranteed to work)
+    3. Generating PDF server-side
+    4. Returning PDF file for download
+
+    Args:
+        experiment_id: Experiment UUID or short ID (last 8 chars)
+
+    Returns:
+        PDF file download with formatted markdown (not JSON)
+    """
+    try:
+        import psycopg2
+        import psycopg2.extras
+        from pipeline.output_formatters import format_stage_output
+        from app.pdf_export import generate_all_stages_pdf
+        from fastapi.responses import FileResponse
+        import tempfile
+
+        logger.info(f"[PDF_DOWNLOAD] Request for experiment {experiment_id}")
+
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url:
+            logger.error("[PDF_DOWNLOAD] DATABASE_URL not configured")
+            raise HTTPException(status_code=500, detail="DATABASE_URL not configured")
+
+        # Load experiment from database
+        conn = psycopg2.connect(database_url)
+        try:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                # Support both full UUID and short ID (last 8 chars)
+                if len(experiment_id) == 8:
+                    cur.execute('SELECT * FROM "Experiment" WHERE "id" LIKE %s LIMIT 1', (f'%{experiment_id}',))
+                else:
+                    cur.execute('SELECT * FROM "Experiment" WHERE "id" = %s', (experiment_id,))
+
+                experiment = cur.fetchone()
+                if not experiment:
+                    logger.error(f"[PDF_DOWNLOAD] Experiment {experiment_id} not found")
+                    raise HTTPException(status_code=404, detail=f"Experiment {experiment_id} not found")
+
+                logger.info(f"[PDF_DOWNLOAD] Loaded experiment from database")
+        finally:
+            conn.close()
+
+        # Extract data
+        brand_profile = experiment.get("brandProfile", {})
+        brand_name = brand_profile.get("brand_name", "Unknown Brand")
+        stage_outputs = experiment.get("stageOutputs", {})
+
+        logger.info(f"[PDF_DOWNLOAD] Brand: {brand_name}, Stages: {list(stage_outputs.keys())}")
+
+        # Regenerate markdown for all stages using backend formatters
+        markdowns = {}
+        for stage_num in range(7):
+            stage_key = f"stage_{stage_num}"
+            if stage_key in stage_outputs:
+                stage_data = stage_outputs[stage_key]
+
+                # Check if markdown already exists and is valid
+                if "markdown" in stage_data and isinstance(stage_data["markdown"], str) and stage_data["markdown"].strip():
+                    markdown = stage_data["markdown"]
+                    logger.info(f"[PDF_DOWNLOAD] Stage {stage_num}: Using existing markdown ({len(markdown)} chars)")
+                else:
+                    # Regenerate markdown from output JSON
+                    output = stage_data.get("output", {})
+                    if output:
+                        markdown = format_stage_output(stage_num, output)
+                        logger.info(f"[PDF_DOWNLOAD] Stage {stage_num}: Regenerated markdown from output ({len(markdown)} chars)")
+                    else:
+                        markdown = ""
+                        logger.warning(f"[PDF_DOWNLOAD] Stage {stage_num}: No output data available")
+
+                if markdown:
+                    markdowns[stage_num] = markdown
+
+        logger.info(f"[PDF_DOWNLOAD] Collected markdown for {len(markdowns)} stages")
+
+        if not markdowns:
+            logger.error("[PDF_DOWNLOAD] No markdown content available for PDF generation")
+            raise HTTPException(status_code=500, detail="No stage outputs available for PDF generation")
+
+        # Generate PDF using backend pdf_export module
+        pdf_path = generate_all_stages_pdf(
+            stage_markdowns=markdowns,
+            brand_name=brand_name
+        )
+
+        logger.info(f"[PDF_DOWNLOAD] PDF generated at {pdf_path}")
+
+        # Return PDF as file download
+        filename = f"{brand_name.replace(' ', '_')}_full_report.pdf"
+        return FileResponse(
+            pdf_path,
+            media_type="application/pdf",
+            filename=filename
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[PDF_DOWNLOAD] Failed to generate PDF for experiment {experiment_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
