@@ -255,15 +255,19 @@ def format_stage5_to_markdown(stage5_output: Dict[str, Any]) -> str:
         md_parts.append("\n")
 
         for idx, opp in enumerate(opportunities, start=1):
-            # Use markdown field if available, otherwise build from fields
-            if 'markdown' in opp:
+            # Use markdown field if available AND it's a string
+            if 'markdown' in opp and isinstance(opp['markdown'], str):
+                # Valid markdown field exists
                 md_parts.append(opp['markdown'])
                 if idx < len(opportunities):
                     md_parts.append("\n")
                     md_parts.append("---\n")
                     md_parts.append("\n")
             else:
-                # Fallback: build from structured fields
+                # Fallback: build from structured fields (or markdown was not a string)
+                if 'markdown' in opp and not isinstance(opp['markdown'], str):
+                    import logging
+                    logging.warning(f"Stage 5 opportunity {idx} markdown field is not a string (type={type(opp['markdown'])})")
                 md_parts.append(f"### {idx}. **{opp.get('title', 'Untitled Opportunity')}**\n")
                 md_parts.append("\n")
 

@@ -78,9 +78,15 @@ def update_status_file(run_id: str, status: str, current_stage: int, stages: Dic
             if "output" in stage_data and stage_data["output"]:
                 try:
                     markdown = format_stage_output(stage_num, stage_data["output"])
-                    stage_data["markdown"] = markdown
+                    # CRITICAL: Verify markdown is actually a string
+                    if isinstance(markdown, str):
+                        stage_data["markdown"] = markdown
+                        logger.debug(f"[{run_id}] Stage {stage_num} markdown generated ({len(markdown)} chars)")
+                    else:
+                        logger.error(f"[{run_id}] Stage {stage_num} format_stage_output returned non-string (type={type(markdown)})")
+                        stage_data["markdown"] = f"```json\n{json.dumps(stage_data['output'], indent=2)}\n```"
                 except Exception as e:
-                    logger.warning(f"[{run_id}] Failed to format stage {stage_num} markdown: {e}")
+                    logger.warning(f"[{run_id}] Failed to format stage {stage_num} markdown: {e}", exc_info=True)
                     # Fallback to JSON display
                     stage_data["markdown"] = f"```json\n{json.dumps(stage_data['output'], indent=2)}\n```"
 
