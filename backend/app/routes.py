@@ -652,14 +652,14 @@ async def save_experiment(request: SaveExperimentRequest):
         conn = psycopg2.connect(database_url)
         try:
             with conn.cursor() as cur:
-                # Insert into Experiment table
-                # Schema: id, runId, reportText, reportName, brandProfile (JSONB),
-                #         stageOutputs (JSONB), qualityTag, experimentNotes, pipelineVersion, createdAt
+                # Insert into experiments table (snake_case columns per Prisma @map)
+                # Schema: id, run_id, report_text, report_name, brand_profile (JSONB),
+                #         stage_outputs (JSONB), quality_tag, experiment_notes, pipeline_version, created_at
                 cur.execute("""
-                    INSERT INTO "Experiment" (
-                        id, "runId", "reportText", "reportName", "brandProfile",
-                        "stageOutputs", "qualityTag", "experimentNotes",
-                        "pipelineVersion", "createdAt"
+                    INSERT INTO "experiments" (
+                        id, run_id, report_text, report_name, brand_profile,
+                        stage_outputs, quality_tag, experiment_notes,
+                        pipeline_version, created_at
                     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                 """, (
@@ -785,7 +785,7 @@ async def list_experiments(
         try:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 # Get total count
-                count_sql = f'SELECT COUNT(*) FROM "Experiment" {where_sql}'
+                count_sql = f'SELECT COUNT(*) FROM "experiments" {where_sql}'
                 logger.info(f"[LIST_EXPERIMENTS] Count query: {count_sql} with params: {params}")
                 cur.execute(count_sql, params)
                 total = cur.fetchone()['count']
@@ -793,7 +793,7 @@ async def list_experiments(
 
                 # Get experiments
                 query_sql = f'''
-                    SELECT * FROM "Experiment"
+                    SELECT * FROM "experiments"
                     {where_sql}
                     ORDER BY {order_sql}
                     LIMIT %s OFFSET %s
