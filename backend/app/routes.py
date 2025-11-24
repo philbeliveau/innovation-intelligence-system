@@ -753,11 +753,11 @@ async def list_experiments(
             params.append(pipeline_version)
 
         if start_date:
-            where_clauses.append('"timestamp" >= %s')
+            where_clauses.append('"createdAt" >= %s')
             params.append(start_date)
 
         if end_date:
-            where_clauses.append('"timestamp" <= %s')
+            where_clauses.append('"createdAt" <= %s')
             params.append(end_date)
 
         if brand_name:
@@ -767,9 +767,9 @@ async def list_experiments(
         where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
 
         # Build ORDER BY clause
-        order_sql = '"timestamp" DESC'
+        order_sql = '"createdAt" DESC'
         if order_by == "timestamp_asc":
-            order_sql = '"timestamp" ASC'
+            order_sql = '"createdAt" ASC'
         elif order_by == "cost_desc":
             order_sql = '"cost_usd" DESC NULLS LAST'
 
