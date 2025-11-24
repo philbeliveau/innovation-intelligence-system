@@ -318,15 +318,15 @@ async def run_pipeline_local(request: RunPipelineLocalRequest):
 
     logger.info(f"[LOCAL] Created initial status file: {status_file}")
 
-    # Start background execution with pre-extracted text
+    # Start background execution with pre-extracted text and optional custom prompts
     thread = Thread(
         target=execute_pipeline_background,
-        args=(run_id, str(pdf_path), brand_profile, request.pdf_text),
+        args=(run_id, str(pdf_path), brand_profile, request.pdf_text, request.custom_prompts),
         daemon=True
     )
     thread.start()
 
-    logger.info(f"[LOCAL] Started pipeline execution for run {run_id}")
+    logger.info(f"[LOCAL] Started pipeline execution for run {run_id} (custom_prompts: {'Yes' if request.custom_prompts else 'No'})")
 
     return RunPipelineResponse(run_id=run_id, status="running")
 

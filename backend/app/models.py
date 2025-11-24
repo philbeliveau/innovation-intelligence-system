@@ -15,6 +15,7 @@ class RunPipelineLocalRequest(BaseModel):
     pdf_text: str = Field(..., description="Raw PDF text content")
     brand_profile: Dict[str, Any] = Field(..., description="Brand profile configuration object")
     run_id: Optional[str] = Field(None, description="Pre-generated run ID from frontend")
+    custom_prompts: Optional[Dict[str, str]] = Field(None, description="Optional custom prompt templates (stage_0 through stage_6)")
 
 
 class RunPipelineResponse(BaseModel):

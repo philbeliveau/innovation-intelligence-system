@@ -435,7 +435,8 @@ def execute_pipeline_background(
     run_id: str,
     pdf_path: str,
     brand_profile: Dict[str, Any],
-    pre_extracted_text: Optional[str] = None
+    pre_extracted_text: Optional[str] = None,
+    custom_prompts: Optional[Dict[str, str]] = None
 ) -> None:
     """Execute the 5-stage pipeline in background.
 
@@ -446,6 +447,7 @@ def execute_pipeline_background(
         pdf_path: Path to PDF file (only used if pre_extracted_text is None)
         brand_profile: Brand profile data from YAML
         pre_extracted_text: Optional pre-extracted text (for local dev)
+        custom_prompts: Optional dict mapping stage keys (e.g., "stage_0") to custom prompt content
     """
     logger.info(f"Starting pipeline execution for run {run_id}")
     start_time = time.time()  # Track pipeline duration
@@ -466,12 +468,23 @@ def execute_pipeline_background(
             logger.info(f"[{run_id}] Extracting text from PDF")
             input_text = extract_text_from_pdf(pdf_path)
 
+        # Log custom prompts usage
+        if custom_prompts:
+            logger.info(f"[{run_id}] Custom prompts provided for stages: {list(custom_prompts.keys())}")
+        else:
+            logger.info(f"[{run_id}] Using default prompts for all stages")
+
         # Stage 1: Input Processing
         logger.info(f"[{run_id}] Starting Stage 1: Input Processing")
         current_stage = 1
         # Already marked as PROCESSING in initialize_pipeline_stages
 
-        stage1 = Stage1Chain()
+        # Use custom prompt if provided (Story 11.6.1)
+        custom_stage1_prompt = custom_prompts.get("stage_1") if custom_prompts else None
+        if custom_stage1_prompt:
+            logger.info(f"[{run_id}] Stage 1: Using custom prompt ({len(custom_stage1_prompt)} chars)")
+
+        stage1 = Stage1Chain(custom_prompt=custom_stage1_prompt)
         stage1_result = stage1.run(input_text)
 
         # Save raw output locally
@@ -538,7 +551,12 @@ def execute_pipeline_background(
         current_stage = 2
         prisma_client.mark_stage_processing(run_id, 2)
 
-        stage2 = Stage2Chain()
+        # Use custom prompt if provided (Story 11.6.1)
+        custom_stage2_prompt = custom_prompts.get("stage_2") if custom_prompts else None
+        if custom_stage2_prompt:
+            logger.info(f"[{run_id}] Stage 2: Using custom prompt ({len(custom_stage2_prompt)} chars)")
+
+        stage2 = Stage2Chain(custom_prompt=custom_stage2_prompt)
         stage2_result = stage2.run(stage1_output_text)
 
         save_stage_output(run_id, 2, stage2_result)
@@ -574,7 +592,12 @@ def execute_pipeline_background(
         current_stage = 3
         prisma_client.mark_stage_processing(run_id, 3)
 
-        stage3 = Stage3Chain()
+        # Use custom prompt if provided (Story 11.6.1)
+        custom_stage3_prompt = custom_prompts.get("stage_3") if custom_prompts else None
+        if custom_stage3_prompt:
+            logger.info(f"[{run_id}] Stage 3: Using custom prompt ({len(custom_stage3_prompt)} chars)")
+
+        stage3 = Stage3Chain(custom_prompt=custom_stage3_prompt)
         stage3_result = stage3.run(stage1_output_text, stage2_output_text)
 
         save_stage_output(run_id, 3, stage3_result)
@@ -620,7 +643,12 @@ def execute_pipeline_background(
         current_stage = 4
         prisma_client.mark_stage_processing(run_id, 4)
 
-        stage4 = Stage4Chain()
+        # Use custom prompt if provided (Story 11.6.1)
+        custom_stage4_prompt = custom_prompts.get("stage_4") if custom_prompts else None
+        if custom_stage4_prompt:
+            logger.info(f"[{run_id}] Stage 4: Using custom prompt ({len(custom_stage4_prompt)} chars)")
+
+        stage4 = Stage4Chain(custom_prompt=custom_stage4_prompt)
         stage4_result = stage4.run(stage3_output_text, brand_profile, research_data)
 
         save_stage_output(run_id, 4, stage4_result)
@@ -662,7 +690,12 @@ def execute_pipeline_background(
         current_stage = 5
         prisma_client.mark_stage_processing(run_id, 5)
 
-        stage5 = Stage5Chain()
+        # Use custom prompt if provided (Story 11.6.1)
+        custom_stage5_prompt = custom_prompts.get("stage_5") if custom_prompts else None
+        if custom_stage5_prompt:
+            logger.info(f"[{run_id}] Stage 5: Using custom prompt ({len(custom_stage5_prompt)} chars)")
+
+        stage5 = Stage5Chain(custom_prompt=custom_stage5_prompt)
         stage5_result = stage5.run(stage4_output_text, brand_name, input_source)
 
         save_stage_output(run_id, 5, stage5_result)

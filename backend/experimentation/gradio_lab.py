@@ -116,6 +116,132 @@ class GradioLab:
         else:
             self.prisma_client = None
 
+    def resolve_prompts_dir(self) -> Path:
+        """Resolve prompts directory across deployment environments
+
+        Returns:
+            Path: Resolved prompts directory
+
+        Raises:
+            FileNotFoundError: If prompts directory cannot be found
+        """
+        possible_paths = [
+            Path("/app/experimentation/prompts"),       # HF Spaces absolute
+            Path("prompts"),                             # Local (same dir as gradio_lab.py)
+            Path("backend/experimentation/prompts"),    # Project root
+            Path("../prompts"),                          # Alternative relative
+        ]
+        for path in possible_paths:
+            if path.exists():
+                return path
+        raise FileNotFoundError("Prompts directory not found")
+
+    def create_default_template_zip(self) -> str:
+        """Create ZIP file containing all 7 default prompt templates + README
+
+        Returns:
+            str: Path to generated ZIP file
+        """
+        import zipfile
+        from datetime import datetime
+
+        prompts_dir = self.resolve_prompts_dir()
+
+        # Create temporary ZIP file
+        zip_path = f"/tmp/prompt_templates_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            # Add 7 stage templates
+            for i in range(7):
+                template_files = {
+                    0: "stage_0_enrichment.md",
+                    1: "stage_1_extraction.md",
+                    2: "stage_2_convergence.md",
+                    3: "stage_3_technique_matching.md",
+                    4: "stage_4_concept_generation.md",
+                    5: "stage_5_competitive_search.md",
+                    6: "stage_6_packaging.md"
+                }
+
+                template_path = prompts_dir / template_files[i]
+                if template_path.exists():
+                    zipf.write(template_path, template_files[i])
+
+            # Add README.md with placeholder documentation
+            readme_content = """# Innovation Pipeline Prompt Templates
+
+## Overview
+
+This ZIP contains the 7 default prompt templates used by the Innovation Intelligence System pipeline.
+
+## Placeholder Requirements
+
+Each stage requires specific placeholders to be present in the prompt template:
+
+| Stage | Required Placeholders |
+|-------|-----------------------|
+| Stage 0 | `{company_name}`, `{industry}`, `{portfolio}` |
+| Stage 1 | `{report_text}` |
+| Stage 2 | `{trend_data}`, `{brand_context}` |
+| Stage 3 | `{insights}`, `{brand_resources}` |
+| Stage 4 | `{insights}`, `{matched_techniques}`, `{brand_context}`, `{no_hallucination_rules}` |
+| Stage 5 | `{initiatives}`, `{brand_context}` |
+| Stage 6 | `{all_stage_outputs}` |
+
+## Usage
+
+1. Modify the `.md` files with your custom prompt engineering
+2. Ensure required placeholders remain in the text (e.g., `{insights}`, `{brand_context}`)
+3. Upload modified files via the "Custom Prompts" tab in the UI
+4. Validate placeholders before running the pipeline
+
+## Placeholder Format
+
+Placeholders use curly braces with lowercase snake_case: `{placeholder_name}`
+
+Example: `{brand_context}`, `{insights}`, `{matched_techniques}`
+
+---
+
+**Generated:** """ + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + """
+"""
+            zipf.writestr("README.md", readme_content)
+
+        return zip_path
+
+    def validate_placeholders(self, stage: int, file_content: str) -> Tuple[bool, List[str]]:
+        """Validate that uploaded prompt file contains required placeholders
+
+        Args:
+            stage: Stage number (0-6)
+            file_content: Content of uploaded .md file
+
+        Returns:
+            Tuple of (is_valid, missing_placeholders)
+        """
+        import re
+
+        # Define required placeholders per stage
+        required_placeholders = {
+            0: ["company_name", "industry", "portfolio"],
+            1: ["report_text"],
+            2: ["trend_data", "brand_context"],
+            3: ["insights", "brand_resources"],
+            4: ["insights", "matched_techniques", "brand_context", "no_hallucination_rules"],
+            5: ["initiatives", "brand_context"],
+            6: ["all_stage_outputs"]
+        }
+
+        required = required_placeholders.get(stage, [])
+
+        # Extract all placeholders from content using regex
+        found_placeholders = set(re.findall(r'\{([a-z_]+)\}', file_content))
+
+        # Check for missing placeholders
+        missing = [p for p in required if p not in found_placeholders]
+
+        return len(missing) == 0, missing
+
     def extract_pdf_text(self, pdf_file) -> Tuple[str, str]:
         """Extract text from PDF file with validation
 
@@ -444,7 +570,8 @@ class GradioLab:
         industry: str,
         geography: str,
         product_portfolio: str,
-        progress=gr.Progress()
+        progress=gr.Progress(),
+        custom_prompts: Optional[Dict[str, str]] = None
     ) -> Tuple[str, str, str, str, str, str, str, str]:
         """Execute 7-stage pipeline with real-time progress
 
@@ -455,6 +582,7 @@ class GradioLab:
             geography: Geographic market
             product_portfolio: Product list
             progress: Gradio Progress tracker
+            custom_prompts: Optional dict mapping stage keys to custom prompt content
 
         Returns:
             Tuple of (stage0, stage1, stage2, stage3, stage4, stage5, stage6, status_message)
@@ -484,13 +612,18 @@ class GradioLab:
             # Start pipeline via /run/local endpoint
             progress(0.05, desc="🚀 Starting pipeline...")
             async with httpx.AsyncClient(timeout=120.0) as client:
+                # Build payload with optional custom_prompts
+                payload = {
+                    "pdf_text": pdf_text,
+                    "brand_profile": brand_profile,
+                    "run_id": run_id
+                }
+                if custom_prompts:
+                    payload["custom_prompts"] = custom_prompts
+
                 response = await client.post(
                     f"{self.backend_url}/run/local",
-                    json={
-                        "pdf_text": pdf_text,
-                        "brand_profile": brand_profile,
-                        "run_id": run_id
-                    }
+                    json=payload
                 )
 
                 if response.status_code != 200:
@@ -954,7 +1087,8 @@ class GradioLab:
                 "run_id": None,
                 "stage_outputs": {},
                 "stage_inputs": {},
-                "prompts_used": {}
+                "prompts_used": {},
+                "custom_prompts": {}
             })
 
             with gr.Row():
@@ -1153,6 +1287,83 @@ class GradioLab:
                                             usage_tracker=self.usage_tracker
                                         )
                                         # Note: curation_content is a gr.Blocks that renders inside this tab
+
+                                # Story 11.6.1: Custom Prompts tab
+                                with gr.Tab("📂 Custom Prompts"):
+                                    gr.Markdown("## 📂 Custom Prompt Templates")
+                                    gr.Markdown("Download default templates, customize them, and upload for pipeline execution")
+
+                                    # DOWNLOAD SECTION
+                                    with gr.Accordion("📥 Download Templates", open=True):
+                                        gr.Markdown("### Download Individual Templates")
+
+                                        with gr.Row():
+                                            download_stage0_tmpl_btn = gr.Button("📥 Stage 0", size="sm")
+                                            download_stage1_tmpl_btn = gr.Button("📥 Stage 1", size="sm")
+                                            download_stage2_tmpl_btn = gr.Button("📥 Stage 2", size="sm")
+                                            download_stage3_tmpl_btn = gr.Button("📥 Stage 3", size="sm")
+
+                                        with gr.Row():
+                                            download_stage4_tmpl_btn = gr.Button("📥 Stage 4", size="sm")
+                                            download_stage5_tmpl_btn = gr.Button("📥 Stage 5", size="sm")
+                                            download_stage6_tmpl_btn = gr.Button("📥 Stage 6", size="sm")
+                                            download_all_tmpl_btn = gr.Button("📦 Download ALL (ZIP)", variant="primary", size="sm")
+
+                                        # File outputs for downloads
+                                        stage0_tmpl_file = gr.File(label="Stage 0 Template", visible=False)
+                                        stage1_tmpl_file = gr.File(label="Stage 1 Template", visible=False)
+                                        stage2_tmpl_file = gr.File(label="Stage 2 Template", visible=False)
+                                        stage3_tmpl_file = gr.File(label="Stage 3 Template", visible=False)
+                                        stage4_tmpl_file = gr.File(label="Stage 4 Template", visible=False)
+                                        stage5_tmpl_file = gr.File(label="Stage 5 Template", visible=False)
+                                        stage6_tmpl_file = gr.File(label="Stage 6 Template", visible=False)
+                                        all_tmpl_zip_file = gr.File(label="All Templates (ZIP)", visible=False)
+
+                                    # UPLOAD SECTION
+                                    with gr.Accordion("📤 Upload Custom Prompts", open=True):
+                                        gr.Markdown("### Upload Customized Templates (Optional)")
+                                        gr.Markdown("ℹ️ **Help:** Leave blank to use default prompt. Max 1MB per file.")
+
+                                        # 7 file upload components
+                                        custom_prompt_stage0 = gr.File(
+                                            label="Stage 0 Custom Prompt (optional)",
+                                            file_types=[".md"],
+                                            file_count="single"
+                                        )
+                                        custom_prompt_stage1 = gr.File(
+                                            label="Stage 1 Custom Prompt (optional)",
+                                            file_types=[".md"],
+                                            file_count="single"
+                                        )
+                                        custom_prompt_stage2 = gr.File(
+                                            label="Stage 2 Custom Prompt (optional)",
+                                            file_types=[".md"],
+                                            file_count="single"
+                                        )
+                                        custom_prompt_stage3 = gr.File(
+                                            label="Stage 3 Custom Prompt (optional)",
+                                            file_types=[".md"],
+                                            file_count="single"
+                                        )
+                                        custom_prompt_stage4 = gr.File(
+                                            label="Stage 4 Custom Prompt (optional)",
+                                            file_types=[".md"],
+                                            file_count="single"
+                                        )
+                                        custom_prompt_stage5 = gr.File(
+                                            label="Stage 5 Custom Prompt (optional)",
+                                            file_types=[".md"],
+                                            file_count="single"
+                                        )
+                                        custom_prompt_stage6 = gr.File(
+                                            label="Stage 6 Custom Prompt (optional)",
+                                            file_types=[".md"],
+                                            file_count="single"
+                                        )
+
+                                        # Validation button and results
+                                        validate_prompts_btn = gr.Button("✅ Validate Uploaded Prompts", variant="primary")
+                                        validation_results = gr.Markdown(value="Upload files and click validate to check placeholders")
 
                             gr.Markdown("### Quality Assessment")
 
@@ -1385,9 +1596,20 @@ class GradioLab:
             async def run_pipeline_wrapper(state, brand_name_val, industry_val, geography_val, portfolio_val):
                 pdf_text = state.get("pdf_text", "")
 
+                # Extract custom prompts from state (Story 11.6.1)
+                custom_prompts_data = state.get("custom_prompts", {})
+                custom_prompts = None
+                if custom_prompts_data:
+                    # Convert to dict of content strings only (exclude metadata)
+                    custom_prompts = {
+                        stage_key: data["content"]
+                        for stage_key, data in custom_prompts_data.items()
+                    }
+
                 # Run pipeline
                 stage0, stage1, stage2, stage3, stage4, stage5, stage6, status = await self.run_pipeline(
-                    pdf_text, brand_name_val, industry_val, geography_val, portfolio_val
+                    pdf_text, brand_name_val, industry_val, geography_val, portfolio_val,
+                    custom_prompts=custom_prompts
                 )
 
                 # Update state with results for later save
@@ -1593,6 +1815,140 @@ class GradioLab:
                 download_all_stages_pdf,
                 inputs=[cached_data],
                 outputs=[all_stages_pdf_file]
+            )
+
+            # Story 11.6.1: Custom Prompts event handlers
+
+            # Download individual template handlers
+            def download_single_template(stage: int) -> str:
+                """Download a single prompt template file"""
+                try:
+                    prompts_dir = self.resolve_prompts_dir()
+                    template_files = {
+                        0: "stage_0_enrichment.md",
+                        1: "stage_1_extraction.md",
+                        2: "stage_2_convergence.md",
+                        3: "stage_3_technique_matching.md",
+                        4: "stage_4_concept_generation.md",
+                        5: "stage_5_competitive_search.md",
+                        6: "stage_6_packaging.md"
+                    }
+                    template_path = prompts_dir / template_files[stage]
+                    if template_path.exists():
+                        return str(template_path)
+                    else:
+                        return None
+                except Exception as e:
+                    print(f"Error downloading stage {stage} template: {e}")
+                    return None
+
+            download_stage0_tmpl_btn.click(lambda: download_single_template(0), outputs=stage0_tmpl_file)
+            download_stage1_tmpl_btn.click(lambda: download_single_template(1), outputs=stage1_tmpl_file)
+            download_stage2_tmpl_btn.click(lambda: download_single_template(2), outputs=stage2_tmpl_file)
+            download_stage3_tmpl_btn.click(lambda: download_single_template(3), outputs=stage3_tmpl_file)
+            download_stage4_tmpl_btn.click(lambda: download_single_template(4), outputs=stage4_tmpl_file)
+            download_stage5_tmpl_btn.click(lambda: download_single_template(5), outputs=stage5_tmpl_file)
+            download_stage6_tmpl_btn.click(lambda: download_single_template(6), outputs=stage6_tmpl_file)
+
+            # Download all templates as ZIP
+            def download_all_templates() -> str:
+                """Download all templates as ZIP"""
+                try:
+                    zip_path = self.create_default_template_zip()
+                    return zip_path
+                except Exception as e:
+                    print(f"Error creating template ZIP: {e}")
+                    return None
+
+            download_all_tmpl_btn.click(download_all_templates, outputs=all_tmpl_zip_file)
+
+            # File upload handlers - store content in cached_data
+            def handle_file_upload(file, stage: int, state):
+                """Handle custom prompt file upload and store in state"""
+                if file is None:
+                    # Clear this stage if file removed
+                    if f"stage_{stage}" in state.get("custom_prompts", {}):
+                        del state["custom_prompts"][f"stage_{stage}"]
+                    return state
+
+                try:
+                    # Validate file size (1MB limit)
+                    file_size = os.path.getsize(file.name)
+                    if file_size > 1_000_000:
+                        print(f"Error: File too large for stage {stage} ({file_size / 1024:.1f}KB, max 1MB)")
+                        return state
+
+                    # Read file content
+                    with open(file.name, 'r', encoding='utf-8') as f:
+                        content = f.read()
+
+                    # Store in state
+                    if "custom_prompts" not in state:
+                        state["custom_prompts"] = {}
+
+                    from datetime import datetime
+                    state["custom_prompts"][f"stage_{stage}"] = {
+                        "filename": os.path.basename(file.name),
+                        "content": content,
+                        "uploaded_at": datetime.now().isoformat()
+                    }
+
+                    return state
+                except Exception as e:
+                    print(f"Error reading uploaded file for stage {stage}: {e}")
+                    return state
+
+            custom_prompt_stage0.change(lambda f, s: handle_file_upload(f, 0, s), inputs=[custom_prompt_stage0, cached_data], outputs=cached_data)
+            custom_prompt_stage1.change(lambda f, s: handle_file_upload(f, 1, s), inputs=[custom_prompt_stage1, cached_data], outputs=cached_data)
+            custom_prompt_stage2.change(lambda f, s: handle_file_upload(f, 2, s), inputs=[custom_prompt_stage2, cached_data], outputs=cached_data)
+            custom_prompt_stage3.change(lambda f, s: handle_file_upload(f, 3, s), inputs=[custom_prompt_stage3, cached_data], outputs=cached_data)
+            custom_prompt_stage4.change(lambda f, s: handle_file_upload(f, 4, s), inputs=[custom_prompt_stage4, cached_data], outputs=cached_data)
+            custom_prompt_stage5.change(lambda f, s: handle_file_upload(f, 5, s), inputs=[custom_prompt_stage5, cached_data], outputs=cached_data)
+            custom_prompt_stage6.change(lambda f, s: handle_file_upload(f, 6, s), inputs=[custom_prompt_stage6, cached_data], outputs=cached_data)
+
+            # Validation handler
+            def validate_uploaded_prompts(state):
+                """Validate all uploaded prompt files for required placeholders"""
+                custom_prompts = state.get("custom_prompts", {})
+
+                if not custom_prompts:
+                    return "ℹ️ **No custom prompts uploaded.** Upload files to validate."
+
+                results = []
+                has_errors = False
+
+                for stage in range(7):
+                    stage_key = f"stage_{stage}"
+
+                    if stage_key in custom_prompts:
+                        # File uploaded - validate it
+                        filename = custom_prompts[stage_key]["filename"]
+                        content = custom_prompts[stage_key]["content"]
+
+                        is_valid, missing = self.validate_placeholders(stage, content)
+
+                        if is_valid:
+                            results.append(f"✅ **Stage {stage}:** Valid ({filename})")
+                        else:
+                            has_errors = True
+                            missing_str = ", ".join([f"`{{{p}}}`" for p in missing])
+                            results.append(f"❌ **Stage {stage}:** MISSING placeholders: {missing_str} ({filename})")
+                    else:
+                        # No file uploaded - using default
+                        results.append(f"ℹ️ **Stage {stage}:** Using default prompt (no file uploaded)")
+
+                # Add summary
+                if has_errors:
+                    summary = "\n\n⚠️ **VALIDATION FAILED:** Fix missing placeholders before running pipeline.\n\n"
+                else:
+                    summary = "\n\n✅ **VALIDATION PASSED:** All uploaded prompts contain required placeholders.\n\n"
+
+                return summary + "\n".join(results)
+
+            validate_prompts_btn.click(
+                validate_uploaded_prompts,
+                inputs=[cached_data],
+                outputs=validation_results
             )
 
             # Export and Backup event listeners (Story 11.4b)

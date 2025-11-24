@@ -27,9 +27,14 @@ class Stage2Chain:
         output_key: Key name for chain output ("stage2_output")
     """
 
-    def __init__(self):
-        """Initialize Stage 2 chain with OpenRouter/Claude Sonnet 3.5."""
+    def __init__(self, custom_prompt: str = None):
+        """Initialize Stage 2 chain with OpenRouter/Claude Sonnet 3.5.
+
+        Args:
+            custom_prompt: Optional custom prompt template string (Story 11.6.1)
+        """
         self.output_key = "stage2_output"
+        self.custom_prompt = custom_prompt
         self.chain = self._create_chain()
 
     def _create_chain(self) -> LLMChain:
@@ -44,8 +49,17 @@ class Stage2Chain:
         # Create LLM using centralized configuration (model from .env)
         llm = create_llm(temperature=0.4, max_tokens=2200)
 
-        # Get prompt template
-        prompt = get_prompt_template()
+        # Get prompt template (use custom if provided, otherwise use default)
+        if self.custom_prompt:
+            from langchain.prompts import PromptTemplate
+            prompt = PromptTemplate(
+                input_variables=["stage1_output"],
+                template=self.custom_prompt
+            )
+            logging.info("Stage 2: Using custom prompt template")
+        else:
+            prompt = get_prompt_template()
+            logging.info("Stage 2: Using default prompt template")
 
         # Create chain
         chain = LLMChain(

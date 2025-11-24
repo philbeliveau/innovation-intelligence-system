@@ -35,14 +35,16 @@ class Stage5Chain:
         output_key: Key name for chain output ("stage5_output")
     """
 
-    def __init__(self, template_dir: Path = None):
+    def __init__(self, template_dir: Path = None, custom_prompt: str = None):
         """Initialize Stage 5 chain with OpenRouter/Claude Sonnet 4.5.
 
         Args:
             template_dir: Directory containing Jinja2 templates
                          (defaults to project root/templates)
+            custom_prompt: Optional custom prompt template string (Story 11.6.1)
         """
         self.output_key = "stage5_output"
+        self.custom_prompt = custom_prompt
         self.parser = get_output_parser()
         self.chain = self._create_chain()
 
@@ -75,8 +77,17 @@ class Stage5Chain:
         # Create LLM with temperature=0.7 for creative opportunity generation
         llm = create_llm(temperature=0.7, max_tokens=3200)
 
-        # Get prompt template
-        prompt = get_prompt_template()
+        # Get prompt template (use custom if provided, otherwise use default)
+        if self.custom_prompt:
+            from langchain.prompts import PromptTemplate
+            prompt = PromptTemplate(
+                input_variables=["stage4_output", "format_instructions"],
+                template=self.custom_prompt
+            )
+            logging.info("Stage 5: Using custom prompt template")
+        else:
+            prompt = get_prompt_template()
+            logging.info("Stage 5: Using default prompt template")
 
         # Create chain
         chain = LLMChain(
