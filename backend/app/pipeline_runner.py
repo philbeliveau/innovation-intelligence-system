@@ -77,16 +77,28 @@ def update_status_file(run_id: str, status: str, current_stage: int, stages: Dic
             # Add markdown field if output exists
             if "output" in stage_data and stage_data["output"]:
                 try:
+                    # Generate markdown from stage output
                     markdown = format_stage_output(stage_num, stage_data["output"])
+
+                    # DIAGNOSTIC LOGGING: Log type and preview for debugging
+                    logger.info(f"[{run_id}] Stage {stage_num} format_stage_output returned type: {type(markdown).__name__}")
+
                     # CRITICAL: Verify markdown is actually a string
                     if isinstance(markdown, str):
                         stage_data["markdown"] = markdown
-                        logger.debug(f"[{run_id}] Stage {stage_num} markdown generated ({len(markdown)} chars)")
+                        logger.info(f"[{run_id}] ✅ Stage {stage_num} markdown validated as string ({len(markdown)} chars)")
+                        logger.debug(f"[{run_id}] Stage {stage_num} markdown preview: {markdown[:200]}")
                     else:
-                        logger.error(f"[{run_id}] Stage {stage_num} format_stage_output returned non-string (type={type(markdown)})")
+                        # TYPE MISMATCH: Log detailed diagnostic info
+                        logger.error(f"[{run_id}] ❌ Stage {stage_num} format_stage_output returned {type(markdown).__name__}, not str")
+                        logger.error(f"[{run_id}] Non-string markdown content: {str(markdown)[:500]}")
+
+                        # Fallback to JSON code block
                         stage_data["markdown"] = f"```json\n{json.dumps(stage_data['output'], indent=2)}\n```"
+                        logger.warning(f"[{run_id}] Stage {stage_num} falling back to JSON code block")
+
                 except Exception as e:
-                    logger.warning(f"[{run_id}] Failed to format stage {stage_num} markdown: {e}", exc_info=True)
+                    logger.error(f"[{run_id}] Failed to format stage {stage_num} markdown: {e}", exc_info=True)
                     # Fallback to JSON display
                     stage_data["markdown"] = f"```json\n{json.dumps(stage_data['output'], indent=2)}\n```"
 
