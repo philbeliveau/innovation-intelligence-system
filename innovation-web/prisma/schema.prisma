@@ -113,37 +113,36 @@ model User {
 
 model Experiment {
   id        String   @id @default(uuid())
-  runId     String   @unique @map("run_id")
+  runId     String   @unique
   timestamp DateTime @default(now())
 
   // Input Data
-  reportText String? @map("report_text") @db.Text
-  reportName String? @map("report_name")
+  reportText String? @db.Text
+  reportName String?
 
   // Brand Profile (JSONB)
-  brandProfile Json @map("brand_profile")
+  brandProfile Json
 
   // Pipeline Outputs (JSONB for all stages)
-  stageOutputs Json @map("stage_outputs")
+  stageOutputs Json
 
   // User Assessment
-  experimentNotes String? @map("experiment_notes") @db.Text
-  qualityTag      String? @map("quality_tag")
+  experimentNotes String? @db.Text
+  qualityTag      String?
 
   // Metadata
-  pipelineVersion      String?  @map("pipeline_version")
-  executionTimeSeconds Int?     @map("execution_time_seconds")
-  tokenUsage           Json?    @map("token_usage")
-  costUsd              Decimal? @map("cost_usd") @db.Decimal(10, 4)
+  pipelineVersion      String?
+  executionTimeSeconds Int?
+  tokenUsage           Json?
+  costUsd              Decimal? @db.Decimal(10, 4)
 
   // Timestamps
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([timestamp(sort: Desc)])
   @@index([qualityTag])
   @@index([pipelineVersion])
-  @@map("experiments")
 }
 
 enum QualityTag {
