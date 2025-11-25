@@ -1091,13 +1091,12 @@ Example: `{brand_context}`, `{insights}`, `{matched_techniques}`
                 "custom_prompts": {}
             })
 
-            # COLLAPSIBLE SIDEBAR - SAVED EXPERIMENTS (at top level, not inside Row)
-            with gr.Sidebar():
-                gr.Markdown("## 📚 Saved Runs")
+            # COLLAPSIBLE SAVED EXPERIMENTS SECTION (using Accordion for HF Spaces compatibility)
+            with gr.Accordion("📚 Saved Runs", open=False):
                 gr.Markdown("Access your previous experiments")
 
                 # Filters
-                with gr.Accordion("🔍 Filters", open=True):
+                with gr.Row():
                     sidebar_quality_filter = gr.Dropdown(
                         choices=["All", "Good", "Needs Work", "Failed"],
                         value="All",
@@ -1108,7 +1107,7 @@ Example: `{brand_context}`, `{insights}`, `{matched_techniques}`
                         value="All",
                         label="Brand"
                     )
-                    refresh_experiments_btn = gr.Button("🔄 Refresh List", size="sm")
+                    refresh_experiments_btn = gr.Button("🔄 Refresh", size="sm")
 
                 # Experiments list
                 experiments_list = gr.Dataframe(
@@ -1121,14 +1120,15 @@ Example: `{brand_context}`, `{insights}`, `{matched_techniques}`
                 )
 
                 # Load controls
-                selected_experiment_id = gr.Textbox(
-                    label="Experiment ID",
-                    placeholder="Copy ID from list above",
-                    lines=1
-                )
+                with gr.Row():
+                    selected_experiment_id = gr.Textbox(
+                        label="Experiment ID",
+                        placeholder="Copy ID from list above",
+                        scale=2
+                    )
+                    load_experiment_btn = gr.Button("📥 Load", variant="primary", scale=1)
 
                 with gr.Row():
-                    load_experiment_btn = gr.Button("📥 Load", variant="primary", scale=2)
                     rename_experiment_btn = gr.Button("✏️ Rename", variant="secondary", scale=1)
                     delete_experiment_btn = gr.Button("🗑️ Delete", variant="stop", scale=1)
 
@@ -1136,12 +1136,11 @@ Example: `{brand_context}`, `{insights}`, `{matched_techniques}`
                 with gr.Group(visible=False) as rename_group:
                     rename_input = gr.Textbox(
                         label="New Name",
-                        placeholder="Enter new name for experiment",
-                        lines=1
+                        placeholder="Enter new name for experiment"
                     )
                     with gr.Row():
-                        confirm_rename_btn = gr.Button("✅ Confirm", variant="primary", size="sm")
-                        cancel_rename_btn = gr.Button("❌ Cancel", variant="secondary", size="sm")
+                        confirm_rename_btn = gr.Button("✅ Confirm", variant="primary", scale=1)
+                        cancel_rename_btn = gr.Button("❌ Cancel", variant="secondary", scale=1)
 
                 load_status = gr.Textbox(
                     label="Status",
