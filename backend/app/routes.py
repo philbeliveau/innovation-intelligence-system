@@ -27,8 +27,113 @@ from app.models import (
 )
 from app.pipeline_runner import execute_pipeline_background
 from pipeline.prompt_file_validator import PromptFileValidator
+from pipeline.output_formatters import format_stage_output
 
 logger = logging.getLogger(__name__)
+
+
+def execute_orchestrator_background(
+    run_id: str,
+    pdf_text: str,
+    brand_profile: Dict[str, Any],
+    custom_prompts: Optional[Dict[str, str]] = None
+) -> None:
+    """Execute 7-stage pipeline orchestrator in background thread.
+
+    Wrapper to run async PipelineOrchestrator in sync thread context.
+    Maintains status.json compatibility for Gradio polling.
+
+    Args:
+        run_id: Unique run identifier
+        pdf_text: Extracted PDF text content
+        brand_profile: Brand profile data from YAML
+        custom_prompts: Optional dict mapping stage keys to custom prompt content
+
+    Story 11.7 Refactor: Now properly calls orchestrator.run_pipeline() instead of
+    duplicating stage execution logic. Uses status_callback for Gradio polling.
+    """
+    import asyncio
+
+    # Import orchestrator (deferred to avoid circular imports)
+    from backend.experimentation.pipeline_orchestrator import PipelineOrchestrator
+
+    logger.info(f"[{run_id}] Starting 7-stage pipeline orchestrator")
+    start_time = time.time()
+
+    # Initialize status file path
+    run_dir = Path("/tmp/runs") / run_id
+    status_file = run_dir / "status.json"
+
+    def update_status_json(
+        status: str,
+        current_stage: int,
+        stages: Dict[str, Any],
+        error: Optional[str] = None
+    ) -> None:
+        """Update status.json for Gradio polling compatibility.
+
+        This callback is passed to PipelineOrchestrator for status updates.
+        """
+        try:
+            if status_file.exists():
+                with open(status_file, "r") as f:
+                    status_data = json.load(f)
+            else:
+                status_data = {"run_id": run_id, "stages": {}}
+
+            status_data["status"] = status
+            status_data["current_stage"] = current_stage
+            status_data["stages"] = stages  # Already has markdown from orchestrator
+            if error:
+                status_data["error"] = error
+
+            with open(status_file, "w") as f:
+                json.dump(status_data, f, indent=2)
+
+            logger.debug(f"[{run_id}] Updated status.json: stage {current_stage}, status={status}")
+        except Exception as e:
+            logger.error(f"[{run_id}] Failed to update status.json: {e}")
+
+    async def run_orchestrator():
+        """Run the async orchestrator pipeline."""
+        # Create orchestrator with status callback for Gradio polling
+        orchestrator = PipelineOrchestrator(
+            run_id=run_id,
+            status_callback=update_status_json
+        )
+
+        # Get source report name for Stage 6
+        source_report_name = "Gradio Upload"
+
+        # Execute complete 7-stage pipeline via orchestrator
+        # This uses the orchestrator's built-in:
+        # - Retry logic with exponential backoff
+        # - Webhook notifications
+        # - Database persistence via PrismaAPIClient
+        # - Status callbacks for Gradio polling
+        result = await orchestrator.run_pipeline(
+            pdf_text=pdf_text,
+            brand_profile=brand_profile,
+            enrichment_mode="basic",
+            source_report_name=source_report_name,
+            custom_prompts=custom_prompts
+        )
+
+        duration_ms = int((time.time() - start_time) * 1000)
+        logger.info(f"[{run_id}] 7-stage pipeline completed in {duration_ms}ms")
+
+        return result
+
+    # Create event loop and run async orchestrator
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    try:
+        loop.run_until_complete(run_orchestrator())
+    except Exception as e:
+        logger.error(f"[{run_id}] Orchestrator execution failed: {e}")
+    finally:
+        loop.close()
 
 router = APIRouter()
 
@@ -355,15 +460,15 @@ async def run_pipeline_local(request: RunPipelineLocalRequest):
 
     logger.info(f"[LOCAL] Created initial status file: {status_file}")
 
-    # Start background execution with pre-extracted text and optional custom prompts
+    # Start background execution using 7-stage orchestrator (Story 11.7)
     thread = Thread(
-        target=execute_pipeline_background,
-        args=(run_id, str(pdf_path), brand_profile, request.pdf_text, request.custom_prompts),
+        target=execute_orchestrator_background,
+        args=(run_id, request.pdf_text, brand_profile, request.custom_prompts),
         daemon=True
     )
     thread.start()
 
-    logger.info(f"[LOCAL] Started pipeline execution for run {run_id} (custom_prompts: {'Yes' if request.custom_prompts else 'No'})")
+    logger.info(f"[LOCAL] Started 7-stage pipeline execution for run {run_id} (custom_prompts: {'Yes' if request.custom_prompts else 'No'})")
 
     return RunPipelineResponse(run_id=run_id, status="running")
 
@@ -395,15 +500,50 @@ async def run_pipeline(request: RunPipelineRequest):
     # Load brand profile
     brand_profile = load_brand_profile(request.brand_id)
 
-    # Start background execution
+    # Extract PDF text for orchestrator
+    from pypdf import PdfReader
+    try:
+        reader = PdfReader(pdf_path)
+        pdf_text = ""
+        for page in reader.pages:
+            pdf_text += page.extract_text()
+        logger.info(f"Extracted {len(pdf_text)} characters from PDF")
+    except Exception as e:
+        logger.error(f"Failed to extract text from PDF: {e}")
+        raise HTTPException(status_code=400, detail=f"PDF extraction failed: {str(e)}")
+
+    # Create run directory and initial status file
+    run_dir = Path("/tmp/runs") / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    status_file = run_dir / "status.json"
+    initial_status = {
+        "run_id": run_id,
+        "status": "running",
+        "current_stage": 0,
+        "stages": {},
+        "brand_id": request.brand_id,
+        "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    }
+    with open(status_file, "w") as f:
+        json.dump(initial_status, f, indent=2)
+
+    # Start background execution using 7-stage orchestrator (Story 11.7)
     thread = Thread(
-        target=execute_pipeline_background,
-        args=(run_id, pdf_path, brand_profile),
+        target=execute_orchestrator_background,
+        args=(run_id, pdf_text, brand_profile, None),  # No custom prompts from Next.js
         daemon=True
     )
     thread.start()
 
-    logger.info(f"Started pipeline execution for run {run_id}")
+    logger.info(f"Started 7-stage pipeline execution for run {run_id}")
+
+    # Cleanup PDF file after extraction
+    try:
+        os.remove(pdf_path)
+        logger.info(f"Cleaned up PDF file: {pdf_path}")
+    except Exception as e:
+        logger.warning(f"Failed to cleanup PDF {pdf_path}: {e}")
 
     return RunPipelineResponse(run_id=run_id, status="running")
 
@@ -604,10 +744,10 @@ async def get_stage_output(run_id: str, stage_num: int):
     Returns the complete output JSON from a specific stage,
     useful for debugging stage failures and inspecting intermediate results.
     """
-    if stage_num < 1 or stage_num > 5:
+    if stage_num < 0 or stage_num > 6:
         raise HTTPException(
             status_code=400,
-            detail="Stage number must be between 1 and 5"
+            detail="Stage number must be between 0 and 6"
         )
 
     run_dir = Path("/tmp/runs") / run_id

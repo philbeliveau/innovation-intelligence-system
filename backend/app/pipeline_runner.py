@@ -440,7 +440,11 @@ def execute_pipeline_background(
 ) -> None:
     """Execute the 5-stage pipeline in background.
 
-    Now uses Prisma API client to write status updates to database.
+    DEPRECATED: This function is deprecated in favor of execute_orchestrator_background()
+    in routes.py which uses the 7-stage PipelineOrchestrator (Story 11.7).
+
+    This legacy 5-stage pipeline only executes Stages 1-5 and is kept for
+    backward compatibility. New code should use the 7-stage orchestrator.
 
     Args:
         run_id: Unique run identifier
@@ -449,7 +453,14 @@ def execute_pipeline_background(
         pre_extracted_text: Optional pre-extracted text (for local dev)
         custom_prompts: Optional dict mapping stage keys (e.g., "stage_0") to custom prompt content
     """
-    logger.info(f"Starting pipeline execution for run {run_id}")
+    import warnings
+    warnings.warn(
+        "execute_pipeline_background() is deprecated. Use execute_orchestrator_background() "
+        "from app.routes for full 7-stage pipeline (Story 11.7).",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    logger.warning(f"[{run_id}] DEPRECATED: Using legacy 5-stage pipeline. Consider using 7-stage orchestrator.")
     start_time = time.time()  # Track pipeline duration
 
     # Initialize Prisma API client

@@ -157,6 +157,13 @@ def generate_stage_pdf(
     logger.info(f"Generating PDF for Stage {stage_num}")
 
     try:
+        # CRITICAL: Ensure markdown_content is a string, not dict/JSON
+        if not isinstance(markdown_content, str):
+            logger.error(f"markdown_content is not a string (type={type(markdown_content)})")
+            # Convert to JSON string as fallback
+            import json
+            markdown_content = f"```json\n{json.dumps(markdown_content, indent=2)}\n```"
+
         # Convert markdown to HTML
         html_content = markdown2.markdown(
             markdown_content,
@@ -251,6 +258,13 @@ def generate_all_stages_pdf(
         for stage_num in sorted(stage_markdowns.keys()):
             markdown_content = stage_markdowns[stage_num]
             if markdown_content:
+                # CRITICAL: Ensure markdown_content is a string, not dict/JSON
+                if not isinstance(markdown_content, str):
+                    logger.error(f"Stage {stage_num} markdown_content is not a string (type={type(markdown_content)})")
+                    # Convert to JSON string as fallback
+                    import json
+                    markdown_content = f"```json\n{json.dumps(markdown_content, indent=2)}\n```"
+
                 combined_markdown.append(markdown_content)
                 combined_markdown.append("\n\n---\n\n")  # Page break separator
 

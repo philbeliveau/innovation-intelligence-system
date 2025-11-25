@@ -7,11 +7,13 @@ import os
 import json
 import logging
 import asyncio
-from typing import Dict, Any, Optional
+from pathlib import Path
+from typing import Dict, Any, Optional, Callable
 from datetime import datetime
 
 from backend.app.prisma_client import PrismaAPIClient
 from backend.pipeline.utils import send_webhook_sync
+from backend.pipeline.output_formatters import format_stage_output
 from backend.experimentation.stages import (
     Stage0Enrichment,
     Stage1Decomposition,
@@ -49,19 +51,62 @@ class PipelineOrchestrator:
     def __init__(
         self,
         run_id: str,
-        prisma_client: Optional[PrismaAPIClient] = None
+        prisma_client: Optional[PrismaAPIClient] = None,
+        status_callback: Optional[Callable[[str, int, Dict[str, Any], Optional[str]], None]] = None
     ):
         """Initialize orchestrator.
 
         Args:
             run_id: Unique run identifier
             prisma_client: Optional Prisma client (creates new if not provided)
+            status_callback: Optional callback for status updates (status, current_stage, stages, error)
+                            Used by Gradio for status.json polling compatibility
         """
         self.run_id = run_id
         self.prisma_client = prisma_client or PrismaAPIClient()
         self.stage_outputs = {}
         self.max_retries = int(os.getenv("MAX_RETRIES", "3"))
         self.retry_delay = int(os.getenv("RETRY_DELAY", "2"))
+        self.status_callback = status_callback
+        self._stages_status: Dict[str, Any] = {}
+
+    def _notify_status(self, status: str, current_stage: int, error: Optional[str] = None) -> None:
+        """Notify status callback if configured.
+
+        Args:
+            status: Pipeline status ('running', 'complete', 'failed')
+            current_stage: Current stage number (0-6)
+            error: Optional error message
+        """
+        if self.status_callback:
+            try:
+                self.status_callback(status, current_stage, self._stages_status, error)
+            except Exception as e:
+                logger.warning(f"[{self.run_id}] Status callback failed: {e}")
+
+    def _update_stage_status(self, stage_num: int, status: str, output: Optional[Dict[str, Any]] = None) -> None:
+        """Update internal stage status tracking.
+
+        Args:
+            stage_num: Stage number (0-6)
+            status: Stage status ('processing', 'complete', 'failed')
+            output: Optional stage output data
+        """
+        self._stages_status[str(stage_num)] = {
+            "status": status,
+            "output": output
+        }
+        if output:
+            # Generate markdown for Gradio display
+            try:
+                markdown = format_stage_output(stage_num, output)
+                if isinstance(markdown, str):
+                    self._stages_status[str(stage_num)]["markdown"] = markdown
+                else:
+                    self._stages_status[str(stage_num)]["markdown"] = f"```json\n{json.dumps(output, indent=2)}\n```"
+            except Exception as e:
+                logger.warning(f"[{self.run_id}] Failed to format stage {stage_num}: {e}")
+                self._stages_status[str(stage_num)]["markdown"] = f"```json\n{json.dumps(output, indent=2)}\n```"
 
     async def execute_stage_with_retry(
         self,
@@ -174,6 +219,10 @@ class PipelineOrchestrator:
             self.stage_outputs["stage_0"] = stage0_output.dict()
             self.prisma_client.mark_stage_complete(self.run_id, 1, self.stage_outputs["stage_0"])  # Prisma uses 1-indexed
 
+            # Update status and notify callback
+            self._update_stage_status(0, "complete", self.stage_outputs["stage_0"])
+            self._notify_status("running", 0)
+
             # Send webhook
             webhook_payload = {
                 "stageNumber": 0,
@@ -199,6 +248,10 @@ class PipelineOrchestrator:
             # Save stage 1 output
             self.stage_outputs["stage_1"] = stage1_output.dict()
             self.prisma_client.mark_stage_complete(self.run_id, 2, self.stage_outputs["stage_1"])  # Prisma uses 1-indexed
+
+            # Update status and notify callback
+            self._update_stage_status(1, "complete", self.stage_outputs["stage_1"])
+            self._notify_status("running", 1)
 
             # Send webhook
             webhook_payload = {
@@ -229,6 +282,10 @@ class PipelineOrchestrator:
             # Save stage 2 output
             self.stage_outputs["stage_2"] = stage2_output.dict()
             self.prisma_client.mark_stage_complete(self.run_id, 3, self.stage_outputs["stage_2"])  # Prisma uses 1-indexed
+
+            # Update status and notify callback
+            self._update_stage_status(2, "complete", self.stage_outputs["stage_2"])
+            self._notify_status("running", 2)
 
             # Send webhook
             webhook_payload = {
@@ -261,6 +318,11 @@ class PipelineOrchestrator:
 
             self.stage_outputs["stage_3"] = stage3_output.model_dump()
             self.prisma_client.mark_stage_complete(self.run_id, 4, self.stage_outputs["stage_3"])
+
+            # Update status and notify callback
+            self._update_stage_status(3, "complete", self.stage_outputs["stage_3"])
+            self._notify_status("running", 3)
+
             webhook_payload = {
                 "stageNumber": 3,
                 "stageName": "Technique Matching",
@@ -286,6 +348,11 @@ class PipelineOrchestrator:
 
             self.stage_outputs["stage_4"] = stage4_output.model_dump()
             self.prisma_client.mark_stage_complete(self.run_id, 5, self.stage_outputs["stage_4"])
+
+            # Update status and notify callback
+            self._update_stage_status(4, "complete", self.stage_outputs["stage_4"])
+            self._notify_status("running", 4)
+
             webhook_payload = {
                 "stageNumber": 4,
                 "stageName": "Concept Generation",
@@ -310,6 +377,11 @@ class PipelineOrchestrator:
 
             self.stage_outputs["stage_5"] = stage5_output_dict
             self.prisma_client.mark_stage_complete(self.run_id, 6, self.stage_outputs["stage_5"])
+
+            # Update status and notify callback
+            self._update_stage_status(5, "complete", self.stage_outputs["stage_5"])
+            self._notify_status("running", 5)
+
             webhook_payload = {
                 "stageNumber": 5,
                 "stageName": "Competitive Intelligence",
@@ -342,6 +414,11 @@ class PipelineOrchestrator:
 
             self.stage_outputs["stage_6"] = stage6_output.model_dump()
             self.prisma_client.mark_stage_complete(self.run_id, 7, self.stage_outputs["stage_6"])
+
+            # Update status and notify callback - COMPLETE
+            self._update_stage_status(6, "complete", self.stage_outputs["stage_6"])
+            self._notify_status("complete", 6)
+
             webhook_payload = {
                 "stageNumber": 6,
                 "stageName": "Opportunity Cards",
@@ -370,11 +447,11 @@ class PipelineOrchestrator:
             # Mark pipeline as failed in database
             from backend.app.pipeline_errors import classify_error, create_error_payload
 
-            current_stage = len(self.stage_outputs) + 1
-            error_code = classify_error(e, current_stage)
+            current_stage = len(self.stage_outputs)
+            error_code = classify_error(e, current_stage + 1)
             error_payload = create_error_payload(
                 run_id=self.run_id,
-                stage=current_stage,
+                stage=current_stage + 1,
                 error_code=error_code,
                 error_message=str(e),
                 exception=e
@@ -382,9 +459,12 @@ class PipelineOrchestrator:
 
             self.prisma_client.mark_stage_failed(
                 self.run_id,
-                current_stage,
+                current_stage + 1,
                 json.dumps(error_payload["error"], indent=2)
             )
+
+            # Notify status callback of failure
+            self._notify_status("failed", current_stage, str(e))
 
             raise
 
