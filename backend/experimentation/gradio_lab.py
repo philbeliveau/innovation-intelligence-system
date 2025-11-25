@@ -1091,66 +1091,66 @@ Example: `{brand_context}`, `{insights}`, `{matched_techniques}`
                 "custom_prompts": {}
             })
 
-            with gr.Row():
-                # COLLAPSIBLE SIDEBAR - SAVED EXPERIMENTS
-                with gr.Sidebar():
-                    gr.Markdown("## 📚 Saved Runs")
-                    gr.Markdown("Access your previous experiments")
+            # COLLAPSIBLE SIDEBAR - SAVED EXPERIMENTS (at top level, not inside Row)
+            with gr.Sidebar():
+                gr.Markdown("## 📚 Saved Runs")
+                gr.Markdown("Access your previous experiments")
 
-                    # Filters
-                    with gr.Accordion("🔍 Filters", open=True):
-                        sidebar_quality_filter = gr.Dropdown(
-                            choices=["All", "Good", "Needs Work", "Failed"],
-                            value="All",
-                            label="Quality Tag"
-                        )
-                        sidebar_brand_filter = gr.Dropdown(
-                            choices=["All"] + [b for b in self.load_available_brands() if b != "Custom (Manual Entry)"],
-                            value="All",
-                            label="Brand"
-                        )
-                        refresh_experiments_btn = gr.Button("🔄 Refresh List", size="sm")
-
-                    # Experiments list
-                    experiments_list = gr.Dataframe(
-                        headers=["ID", "Brand", "Date", "Quality"],
-                        datatype=["str", "str", "str", "str"],
-                        label="Recent Experiments",
-                        interactive=False,
-                        wrap=True,
-                        max_height=300
+                # Filters
+                with gr.Accordion("🔍 Filters", open=True):
+                    sidebar_quality_filter = gr.Dropdown(
+                        choices=["All", "Good", "Needs Work", "Failed"],
+                        value="All",
+                        label="Quality Tag"
                     )
+                    sidebar_brand_filter = gr.Dropdown(
+                        choices=["All"] + [b for b in self.load_available_brands() if b != "Custom (Manual Entry)"],
+                        value="All",
+                        label="Brand"
+                    )
+                    refresh_experiments_btn = gr.Button("🔄 Refresh List", size="sm")
 
-                    # Load controls
-                    selected_experiment_id = gr.Textbox(
-                        label="Experiment ID",
-                        placeholder="Copy ID from list above",
+                # Experiments list
+                experiments_list = gr.Dataframe(
+                    headers=["ID", "Brand", "Date", "Quality"],
+                    datatype=["str", "str", "str", "str"],
+                    label="Recent Experiments",
+                    interactive=False,
+                    wrap=True,
+                    max_height=300
+                )
+
+                # Load controls
+                selected_experiment_id = gr.Textbox(
+                    label="Experiment ID",
+                    placeholder="Copy ID from list above",
+                    lines=1
+                )
+
+                with gr.Row():
+                    load_experiment_btn = gr.Button("📥 Load", variant="primary", scale=2)
+                    rename_experiment_btn = gr.Button("✏️ Rename", variant="secondary", scale=1)
+                    delete_experiment_btn = gr.Button("🗑️ Delete", variant="stop", scale=1)
+
+                # Rename controls (initially hidden)
+                with gr.Group(visible=False) as rename_group:
+                    rename_input = gr.Textbox(
+                        label="New Name",
+                        placeholder="Enter new name for experiment",
                         lines=1
                     )
-
                     with gr.Row():
-                        load_experiment_btn = gr.Button("📥 Load", variant="primary", scale=2)
-                        rename_experiment_btn = gr.Button("✏️ Rename", variant="secondary", scale=1)
-                        delete_experiment_btn = gr.Button("🗑️ Delete", variant="stop", scale=1)
+                        confirm_rename_btn = gr.Button("✅ Confirm", variant="primary", size="sm")
+                        cancel_rename_btn = gr.Button("❌ Cancel", variant="secondary", size="sm")
 
-                    # Rename controls (initially hidden)
-                    with gr.Group(visible=False) as rename_group:
-                        rename_input = gr.Textbox(
-                            label="New Name",
-                            placeholder="Enter new name for experiment",
-                            lines=1
-                        )
-                        with gr.Row():
-                            confirm_rename_btn = gr.Button("✅ Confirm", variant="primary", size="sm")
-                            cancel_rename_btn = gr.Button("❌ Cancel", variant="secondary", size="sm")
+                load_status = gr.Textbox(
+                    label="Status",
+                    interactive=False,
+                    lines=2
+                )
 
-                    load_status = gr.Textbox(
-                        label="Status",
-                        interactive=False,
-                        lines=2
-                    )
-
-                # MAIN CONTENT AREA
+            # MAIN CONTENT AREA
+            with gr.Row():
                 with gr.Column(scale=3):
                     with gr.Row():
                         # LEFT COLUMN - INPUTS
