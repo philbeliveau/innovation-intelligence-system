@@ -132,7 +132,8 @@ class PipelineOrchestrator:
         pdf_text: str,
         brand_profile: Dict[str, Any],
         enrichment_mode: str = "basic",
-        source_report_name: str = "Unknown Report"
+        source_report_name: str = "Unknown Report",
+        custom_prompts: Optional[Dict[str, str]] = None
     ) -> Dict[str, Any]:
         """Execute complete 7-stage pipeline.
 
@@ -141,6 +142,7 @@ class PipelineOrchestrator:
             brand_profile: Brand profile YAML data
             enrichment_mode: Stage 0 enrichment mode ('basic' or 'perplexity_enriched')
             source_report_name: Name of source trend report (for Stage 6 cards)
+            custom_prompts: Optional custom prompt templates by stage (Story 11.6.2)
 
         Returns:
             Dictionary with all stage outputs
@@ -164,7 +166,8 @@ class PipelineOrchestrator:
                 stage_num=0,
                 stage_name="Brand Enrichment",
                 stage_func=stage0.run,
-                brand_profile=brand_profile
+                brand_profile=brand_profile,
+                custom_prompt_content=custom_prompts.get("stage_0") if custom_prompts else None
             )
 
             # Save stage 0 output
@@ -189,7 +192,8 @@ class PipelineOrchestrator:
                 stage_num=1,
                 stage_name="Trend Decomposition",
                 stage_func=stage1.run,
-                report_text=pdf_text
+                report_text=pdf_text,
+                custom_prompt_content=custom_prompts.get("stage_1") if custom_prompts else None
             )
 
             # Save stage 1 output
@@ -218,7 +222,8 @@ class PipelineOrchestrator:
                 stage_name="Consumer Insights",
                 stage_func=stage2.run,
                 stage1_output=stage1_output,
-                stage0_output=stage0_output
+                stage0_output=stage0_output,
+                custom_prompt_content=custom_prompts.get("stage_2") if custom_prompts else None
             )
 
             # Save stage 2 output
@@ -250,7 +255,8 @@ class PipelineOrchestrator:
                 stage_func=stage3.execute,
                 stage2_output=stage2_output,
                 brand_context=stage0_output.brand_context.model_dump(),
-                openrouter_client=openrouter_client
+                openrouter_client=openrouter_client,
+                custom_prompt_content=custom_prompts.get("stage_3") if custom_prompts else None
             )
 
             self.stage_outputs["stage_3"] = stage3_output.model_dump()
@@ -274,7 +280,8 @@ class PipelineOrchestrator:
                 stage2_output=stage2_output,
                 stage3_output=stage3_output,
                 brand_context=stage0_output.brand_context.model_dump(),
-                openrouter_client=openrouter_client
+                openrouter_client=openrouter_client,
+                custom_prompt_content=custom_prompts.get("stage_4") if custom_prompts else None
             )
 
             self.stage_outputs["stage_4"] = stage4_output.model_dump()
@@ -297,7 +304,8 @@ class PipelineOrchestrator:
                 stage_func=stage5.execute,
                 stage4_output=stage4_output,
                 brand_context=stage0_output.brand_context.model_dump(),
-                openrouter_client=openrouter_client
+                openrouter_client=openrouter_client,
+                custom_prompt_content=custom_prompts.get("stage_5") if custom_prompts else None
             )
 
             self.stage_outputs["stage_5"] = stage5_output_dict
@@ -328,7 +336,8 @@ class PipelineOrchestrator:
                 stage5_output=stage5_output_dict,
                 brand_context=stage0_output.brand_context.model_dump(),
                 openrouter_client=openrouter_client,
-                source_report_name=source_report_name
+                source_report_name=source_report_name,
+                custom_prompt_content=custom_prompts.get("stage_6") if custom_prompts else None
             )
 
             self.stage_outputs["stage_6"] = stage6_output.model_dump()

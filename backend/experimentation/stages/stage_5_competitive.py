@@ -47,7 +47,8 @@ class Stage5CompetitiveIntelligence:
         stage4_output: Stage4Output,
         brand_context: Dict[str, Any],
         openrouter_client: Any,
-        run_id: Optional[str] = None
+        run_id: Optional[str] = None,
+        custom_prompt_content: Optional[str] = None
     ) -> Dict[str, Any]:
         """Execute Stage 5: Competitive Intelligence Search.
 
@@ -56,6 +57,7 @@ class Stage5CompetitiveIntelligence:
             brand_context: Enriched brand profile from Stage 0
             openrouter_client: OpenRouter API client (for query generation)
             run_id: Optional pipeline run ID (for usage tracking)
+            custom_prompt_content: Optional custom prompt template (Story 11.6.2)
 
         Returns:
             Dict with competitive_intel array containing search findings
@@ -86,7 +88,8 @@ class Stage5CompetitiveIntelligence:
                 concept=concept,
                 brand_context=brand_context,
                 openrouter_client=openrouter_client,
-                run_id=run_id
+                run_id=run_id,
+                custom_prompt_content=custom_prompt_content
             )
 
             # Step 2: Execute searches via Perplexity API
@@ -121,12 +124,14 @@ class Stage5CompetitiveIntelligence:
         concept: DirectionalConcept,
         brand_context: Dict[str, Any],
         openrouter_client: Any,
-        run_id: Optional[str] = None
+        run_id: Optional[str] = None,
+        custom_prompt_content: Optional[str] = None
     ) -> List[str]:
         """Generate 3 search queries: Direct, Analogous, Competitive.
 
         Args:
             concept: Directional concept to search for
+            custom_prompt_content: Optional custom prompt template (Story 11.6.2)
             brand_context: Brand profile for competitive query
             openrouter_client: OpenRouter API client
             run_id: Optional pipeline run ID (for usage tracking)
@@ -134,15 +139,21 @@ class Stage5CompetitiveIntelligence:
         Returns:
             List of 3 search queries
         """
-        prompt_template = load_prompt_template("stage_5_competitive_search")
+        # Use custom prompt if provided, otherwise load default template
+        if custom_prompt_content:
+            # Custom prompt provided - use directly without few-shot injection
+            enhanced_template = custom_prompt_content
+        else:
+            # Load default prompt template
+            prompt_template = load_prompt_template("stage_5_competitive_search")
 
-        # Inject few-shot examples
-        enhanced_template = inject_examples_into_stage_prompt(
-            prompt_template=prompt_template,
-            stage=5,
-            brand_context=brand_context,
-            run_id=run_id
-        )
+            # Inject few-shot examples (only for default templates)
+            enhanced_template = inject_examples_into_stage_prompt(
+                prompt_template=prompt_template,
+                stage=5,
+                brand_context=brand_context,
+                run_id=run_id
+            )
 
         prompt = enhanced_template.format(
             concept_name=concept.concept_name,

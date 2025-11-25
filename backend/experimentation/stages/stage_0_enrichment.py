@@ -32,14 +32,23 @@ class Stage0Enrichment:
         self.enrichment_mode = enrichment_mode
         self.prompt_template = load_prompt_template("stage_0_enrichment")
 
-    async def run_basic(self, brand_profile: Dict[str, Any]) -> Stage0Output:
+    async def run_basic(
+        self,
+        brand_profile: Dict[str, Any],
+        custom_prompt_content: Optional[str] = None
+    ) -> Stage0Output:
         """Basic enrichment without external search.
 
         Args:
             brand_profile: Brand profile data from YAML
+            custom_prompt_content: Optional custom prompt template (Story 11.6.2)
 
         Returns:
             Stage0Output with brand context
+
+        Note:
+            Stage 0 is non-LLM (direct field extraction), so custom_prompt_content
+            is accepted but not used. Parameter included for API consistency.
         """
         logger.info(f"Running Stage 0 (basic) for brand: {brand_profile.get('brand_name', 'Unknown')}")
 
@@ -61,16 +70,22 @@ class Stage0Enrichment:
     async def run_perplexity_enriched(
         self,
         brand_profile: Dict[str, Any],
-        perplexity_api_key: Optional[str] = None
+        perplexity_api_key: Optional[str] = None,
+        custom_prompt_content: Optional[str] = None
     ) -> Stage0Output:
         """Enrichment with Perplexity API search.
 
         Args:
             brand_profile: Brand profile data from YAML
             perplexity_api_key: Optional API key (falls back to env var)
+            custom_prompt_content: Optional custom prompt template (Story 11.6.2)
 
         Returns:
             Stage0Output with enriched brand context
+
+        Note:
+            Custom prompt currently not integrated with Perplexity search workflow.
+            Parameter accepted for API consistency.
         """
         logger.info(f"Running Stage 0 (perplexity_enriched) for brand: {brand_profile.get('brand_name', 'Unknown')}")
 

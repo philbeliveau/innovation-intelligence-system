@@ -32,7 +32,8 @@ class Stage1Decomposition:
         self,
         report_text: str,
         brand_context: Optional[Stage0Output] = None,
-        run_id: Optional[str] = None
+        run_id: Optional[str] = None,
+        custom_prompt_content: Optional[str] = None
     ) -> Stage1Output:
         """Extract trends with L1-L4 abstraction from report.
 
@@ -40,6 +41,7 @@ class Stage1Decomposition:
             report_text: Full text content from trend report PDF
             brand_context: Optional brand context from Stage 0 (for few-shot selection)
             run_id: Optional pipeline run ID (for usage tracking)
+            custom_prompt_content: Optional custom prompt template (Story 11.6.2)
 
         Returns:
             Stage1Output with structured trend objects
@@ -49,8 +51,13 @@ class Stage1Decomposition:
         """
         logger.info("Running Stage 1: Trend Decomposition with L1-L4 abstraction")
 
-        # Inject few-shot examples if brand context available
-        if brand_context:
+        # Use custom prompt if provided, otherwise use default template with few-shot
+        if custom_prompt_content:
+            # Custom prompt provided - use directly without few-shot injection
+            prompt = custom_prompt_content.format(report_text=report_text)
+            logger.debug("Using custom prompt for Stage 1")
+        elif brand_context:
+            # Inject few-shot examples if brand context available
             enhanced_template = inject_examples_into_stage_prompt(
                 prompt_template=self.prompt_template,
                 stage=1,

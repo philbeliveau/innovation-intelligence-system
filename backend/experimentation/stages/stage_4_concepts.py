@@ -51,7 +51,8 @@ class Stage4ConceptGeneration:
         stage3_output: Stage3Output,
         brand_context: Dict[str, Any],
         openrouter_client: Any,
-        run_id: Optional[str] = None
+        run_id: Optional[str] = None,
+        custom_prompt_content: Optional[str] = None
     ) -> Stage4Output:
         """Execute Stage 4: Directional Concept Generation.
 
@@ -61,23 +62,29 @@ class Stage4ConceptGeneration:
             brand_context: Enriched brand profile from Stage 0
             openrouter_client: OpenRouter API client
             run_id: Optional pipeline run ID (for usage tracking)
+            custom_prompt_content: Optional custom prompt template (Story 11.6.2)
 
         Returns:
             Stage4Output with 3-5 directional concepts
         """
-        # Load prompt template
-        prompt_template = load_prompt_template("stage_4_concept_generation")
+        # Use custom prompt if provided, otherwise load default template
+        if custom_prompt_content:
+            # Custom prompt provided - use directly without few-shot injection
+            prompt_template = custom_prompt_content
+        else:
+            # Load default prompt template
+            prompt_template = load_prompt_template("stage_4_concept_generation")
 
-        # Inject few-shot examples
-        enhanced_template = inject_examples_into_stage_prompt(
-            prompt_template=prompt_template,
-            stage=4,
-            brand_context=brand_context,
-            run_id=run_id
-        )
+            # Inject few-shot examples (only for default templates)
+            prompt_template = inject_examples_into_stage_prompt(
+                prompt_template=prompt_template,
+                stage=4,
+                brand_context=brand_context,
+                run_id=run_id
+            )
 
         # Build prompt with no-hallucination constraints embedded
-        prompt = enhanced_template.format(
+        prompt = prompt_template.format(
             insights=json.dumps([insight.model_dump() for insight in stage2_output.insights], indent=2),
             matched_techniques=json.dumps(
                 [match.model_dump() for match in stage3_output.matched_techniques],

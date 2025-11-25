@@ -51,7 +51,8 @@ class Stage3TechniqueMatching:
         stage2_output: Stage2Output,
         brand_context: Dict[str, Any],
         openrouter_client: Any,
-        run_id: Optional[str] = None
+        run_id: Optional[str] = None,
+        custom_prompt_content: Optional[str] = None
     ) -> Stage3Output:
         """Execute Stage 3: Technique Matching.
 
@@ -60,20 +61,26 @@ class Stage3TechniqueMatching:
             brand_context: Enriched brand profile from Stage 0
             openrouter_client: OpenRouter API client
             run_id: Optional pipeline run ID (for usage tracking)
+            custom_prompt_content: Optional custom prompt template (Story 11.6.2)
 
         Returns:
             Stage3Output with matched techniques
         """
-        # Load prompt template
-        prompt_template = load_prompt_template("stage_3_technique_matching")
+        # Use custom prompt if provided, otherwise load default template
+        if custom_prompt_content:
+            # Custom prompt provided - use directly without few-shot injection
+            enhanced_template = custom_prompt_content
+        else:
+            # Load default prompt template
+            prompt_template = load_prompt_template("stage_3_technique_matching")
 
-        # Inject few-shot examples
-        enhanced_template = inject_examples_into_stage_prompt(
-            prompt_template=prompt_template,
-            stage=3,
-            brand_context=brand_context,
-            run_id=run_id
-        )
+            # Inject few-shot examples (only for default templates)
+            enhanced_template = inject_examples_into_stage_prompt(
+                prompt_template=prompt_template,
+                stage=3,
+                brand_context=brand_context,
+                run_id=run_id
+            )
 
         # Prepare technique library summaries for LLM
         sit_summary = self._format_sit_library()

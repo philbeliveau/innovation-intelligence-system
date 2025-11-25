@@ -108,7 +108,8 @@ This is a **directional concept** generated from trend analysis and systematic i
         brand_context: Dict[str, Any],
         openrouter_client: Any,
         source_report_name: str = "Unknown Report",
-        run_id: Optional[str] = None
+        run_id: Optional[str] = None,
+        custom_prompt_content: Optional[str] = None
     ) -> Stage6Output:
         """Execute Stage 6: Opportunity Card Packaging.
 
@@ -122,6 +123,7 @@ This is a **directional concept** generated from trend analysis and systematic i
             run_id: Optional pipeline run ID (for usage tracking)
             openrouter_client: OpenRouter API client (for card generation)
             source_report_name: Name of source trend report
+            custom_prompt_content: Optional custom prompt template (Story 11.6.2)
 
         Returns:
             Stage6Output with markdown opportunity cards
@@ -147,7 +149,8 @@ This is a **directional concept** generated from trend analysis and systematic i
                 concept=concept,
                 context=context,
                 openrouter_client=openrouter_client,
-                source_report_name=source_report_name
+                source_report_name=source_report_name,
+                custom_prompt_content=custom_prompt_content
             )
 
             # Parse card sections for structured access
@@ -235,7 +238,8 @@ This is a **directional concept** generated from trend analysis and systematic i
         concept: DirectionalConcept,
         context: Dict[str, Any],
         openrouter_client: Any,
-        source_report_name: str
+        source_report_name: str,
+        custom_prompt_content: Optional[str] = None
     ) -> str:
         """Generate markdown opportunity card using LLM.
 
@@ -244,20 +248,26 @@ This is a **directional concept** generated from trend analysis and systematic i
             context: All context data
             openrouter_client: OpenRouter API client
             source_report_name: Name of source trend report
+            custom_prompt_content: Optional custom prompt template (Story 11.6.2)
 
         Returns:
             Markdown-formatted opportunity card
         """
-        # Load prompt template
-        prompt_template = load_prompt_template("stage_6_packaging")
+        # Use custom prompt if provided, otherwise load default template
+        if custom_prompt_content:
+            # Custom prompt provided - use directly without few-shot injection
+            enhanced_template = custom_prompt_content
+        else:
+            # Load default prompt template
+            prompt_template = load_prompt_template("stage_6_packaging")
 
-        # Inject few-shot examples
-        enhanced_template = inject_examples_into_stage_prompt(
-            prompt_template=prompt_template,
-            stage=6,
-            brand_context=context["brand_context"],
-            run_id=context.get("run_id")
-        )
+            # Inject few-shot examples (only for default templates)
+            enhanced_template = inject_examples_into_stage_prompt(
+                prompt_template=prompt_template,
+                stage=6,
+                brand_context=context["brand_context"],
+                run_id=context.get("run_id")
+            )
 
         # Build prompt with all context
         prompt = enhanced_template.format(

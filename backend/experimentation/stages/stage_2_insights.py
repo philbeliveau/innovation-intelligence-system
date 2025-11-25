@@ -32,7 +32,8 @@ class Stage2Insights:
         self,
         stage1_output: Stage1Output,
         stage0_output: Stage0Output,
-        run_id: Optional[str] = None
+        run_id: Optional[str] = None,
+        custom_prompt_content: Optional[str] = None
     ) -> Stage2Output:
         """Generate consumer insights from trends and brand context.
 
@@ -58,14 +59,18 @@ class Stage2Insights:
             # Fallback: treat each trend as single-trend "convergence"
             convergences = [{"trends": [trend], "shared_emotions": []} for trend in stage1_output.trends]
 
-        # Inject few-shot examples into prompt
-        enhanced_template = inject_examples_into_stage_prompt(
-            prompt_template=self.prompt_template,
-            stage=2,
-            brand_context=stage0_output.brand_context.dict(),
-            run_id=run_id
-        )
-        logger.debug("Few-shot examples injected into Stage 2 prompt")
+        # Use custom prompt if provided, otherwise inject few-shot examples
+        if custom_prompt_content:
+            enhanced_template = custom_prompt_content
+            logger.debug("Using custom prompt for Stage 2")
+        else:
+            enhanced_template = inject_examples_into_stage_prompt(
+                prompt_template=self.prompt_template,
+                stage=2,
+                brand_context=stage0_output.brand_context.dict(),
+                run_id=run_id
+            )
+            logger.debug("Few-shot examples injected into Stage 2 prompt")
 
         # Build prompt with convergences and brand context
         trends_json = json.dumps([trend.dict() for trend in stage1_output.trends], indent=2)

@@ -1,18 +1,31 @@
 # Innovation Intelligence System - Claude Configuration
 
-## 🎯 Current Milestone: Gradio Experimentation System - Deployment Phase
+## 🎯 Current Milestone: Critical Architecture Fixes Required
 
-**Status:** Stories 11.1-11.4 COMPLETE ✅ → Story 11.5 Railway Deployment
-**Timeline:** Production-ready experimentation UI with database persistence
-**Focus:** Deploy Gradio service to Railway for experimentation access
-**Goal:** Enable innovation teams to upload trend reports, select brand profiles, run the 7-stage pipeline, review generated concepts, and persist experiments to database
+**Status:** Stories 11.1-11.4 MARKED COMPLETE but with CRITICAL INTEGRATION GAPS
+**Timeline:** Architecture consolidation required before production deployment
+**Focus:** Fix 5 critical issues blocking proper pipeline execution
+**Goal:** Enable innovation teams to upload trend reports, select brand profiles, run the ACTUAL 7-stage pipeline, review generated concepts, and persist experiments to database
 
-**Completion Status:**
-- ✅ **Story 11.1:** Gradio UI (1,518 lines, 95%+ test coverage)
-- ✅ **Story 11.2:** 7-stage pipeline integration (Stage 0-6)
-- ✅ **Story 11.3:** Few-shot learning system
-- ✅ **Story 11.4:** Database persistence (PostgreSQL + psycopg2)
-- 🚧 **Story 11.5:** Railway deployment (PORT fix required)
+**⚠️ CRITICAL STATE ANALYSIS (2025-11-25):**
+See `docs/architecture/EXPERIMENTATION-PIPELINE-STATE-ANALYSIS.md` for full details.
+
+| Issue | Severity | Status |
+|-------|----------|--------|
+| **Wrong Pipeline Connected** | CRITICAL | Gradio uses 5-stage legacy, not 7-stage orchestrator |
+| **Custom Prompts Stage 0/6** | HIGH | Validated but never executed |
+| **PDF Export Outputs JSON** | HIGH | Missing type validation in experimentation export |
+| **Few-Shot Learning Broken** | HIGH | Import fails silently, injection never called |
+| **HF Spaces Out of Sync** | MEDIUM | Separate git repo, diverged from main |
+
+**Actual Completion Status:**
+- ⚠️ **Story 11.1:** Gradio UI (2,022 lines) - UI complete but connected to WRONG pipeline
+- ❌ **Story 11.2:** 7-stage pipeline - BUILT but NEVER WIRED to `/run/local` endpoint
+- ❌ **Story 11.3:** Few-shot learning - Import fails silently, 0 examples saved
+- ✅ **Story 11.4:** Database persistence (PostgreSQL + psycopg2) - Working
+- 🚧 **Story 11.5:** Railway deployment - Blocked by above issues
+- ⚠️ **Story 11.6.1:** Custom prompts UI - Working for stages 1-5 only
+- ❌ **Story 11.6.2:** Custom prompts backend - Stage 0/6 validated but never executed
 
 ### Problem Statement
 
@@ -56,27 +69,52 @@
 - Colombia Sportswear (Outdoor Apparel)
 - McCormick (Spices & Seasonings)
 
-#### 7-Stage Production Pipeline (ACTIVE)
+#### 7-Stage Production Pipeline (INTENDED BUT NOT ACTIVE)
 
-**IMPORTANT:** The system uses a 7-stage pipeline (Stage 0-6), NOT 5 stages.
+**⚠️ CRITICAL:** The system INTENDS to use 7 stages but ACTUALLY executes only 5.
 
-**STAGE 0: BRAND CONTEXT** ✅ (NEW)
+**TWO PARALLEL IMPLEMENTATIONS EXIST:**
+
+```
+LEGACY 5-STAGE (CURRENTLY ACTIVE):
+backend/pipeline/stages/
+├── stage1_input_processing.py      ✅ EXECUTED
+├── stage2_signal_amplification.py  ✅ EXECUTED
+├── stage3_general_translation.py   ✅ EXECUTED
+├── stage4_brand_contextualization.py ✅ EXECUTED
+├── stage5_opportunity_generation.py  ✅ EXECUTED
+├── stage0_brand_context.py         ❌ FILE EXISTS, NEVER IMPORTED
+└── stage6_packaging.py             ❌ FILE EXISTS, NEVER IMPORTED
+
+EXPERIMENTATION 7-STAGE (BUILT BUT UNUSED):
+backend/experimentation/stages/
+├── stage_0_enrichment.py           ❌ NEVER CALLED (has few-shot integration)
+├── stage_1_decomposition.py        ❌ NEVER CALLED (has few-shot integration)
+├── stage_2_insights.py             ❌ NEVER CALLED (has few-shot integration)
+├── stage_3_techniques.py           ❌ NEVER CALLED (has few-shot integration)
+├── stage_4_concepts.py             ❌ NEVER CALLED (has few-shot integration)
+├── stage_5_competitive.py          ❌ NEVER CALLED (has few-shot integration)
+└── stage_6_packaging.py            ❌ NEVER CALLED (has few-shot integration)
+```
+
+**STAGE 0: BRAND CONTEXT** ❌ (EXISTS BUT NEVER EXECUTED)
 - Format brand profile data for UI display
 - Output: Structured markdown with company name, industry, geography, product portfolio
-- Implementation: `backend/pipeline/stages/stage0_brand_context.py`
+- Legacy file: `backend/pipeline/stages/stage0_brand_context.py` (never imported)
+- Experimentation file: `backend/experimentation/stages/stage_0_enrichment.py` (never called)
 
-**STAGE 1: TREND DECOMPOSITION**
+**STAGE 1: TREND DECOMPOSITION** ✅ (ACTIVE via legacy)
 - Extract structured trend objects from report
 - Output: Reusable trend JSON (lifecycle, evidence, emotional drivers, aspirations)
-- Implementation: `backend/pipeline/stages/stage1.py`
+- Active: `backend/pipeline/stages/stage1_input_processing.py`
 
-**STAGE 2: CONSUMER INSIGHT SYNTHESIS**
+**STAGE 2: CONSUMER INSIGHT SYNTHESIS** ✅ (ACTIVE via legacy)
 - Map general trend → brand/industry-specific consumer want
 - Example: "Witherwill" (general) → "I'm overwhelmed by bread choices" (industry-specific)
 - Output: Consumer wants/needs grounded in brand context
-- Implementation: `backend/pipeline/stages/stage2.py`
+- Active: `backend/pipeline/stages/stage2_signal_amplification.py`
 
-**STAGE 3: SIT TECHNIQUE MATCHING**
+**STAGE 3: SIT TECHNIQUE MATCHING** ✅ (ACTIVE via legacy)
 - Analyze consumer want + brand resources
 - Match to one of 5 SIT techniques:
   - **Subtraction**: Remove essential component
@@ -85,23 +123,24 @@
   - **Attribute Dependency**: Correlate two attributes
   - **Division**: Separate in space/time
 - Output: Selected SIT technique + rationale
-- Implementation: `backend/pipeline/stages/stage3.py`
+- Active: `backend/pipeline/stages/stage3_general_translation.py`
 
-**STAGE 4: INITIATIVE CONCEPT GENERATION**
+**STAGE 4: INITIATIVE CONCEPT GENERATION** ✅ (ACTIVE via legacy)
 - Apply SIT technique → directional concept
 - Output: Product/service/marketing initiative concept
-- Implementation: `backend/pipeline/stages/stage4.py`
+- Active: `backend/pipeline/stages/stage4_brand_contextualization.py`
 
-**STAGE 5: COMPETITIVE POSITIONING**
+**STAGE 5: COMPETITIVE POSITIONING** ✅ (ACTIVE via legacy)
 - Analyze competitive landscape and differentiation
 - Output: Competitive analysis and positioning strategy
-- Implementation: `backend/pipeline/stages/stage5.py`
+- Active: `backend/pipeline/stages/stage5_opportunity_generation.py`
 
-**STAGE 6: EXECUTIVE SUMMARY** ✅ (NEW)
+**STAGE 6: EXECUTIVE SUMMARY** ❌ (EXISTS BUT NEVER EXECUTED)
 - Generate executive summary with packaging/opportunity card
 - Structure: Trend → Consumer Insight → SIT Technique → Initiative Concept → Competitive Edge
 - Output: Final packaged opportunity card
-- Implementation: `backend/pipeline/stages/stage6_packaging.py`
+- Legacy file: `backend/pipeline/stages/stage6_packaging.py` (never imported)
+- Experimentation file: `backend/experimentation/stages/stage_6_packaging.py` (never called)
 
 **Pipeline Boundaries:**
 - ✅ Synthesize trend + brand context
@@ -167,25 +206,62 @@ Innovation teams see the demo and react with: **"Woah, okay, THIS is what this r
 
 ### System Architecture Overview
 
-**CRITICAL:** There are TWO pipeline implementations in the codebase:
+**CRITICAL ARCHITECTURE DISCREPANCY:** There are TWO pipeline implementations with INCOMPLETE INTEGRATION:
 
-1. **PRODUCTION PIPELINE** (ACTIVE - wired to Gradio UI)
-   - Location: `backend/pipeline/stages/stage0-6.py`
-   - Status: ✅ Complete and functional (7 stages)
-   - Used by: Gradio UI via `/run/local` endpoint
+#### 1. LEGACY 5-STAGE PIPELINE (CURRENTLY ACTIVE)
 
-2. **EXPERIMENTAL PIPELINE** (RESEARCH ONLY - NOT wired)
-   - Location: `backend/experimentation/stages/`
-   - Status: Research prototypes, not integrated with UI
-   - Purpose: Testing alternative stage implementations
+**Used by BOTH Gradio + Next.js apps**
 
-**Current Architecture Status:**
-- ✅ Gradio UI implementation (1,518 lines at `backend/experimentation/gradio_lab.py`)
-- ✅ FastAPI backend integration (`/run/local`, `/status/{run_id}`, `/experiments/*`)
-- ✅ PostgreSQL database with psycopg2 (direct connection, bypassing Prisma for Gradio)
-- ✅ Few-shot learning with auto-export of "Good" tagged experiments
-- ✅ Markdown formatting for all 7 stages via `output_formatters.py`
-- 🚧 Railway deployment pending (PORT configuration fix required)
+| Component | File | Line |
+|-----------|------|------|
+| Entry Point | `backend/app/routes.py` | 271-368 (`/run/local`) |
+| Executor | `backend/app/pipeline_runner.py` | 434-740 (`execute_pipeline_background()`) |
+| Stage 1 | `backend/pipeline/stages/stage1_input_processing.py` | Imported at line 19 |
+| Stage 2 | `backend/pipeline/stages/stage2_signal_amplification.py` | Imported at line 20 |
+| Stage 3 | `backend/pipeline/stages/stage3_general_translation.py` | Imported at line 21 |
+| Stage 4 | `backend/pipeline/stages/stage4_brand_contextualization.py` | Imported at line 22 |
+| Stage 5 | `backend/pipeline/stages/stage5_opportunity_generation.py` | Imported at line 23 |
+
+**Missing:** Stage 0 and Stage 6 files exist but are NEVER imported in `pipeline_runner.py`
+
+#### 2. EXPERIMENTATION 7-STAGE ORCHESTRATOR (NEVER WIRED)
+
+**Complete implementation but NOT integrated with any endpoint**
+
+| Component | File | Status |
+|-----------|------|--------|
+| Orchestrator | `backend/experimentation/pipeline_orchestrator.py` | Complete, tested, UNUSED |
+| Stage 0-6 | `backend/experimentation/stages/stage_*.py` | Complete with few-shot, UNUSED |
+| Tests | `test_orchestrator.py`, `test_end_to_end.py` | Pass but test-only |
+
+**WHY IT'S UNUSED:** No code in `routes.py` or anywhere else instantiates `PipelineOrchestrator`.
+
+#### Current Architecture Status
+
+| Component | Status | Issue |
+|-----------|--------|-------|
+| Gradio UI | ✅ 2,022 lines | Connected to wrong pipeline |
+| `/run/local` endpoint | ✅ Working | Uses legacy 5-stage |
+| PostgreSQL persistence | ✅ Working | - |
+| Few-shot export | ❌ Broken | Import fails silently |
+| Few-shot injection | ❌ Broken | Legacy pipeline has no injection code |
+| PDF export | ❌ Broken | JSON in PDF (type validation missing) |
+| HF Spaces | ⚠️ Diverged | Separate git repo, out of sync |
+
+#### Required Fix: Wire Orchestrator to /run/local
+
+**Option A (Recommended):** Replace `execute_pipeline_background()` call in `routes.py:358-364`:
+```python
+# Current (BROKEN):
+thread = Thread(target=execute_pipeline_background, args=(...))
+
+# Fix: Use orchestrator instead
+from backend.experimentation.pipeline_orchestrator import PipelineOrchestrator
+orchestrator = PipelineOrchestrator()
+# Note: Orchestrator is async, need to handle in thread or make endpoint async
+```
+
+**Option B:** Add Stage 0 and 6 imports to `pipeline_runner.py` and extend execution loop.
 
 **Brand Profiles Available:**
 - `/data/brand-profiles/lactalis-canada.yaml` - Dairy/Food & Beverage (Canada)
@@ -200,94 +276,126 @@ Innovation teams see the demo and react with: **"Woah, okay, THIS is what this r
 
 ## 🧪 Gradio Experimentation Workflow
 
-### User Journey
+### User Journey (ACTUAL vs INTENDED)
 
-1. **Upload Trend Report** - Drag-and-drop PDF (Mintel/WGSN, max 50MB)
-2. **Select Brand Profile** - Choose from dropdown or enter manually
-3. **Run Pipeline** - Click "Run Pipeline" button (triggers 7-stage extraction: Stage 0-6)
-4. **Review Outputs** - Tabbed interface showing all 7 stages with markdown formatting
-5. **Tag Quality** - Mark as Good/Needs Work/Failed with notes
-6. **Save to Database** - Persist to PostgreSQL experiments table
-7. **Auto-Export** - "Good" examples auto-exported to `/backend/experimentation/successful_examples/` for few-shot learning
+| Step | User Sees | What Actually Happens |
+|------|-----------|----------------------|
+| 1. Upload PDF | ✅ Works | PDF extracted via PyPDF2 |
+| 2. Select Brand | ✅ Works | YAML profile loaded |
+| 3. Run Pipeline | UI shows 7 stages | ⚠️ Only 5 stages execute (Stage 0, 6 skipped) |
+| 4. Review Outputs | 7 tabs displayed | ⚠️ Stage 0, 6 tabs empty or placeholder |
+| 5. Tag Quality | ✅ Works | Tag saved to database |
+| 6. Save to Database | ✅ Works | PostgreSQL insert succeeds |
+| 7. Few-Shot Export | UI says "exported" | ❌ Import fails silently, 0 files saved |
+| 8. Download PDF | Click download | ❌ PDF contains JSON instead of formatted markdown |
 
 ### File Structure
 
 ```
 backend/experimentation/
-├── gradio_lab.py              # Main Gradio application (Story 11.1) - 1,518 lines
-├── enhanced_gradio_lab.py     # Enhanced version with advanced features
-├── few_shot_manager.py        # Few-shot learning system (Story 11.3)
+├── gradio_lab.py              # Main Gradio application - 2,022 lines
+├── pipeline_orchestrator.py   # 7-stage orchestrator (COMPLETE BUT UNUSED)
+├── few_shot_manager.py        # Few-shot storage (import fails silently)
+├── prompt_injection.py        # Few-shot injection (never called by active pipeline)
 ├── prompt_template_library.py # Prompt templates for pipeline stages
-├── quality_scorer.py          # Quality assessment logic
-├── trend_filter.py            # Trend filtering utilities
-├── requirements.txt           # Gradio + dependencies
-└── successful_examples/       # Curated "Good" examples for few-shot learning
+├── export/
+│   └── pdf_export.py          # ❌ MISSING TYPE VALIDATION (line 251)
+├── stages/                    # 7-stage implementations (UNUSED)
+│   ├── stage_0_enrichment.py
+│   ├── stage_1_decomposition.py
+│   ├── stage_2_insights.py
+│   ├── stage_3_techniques.py
+│   ├── stage_4_concepts.py
+│   ├── stage_5_competitive.py
+│   └── stage_6_packaging.py
+├── successful_examples/       # ❌ EMPTY (0 examples in all stage folders)
+│   ├── stage_0/metadata.json  # {"total_examples": 0}
+│   ├── stage_1/metadata.json  # {"total_examples": 0}
+│   └── ...
+└── hf-space-deploy/           # ⚠️ SEPARATE GIT REPO - OUT OF SYNC
+    ├── app.py                 # Different from gradio_lab.py (2,116 vs 2,022 lines)
+    ├── requirements.txt       # Pinned: gradio==4.44.1
+    └── README.md              # HF Spaces metadata
 
-backend/tests/experimentation/
-└── test_gradio_lab.py         # Gradio UI tests (Story 11.1)
+backend/app/
+├── routes.py                  # /run/local endpoint (line 271-368)
+├── pipeline_runner.py         # LEGACY 5-stage executor (line 434-740)
+├── pdf_export.py              # ✅ HAS type validation (line 160-165)
+└── models.py                  # Request/response models
 
-data/brand-profiles/
-├── lactalis-canada.yaml       # Lactalis brand profile
-├── decathlon.yaml             # Decathlon brand profile
-├── columbia-sportswear.yaml   # Colombia brand profile
-├── mccormick-usa.yaml         # McCormick brand profile
-└── [brand-name]/              # Supporting documentation folders
+backend/pipeline/stages/       # LEGACY 5-STAGE (ACTIVE)
+├── stage1_input_processing.py
+├── stage2_signal_amplification.py
+├── stage3_general_translation.py
+├── stage4_brand_contextualization.py
+├── stage5_opportunity_generation.py
+├── stage0_brand_context.py    # ❌ EXISTS BUT NEVER IMPORTED
+└── stage6_packaging.py        # ❌ EXISTS BUT NEVER IMPORTED
 ```
 
 ### Integration Architecture
 
 ```
 ┌─────────────────────────────┐
-│  Gradio UI                  │ (Port 7860 - localhost or Railway)
+│  Gradio UI                  │ (Port 7860 - localhost or HF Spaces)
 │  backend/experimentation/   │
-│  gradio_lab.py (1,518 lines)│
+│  gradio_lab.py (2,022 lines)│
 └──────────┬──────────────────┘
            │
-           │ HTTP POST (httpx AsyncClient, 120s timeout)
+           │ HTTP POST /run/local (httpx, 120s timeout)
            ▼
 ┌─────────────────────────────┐
 │  FastAPI Backend            │ (Railway: innovation-backend-production.up.railway.app)
-│  backend/app/               │
+│  backend/app/routes.py:271  │
 │                             │
 │  Key Endpoints:             │
-│  POST /run/local            │ ← Start pipeline with PDF text + brand profile
-│  GET  /status/{run_id}      │ ← Poll every 2s for stage progress (Gradio gr.Progress)
-│  POST /experiments/save     │ ← Save experiment to database
-│  GET  /experiments/list     │ ← Retrieve experiment history
+│  POST /run/local            │ ← Spawns execute_pipeline_background() thread
+│  GET  /status/{run_id}      │ ← Returns status.json content
+│  POST /experiments/save     │ ← Insert to PostgreSQL
+│  GET  /experiments/list     │ ← Query PostgreSQL
 │                             │
-│  Pipeline Execution:        │
-│  - background thread        │
-│  - /tmp/runs/{run_id}/      │ ← status.json updated per stage
-│  - markdown formatting      │ ← via output_formatters.py
+│  ⚠️ PROBLEM: routes.py:358  │
+│  Calls legacy pipeline_runner.py (5 stages only)
+│  NOT pipeline_orchestrator.py (7 stages)
 └──────────┬──────────────────┘
            │
-           │ psycopg2 (direct connection, bypassing Prisma for Gradio)
+           │ execute_pipeline_background() - pipeline_runner.py:434
+           ▼
+┌─────────────────────────────┐
+│  LEGACY 5-STAGE PIPELINE    │ (WHAT ACTUALLY RUNS)
+│  backend/app/pipeline_runner.py
+│                             │
+│  Imports (lines 19-23):     │
+│  - Stage1Chain              │ ✅ Executed
+│  - Stage2Chain              │ ✅ Executed
+│  - Stage3Chain              │ ✅ Executed
+│  - Stage4Chain              │ ✅ Executed
+│  - Stage5Chain              │ ✅ Executed
+│  ❌ Stage0 NOT IMPORTED     │
+│  ❌ Stage6 NOT IMPORTED     │
+└──────────┬──────────────────┘
+           │
+           │ psycopg2 (bypassing Prisma)
            ▼
 ┌─────────────────────────────┐
 │  PostgreSQL Database        │ (Railway)
 │                             │
 │  Table: Experiment          │
-│  - id (String)              │
-│  - runId (String)           │
-│  - reportText (String)      │
-│  - brandProfile (Json)      │ ← JSONB field
-│  - stageOutputs (Json)      │ ← JSONB field (stages 0-6)
+│  - stageOutputs (Json)      │ ← Contains only stages 1-5
 │  - qualityTag (String)      │ ← Good/Needs Work/Failed
-│  - experimentNotes (String) │
-│  - pipelineVersion (String) │
-│  - createdAt (DateTime)     │
 └─────────────────────────────┘
 ```
 
-**Integration Flow:**
+**Integration Flow (ACTUAL):**
 
-1. **PDF Upload** → `extract_pdf_text()` (PyPDF2, 50MB limit) → Cached in `gr.State()`
-2. **Run Pipeline** → `POST /run/local` with `{pdf_text, brand_profile, run_id}`
-3. **Backend Execution** → Background thread executes Stages 0-6, updates `/tmp/runs/{run_id}/status.json`
-4. **Progress Polling** → Gradio polls `GET /status/{run_id}` every 2s, displays via `gr.Progress()`
-5. **Markdown Rendering** → Backend adds `markdown` field to each stage via `format_stage_output()`
-6. **Database Save** → User tags quality → `POST /experiments/save` → PostgreSQL Experiment table
-7. **Auto-Export** → "Good" tagged experiments → `/backend/experimentation/successful_examples/`
+1. **PDF Upload** → `extract_pdf_text()` (PyPDF2, 50MB limit) → Cached in `gr.State()` ✅
+2. **Run Pipeline** → `POST /run/local` with `{pdf_text, brand_profile, run_id}` ✅
+3. **Backend Execution** → `execute_pipeline_background()` runs **STAGES 1-5 ONLY** ⚠️
+4. **Progress Polling** → Gradio polls `GET /status/{run_id}` every 2s ✅
+5. **Markdown Rendering** → `format_stage_output()` called for stages 1-5 only ⚠️
+6. **Database Save** → User tags quality → `POST /experiments/save` → PostgreSQL ✅
+7. **Few-Shot Export** → `_export_few_shot_examples()` → **IMPORT FAILS, 0 FILES SAVED** ❌
+8. **PDF Download** → `generate_all_stages_pdf()` → **JSON IN PDF (no type validation)** ❌
 
 ### Running Gradio Locally
 
@@ -451,7 +559,111 @@ async def run_pipeline(pdf_text: str, brand_profile: dict):
 - NEVER create files unless absolutely necessary for achieving your goal
 - ALWAYS prefer editing an existing file to creating a new one
 - NEVER proactively create documentation files (*.md) or README files
-- Follow Story 11.5 (`docs/stories/11.5.railway-deployment.md`) for Gradio Railway deployment
+- **CRITICAL:** Do NOT modify Next.js app code when fixing Gradio issues - they share backend but are distinct products
+
+---
+
+## 🚨 CRITICAL BUGS - FIX LOCATIONS
+
+### Bug #1: Wrong Pipeline Connected (CRITICAL)
+
+**Symptom:** UI shows 7 stages but only 5 execute
+**Root Cause:** `/run/local` calls legacy `execute_pipeline_background()` not `PipelineOrchestrator`
+
+| Fix Location | File | Line |
+|--------------|------|------|
+| Thread spawn | `backend/app/routes.py` | 358-364 |
+| Legacy executor | `backend/app/pipeline_runner.py` | 434-740 |
+| Unused orchestrator | `backend/experimentation/pipeline_orchestrator.py` | ALL |
+
+**Fix:** Replace `execute_pipeline_background()` call with `PipelineOrchestrator.run_pipeline()`
+
+---
+
+### Bug #2: PDF Export Outputs JSON (HIGH)
+
+**Symptom:** Downloaded PDF contains `{'key': 'value'}` instead of formatted text
+**Root Cause:** `experimentation/export/pdf_export.py` missing type validation
+
+| Fix Location | File | Line |
+|--------------|------|------|
+| Missing validation | `backend/experimentation/export/pdf_export.py` | 251-255 |
+| Working version | `backend/app/pdf_export.py` | 160-165 |
+
+**Fix:** Add to `experimentation/export/pdf_export.py` line 251:
+```python
+if not isinstance(markdown_content, str):
+    import json
+    markdown_content = f"```json\n{json.dumps(markdown_content, indent=2)}\n```"
+```
+
+---
+
+### Bug #3: Few-Shot Learning Broken (HIGH)
+
+**Symptom:** "Good" experiments saved to DB but few-shot never improves output
+**Root Cause:** (A) Import fails silently, (B) Legacy pipeline has no injection code
+
+| Fix Location | File | Line |
+|--------------|------|------|
+| Silent import failure | `backend/experimentation/gradio_lab.py` | 27-41 |
+| Missing injection | `backend/app/pipeline_runner.py` | N/A (no few-shot imports) |
+| Empty examples | `backend/experimentation/successful_examples/*/metadata.json` | ALL show 0 |
+
+**Fix A:** Make import path robust in `gradio_lab.py`:
+```python
+from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).parent))
+from few_shot_manager import FileSystemExampleStorage
+```
+
+**Fix B:** Add few-shot injection to legacy pipeline OR wire orchestrator (has injection built-in)
+
+---
+
+### Bug #4: Custom Prompts Stage 0/6 Never Execute (HIGH)
+
+**Symptom:** Custom prompts for Stage 0 and 6 validated but have no effect
+**Root Cause:** Legacy pipeline only imports stages 1-5
+
+| Fix Location | File | Line |
+|--------------|------|------|
+| Validation (works) | `backend/app/routes.py` | 283-317 |
+| Missing imports | `backend/app/pipeline_runner.py` | 19-23 |
+
+**Fix:** Add Stage0 and Stage6 imports to `pipeline_runner.py` OR wire orchestrator
+
+---
+
+### Bug #5: HF Spaces Out of Sync (MEDIUM)
+
+**Symptom:** HF Spaces has different code than main Gradio
+**Root Cause:** `hf-space-deploy/` is a separate git repository
+
+| File Comparison | Main | HF Spaces |
+|-----------------|------|-----------|
+| App | `gradio_lab.py` (2,022 lines) | `hf-space-deploy/app.py` (2,116 lines) |
+| Git | Main project repo | Separate HF Spaces repo |
+
+**Fix:** Establish sync workflow - either git submodule or manual push script
+
+---
+
+## 📋 Quick Reference: Key File Locations
+
+| Component | Path | Line(s) |
+|-----------|------|---------|
+| **Route Handler** | `backend/app/routes.py` | 271-368 |
+| **Legacy Pipeline** | `backend/app/pipeline_runner.py` | 434-740 |
+| **7-Stage Orchestrator** | `backend/experimentation/pipeline_orchestrator.py` | ALL |
+| **Gradio UI** | `backend/experimentation/gradio_lab.py` | ALL |
+| **PDF Export (Broken)** | `backend/experimentation/export/pdf_export.py` | 251 |
+| **PDF Export (Working)** | `backend/app/pdf_export.py` | 160 |
+| **Few-Shot Manager** | `backend/experimentation/few_shot_manager.py` | ALL |
+| **Few-Shot Import** | `backend/experimentation/gradio_lab.py` | 27-41 |
+| **Output Formatters** | `backend/pipeline/output_formatters.py` | 476-507 |
+| **HF Spaces App** | `backend/experimentation/hf-space-deploy/app.py` | ALL |
 
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.

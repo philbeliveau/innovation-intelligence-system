@@ -26,6 +26,7 @@ from app.models import (
     RenameExperimentResponse
 )
 from app.pipeline_runner import execute_pipeline_background
+from pipeline.prompt_file_validator import PromptFileValidator
 
 logger = logging.getLogger(__name__)
 
@@ -278,6 +279,42 @@ async def run_pipeline_local(request: RunPipelineLocalRequest):
     # Use frontend-provided run_id or generate new one
     run_id = request.run_id or generate_run_id()
     logger.info(f"[LOCAL] Pipeline run_id: {run_id}")
+
+    # Validate custom prompts if provided (AC: 7)
+    if request.custom_prompts:
+        logger.info(f"[LOCAL] Validating {len(request.custom_prompts)} custom prompts")
+        for stage_key, prompt_content in request.custom_prompts.items():
+            # Extract stage number from key (e.g., "stage_4" -> 4)
+            try:
+                stage_num = int(stage_key.split("_")[1])
+            except (IndexError, ValueError):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid stage key format: '{stage_key}'. Expected format: 'stage_N' where N is 0-6"
+                )
+
+            # Validate stage number range
+            if stage_num < 0 or stage_num > 6:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid stage number: {stage_num}. Must be between 0 and 6"
+                )
+
+            # Validate prompt content for required placeholders
+            validation_result = PromptFileValidator.validate(stage_num, prompt_content)
+
+            if not validation_result.is_valid:
+                logger.error(f"[LOCAL] Custom prompt validation failed for {stage_key}: {validation_result.error_message}")
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "error": f"Invalid custom prompt for Stage {stage_num}",
+                        "details": f"Missing required placeholders: {', '.join(validation_result.missing_placeholders)}",
+                        "stage": stage_num
+                    }
+                )
+
+        logger.info(f"[LOCAL] All custom prompts validated successfully")
 
     # Save PDF text to temp file
     run_dir = Path("/tmp/runs") / run_id
